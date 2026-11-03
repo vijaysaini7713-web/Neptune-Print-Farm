@@ -4,7 +4,21 @@ A read-only, mobile-friendly dashboard for monitoring ELEGOO Neptune 4 Max print
 
 **Status:** MVP / local network monitoring. Real printer testing is required. This is not a cloud SaaS deployment.
 
-## Quick start
+## Windows quick start (recommended)
+
+1. Install [Node.js LTS](https://nodejs.org/).
+2. Download the repository ZIP from GitHub and extract it.
+3. Open PowerShell in the extracted folder and run:
+
+   `powershell -ExecutionPolicy Bypass -File .\setup-windows.ps1`
+
+4. The script asks you to set a password on first use, generates a random login secret, installs dependencies and starts the local frontend/backend.
+5. Open **http://localhost:5173** on the same computer, then log in.
+6. Edit the five printer IPs in Settings (typically Moonraker port 7125), enable printers and save.
+
+**Important:** GitHub hosts the code, not a running dashboard. A hosted website and remote mobile access still need separate deployment/VPN setup. If the page is blank, check the PowerShell console and browser Developer Tools console.
+
+## Manual quick start
 
 1. Install Node.js 20+.
 2. Run `npm install`.
