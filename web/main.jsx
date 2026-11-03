@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import{createRoot}from'react-dom/client';
-import{Printer,Settings,Activity,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp}from'lucide-react';
+import{Printer,Settings,Activity,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink}from'lucide-react';
 import './style.css';
 
 const api=async(url,options={})=>{const r=await fetch('/api'+url,{credentials:'same-origin',headers:{'content-type':'application/json'},...options});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data};
@@ -61,13 +61,22 @@ function Login({done}){const[password,setPassword]=useState(''),[error,setError]
 
 function PrinterCard({p}){
  const s=p.status||'connecting';
+ const printerUrl=p.host?`http://${p.host}${p.port&&p.port!==80?':'+p.port:''}`:null;
  return <article className="card printerCard">
   <div className="printerTop">
-   <div className="printerIcon"><Printer size={22}/></div>
+   <div style={{display:'flex',alignItems:'center',gap:'9px'}}>
+    <div className="printerIcon"><Printer size={22}/></div>
+    {p.enabled&&printerUrl&&(
+     <a href={printerUrl} target="_blank" rel="noreferrer" className="printerIpLink" title={`Open ${p.name} web UI (${p.host})`}>
+      <span>{p.host}</span>
+      <ExternalLink size={11}/>
+     </a>
+    )}
+   </div>
    <span className={'pill '+color(s)}><i/>{s}</span>
   </div>
   <h3>{p.name}</h3>
-  <div className="subline">{p.enabled?p.host+':'+p.port:'Not enabled'}</div>
+  <div className="subline">{p.enabled?(p.port===80?'Port 80 (HTTP)':p.host+':'+p.port):'Not enabled'}</div>
   <div className="job" title={p.file}>{p.file||'No active G-code job'}</div>
 
   <div className="progressHead">
@@ -112,7 +121,16 @@ function PrinterCard({p}){
    <span>Filament sensor</span>
    <strong>{p.filamentDetected===false?'RUNOUT':p.filamentDetected===true?'Detected':'Unavailable / Unknown'}</strong>
   </div>
+
   {p.error&&<div className="errorText" title={p.error}>{p.error}</div>}
+
+  {p.enabled&&printerUrl&&(
+   <a href={printerUrl} target="_blank" rel="noreferrer" className="openPrinterBtn" title={`Open ${p.name} Fluidd interface (${p.host})`}>
+    <ExternalLink size={13}/>
+    <span>Open Printer Web UI ({p.host})</span>
+   </a>
+  )}
+
   <div className="updated">Updated: {p.updatedAt?new Date(p.updatedAt).toLocaleString():'Awaiting connection'}</div>
  </article>;
 }

@@ -50,3 +50,9 @@
 .finishLabel{font-size:10px;letter-spacing:.6px;color:#7e9bc0;text-transform:uppercase;font-weight:600}
 .finishVal{font-size:13px;color:#6db2ff;font-weight:700}
 
+
+.openPrinterBtn{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:14px;padding:9px 14px;background:#16273e;color:#8dc3ff;border:1px solid #264266;border-radius:9px;font-size:12px;font-weight:600;text-decoration:none;transition:all .2s;cursor:pointer}
+.openPrinterBtn:hover{background:#233d61;color:#fff;border-color:#4d83cb}
+.printerIpLink{display:inline-flex;align-items:center;gap:5px;color:#7e9bc0;text-decoration:none;font-size:11px}
+.printerIpLink:hover{color:#64aaff;text-decoration:underline}
+
