@@ -24,3 +24,4 @@ if exist "%SHORTCUT_PATH%" (
 
 echo.
 pause
+

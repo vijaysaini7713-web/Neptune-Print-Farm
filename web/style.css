@@ -71,3 +71,40 @@
 .netBoxVal{font-size:14px;font-family:monospace;color:#6db2ff}
 .netBox small{color:#768da7;font-size:11px;margin-top:3px}
 
+.controlBtn{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:10px 14px;background:#203b60;color:#9bc7ff;border:1px solid #355c8f;border-radius:9px;font-size:12px;font-weight:700;transition:all .2s;cursor:pointer}
+.controlBtn:hover{background:#2a4f82;color:#fff;border-color:#538bd4}
+
+.modalBackdrop{position:fixed;inset:0;background:rgba(5,9,16,.78);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
+.modalCard.controlModal{background:#111a28;border:1px solid #2a3c54;border-radius:15px;width:min(680px,100%);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,.6)}
+.modalHeader{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid #203147}
+.controlStatsBar{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;background:#0d1522;padding:12px 16px;border-bottom:1px solid #1c2b3e;text-align:center}
+.controlStatsBar span{display:block;font-size:10px;color:#748ba7;text-transform:uppercase;font-weight:600;letter-spacing:.4px}
+.controlStatsBar strong{display:block;font-size:12px;color:#d5e5fa;margin-top:3px}
+.ctrlFeedback{display:flex;align-items:center;gap:8px;padding:9px 14px;margin:12px 20px 0;border-radius:8px;font-size:12px;font-weight:600}
+.ctrlFeedback.success{background:#11382d;color:#4eedb8;border:1px solid #1e614f}
+.ctrlFeedback.error{background:#451c24;color:#ff8e99;border:1px solid #792f3c}
+.ctrlSectionTitle{display:flex;justify-content:space-between;align-items:center;padding:14px 20px 8px;font-size:12px;font-weight:700;color:#cbdcf2}
+.ctrlActionsGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;padding:0 20px}
+.ctrlBtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid transparent;cursor:pointer;transition:all .15s}
+.ctrlBtn.pause{background:#382713;color:#ffba66;border-color:#61431e}.ctrlBtn.pause:hover{background:#4e3619;color:#fff}
+.ctrlBtn.resume{background:#12392c;color:#4eedb8;border-color:#1c664e}.ctrlBtn.resume:hover{background:#1a523f;color:#fff}
+.ctrlBtn.cancel{background:#3a1921;color:#ff8792;border-color:#652936}.ctrlBtn.cancel:hover{background:#54222e;color:#fff}
+.ctrlBtn.cooldown{background:#16323d;color:#5de4d8;border-color:#26576b}.ctrlBtn.cooldown:hover{background:#204857;color:#fff}
+.ctrlBtn.home{background:#1b283d;color:#9ec2eb;border-color:#2c4366}.ctrlBtn.home:hover{background:#253754;color:#fff}
+.ctrlBtn.restart{background:#252d47;color:#a4baff;border-color:#3c4873}.ctrlBtn.restart:hover{background:#323d60;color:#fff}
+.ctrlBtn.emergency{background:#4e171f;color:#ff7380;border-color:#882635;font-weight:700}.ctrlBtn.emergency:hover{background:#681d29;color:#fff}
+.terminalBox{background:#0a0f18;border:1px solid #1a273a;border-radius:8px;margin:0 20px;padding:10px 12px;max-height:165px;overflow-y:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;display:flex;flex-direction:column;gap:3px}
+.termLine{font-size:11px;line-height:1.4;word-break:break-all}
+.termTime{color:#546985;margin-right:6px}
+.termPrefix{color:#4eedb8;font-weight:700}
+.termLine.cmd .termMsg{color:#4eedb8;font-weight:600}
+.termLine.resp .termMsg{color:#8ec4ff}
+.presetChips{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:8px 20px 0}
+.chip{background:#162335;color:#97aecd;border:1px solid #253750;border-radius:6px;padding:4px 9px;font-size:11px;font-family:monospace;font-weight:600}
+.chip:hover{background:#21334d;color:#fff;border-color:#466590}
+.termInputRow{display:flex;gap:8px;padding:12px 20px 14px}
+.termInputRow input{flex:1;background:#0b131f;color:#eaf0fa;border:1px solid #27384f;border-radius:8px;padding:9px 12px;font-size:12px;font-family:monospace;outline:none}
+.termInputRow input:focus{border-color:#539bf5}
+.modalFooter{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 20px 16px;background:#0d1522;border-top:1px solid #1c2b3e}
+@media(max-width:600px){.controlStatsBar{grid-template-columns:repeat(3,1fr)}}
+

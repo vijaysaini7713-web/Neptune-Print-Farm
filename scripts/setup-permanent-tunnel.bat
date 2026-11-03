@@ -37,3 +37,4 @@ echo [DONE] Cloudflare Tunnel is now installed as a Windows Service!
 echo It will now run 24/7 in the background automatically.
 echo.
 pause
+

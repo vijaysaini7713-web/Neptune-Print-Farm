@@ -306,6 +306,63 @@ app.all('/api/printers/:id/proxy/*',auth,async(req,res)=>{
  }
 });
 
+app.post('/api/printers/:id/command',auth,async(req,res)=>{
+ const p=printers.find(x=>x.id===req.params.id);
+ if(!p||!p.enabled||!validHost(p.host))return res.status(404).json({error:'Printer not found or disabled'});
+ const {action,gcode}=req.body||{};
+ let targetPath='',payload=null;
+ if(action==='pause')targetPath='/printer/print/pause';
+ else if(action==='resume')targetPath='/printer/print/resume';
+ else if(action==='cancel')targetPath='/printer/print/cancel';
+ else if(action==='emergency_stop')targetPath='/printer/emergency_stop';
+ else if(action==='firmware_restart')targetPath='/printer/firmware_restart';
+ else if(action==='cooldown'){targetPath='/printer/gcode/script';payload={script:'M104 S0\nM140 S0\nM106 S0'}}
+ else if(action==='home'){targetPath='/printer/gcode/script';payload={script:'G28'}}
+ else if(action==='gcode'||typeof gcode==='string'){
+  const script=(gcode||'').trim();
+  if(!script)return res.status(400).json({error:'Empty G-code command'});
+  targetPath='/printer/gcode/script';
+  payload={script};
+ }else{
+  return res.status(400).json({error:'Unknown action: '+action});
+ }
+
+ try{
+  const endpoint='http://'+p.host+':'+p.port+targetPath;
+  const r=await fetch(endpoint,{
+   method:'POST',
+   headers:{'content-type':'application/json'},
+   body:payload?JSON.stringify(payload):undefined,
+   signal:AbortSignal.timeout(9000)
+  });
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok){
+   const errMsg=data?.error?.message||`Moonraker HTTP ${r.status}`;
+   return res.status(400).json({error:errMsg});
+  }
+  const cmdDesc=action==='gcode'?(gcode||'G-code'):(action||'command');
+  record(p.id,'command',`${p.name}: Remote command [${cmdDesc}] executed`);
+  void poll();
+  res.json({ok:true,result:data?.result||'ok'});
+ }catch(err){
+  res.status(502).json({error:'Failed to communicate with printer '+p.host+': '+err.message});
+ }
+});
+
+app.get('/api/printers/:id/console',auth,async(req,res)=>{
+ const p=printers.find(x=>x.id===req.params.id);
+ if(!p||!p.enabled||!validHost(p.host))return res.status(404).json({error:'Printer not found or disabled'});
+ try{
+  const count=Math.min(100,Math.max(10,Number(req.query.count)||50));
+  const r=await fetch(`http://${p.host}:${p.port}/server/gcode_store?count=${count}`,{signal:AbortSignal.timeout(4500)});
+  if(!r.ok)return res.status(r.status).json({error:'Moonraker error '+r.status});
+  const data=await r.json();
+  res.json({ok:true,logs:data?.result?.gcode_store||[]});
+ }catch(err){
+  res.status(502).json({error:'Failed to fetch printer console: '+err.message});
+ }
+});
+
 app.get('/api/me',auth,(_req,res)=>res.json({ok:true}));
 app.get('/api/printers',auth,(_req,res)=>res.json(printers.map(p=>current.get(p.id)||{...p,status:'connecting',connected:false})));
 app.get('/api/events',auth,(_req,res)=>res.json(events.slice(0,200)));

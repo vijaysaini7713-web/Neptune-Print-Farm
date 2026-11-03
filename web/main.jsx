@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import{createRoot}from'react-dom/client';
-import{Printer,Settings,Activity,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server}from'lucide-react';
+import{Printer,Settings,Activity,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders}from'lucide-react';
 import './style.css';
 
 const api=async(url,options={})=>{const r=await fetch('/api'+url,{credentials:'same-origin',headers:{'content-type':'application/json'},...options});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data};
@@ -80,7 +80,7 @@ function Login({done}){
  </main>;
 }
 
-function PrinterCard({p,isLocal,systemInfo}){
+function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
  const s=p.status||'connecting';
  const printerUrl=p.host?`http://${p.host}${p.port&&p.port!==80?':'+p.port:''}`:null;
  return <article className="card printerCard">
@@ -152,12 +152,18 @@ function PrinterCard({p,isLocal,systemInfo}){
 
   {p.error&&<div className="errorText" title={p.error}>{p.error}</div>}
 
-  {p.enabled&&printerUrl&&(
+  {p.enabled&&(
    <div className="printerBtnWrap">
-    <a href={printerUrl} target="_blank" rel="noreferrer" className={'openPrinterBtn '+(isLocal?'':'remoteBtn')} title={isLocal?`Open ${p.name} Fluidd interface directly`: `Direct LAN IP ${p.host} (requires farm Wi-Fi or VPN)`}>
-     <ExternalLink size={13}/>
-     <span>{isLocal?`Open Printer Web UI (${p.host})`:`Open LAN Web UI (${p.host})`}</span>
-    </a>
+    <button className="controlBtn" onClick={()=>onOpenControl(p)} title="Remote controls, emergency actions, and G-code terminal">
+     <Sliders size={13}/>
+     <span>Remote Controls & Terminal</span>
+    </button>
+    {printerUrl&&(
+     <a href={printerUrl} target="_blank" rel="noreferrer" className={'openPrinterBtn '+(isLocal?'':'remoteBtn')} title={isLocal?`Open ${p.name} Fluidd interface directly`: `Direct LAN IP ${p.host} (requires farm Wi-Fi or VPN)`}>
+      <ExternalLink size={13}/>
+      <span>{isLocal?`Open Fluidd Web UI (${p.host})`:`Open Direct LAN (${p.host})`}</span>
+     </a>
+    )}
     {!isLocal&&(
      <div className="remoteSubHint">
       <Radio size={11}/>
@@ -169,6 +175,196 @@ function PrinterCard({p,isLocal,systemInfo}){
 
   <div className="updated">Updated: {p.updatedAt?new Date(p.updatedAt).toLocaleString():'Awaiting connection'}</div>
  </article>;
+}
+
+function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
+ const [logs,setLogs]=useState([]);
+ const [cmd,setCmd]=useState('');
+ const [sending,setSending]=useState(false);
+ const [feedback,setFeedback]=useState(null);
+ const [autoScroll,setAutoScroll]=useState(true);
+ const logBoxRef=React.useRef(null);
+
+ async function loadLogs(){
+  try{
+   const r=await api(`/printers/${p.id}/console?count=40`);
+   if(r.ok&&Array.isArray(r.logs)){
+    setLogs(r.logs);
+   }
+  }catch(err){}
+ }
+
+ useEffect(()=>{
+  loadLogs();
+  const iv=setInterval(loadLogs,3000);
+  return ()=>clearInterval(iv);
+ },[p.id]);
+
+ useEffect(()=>{
+  if(autoScroll&&logBoxRef.current){
+   logBoxRef.current.scrollTop=logBoxRef.current.scrollHeight;
+  }
+ },[logs]);
+
+ async function sendCommand(action,gcode,confirmPrompt){
+  if(confirmPrompt&&!window.confirm(confirmPrompt))return;
+  setSending(true);
+  setFeedback(null);
+  try{
+   const r=await api(`/printers/${p.id}/command`,{
+    method:'POST',
+    body:JSON.stringify({action,gcode})
+   });
+   setFeedback({type:'success',text:`Command executed: ${action||gcode} (${r.result||'ok'})`});
+   if(action==='gcode')setCmd('');
+   setTimeout(loadLogs,600);
+   setTimeout(onRefresh,800);
+  }catch(err){
+   setFeedback({type:'error',text:err.message});
+  }finally{
+   setSending(false);
+  }
+ }
+
+ const s=p.status||'connecting';
+ const printerUrl=p.host?`http://${p.host}${p.port&&p.port!==80?':'+p.port:''}`:null;
+
+ return (
+  <div className="modalBackdrop" onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+   <div className="modalCard controlModal">
+    <div className="modalHeader">
+     <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+      <div className="printerIcon" style={{width:'36px',height:'36px'}}><Printer size={18}/></div>
+      <div>
+       <h2 style={{fontSize:'17px',margin:0,color:'#fff'}}>{p.name}</h2>
+       <div style={{fontSize:'11px',color:'#7f94b0'}}>{p.host}:{p.port} · {isLocal?'Direct LAN Mode':'Relayed via Farm Host'}</div>
+      </div>
+     </div>
+     <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+      <span className={'pill '+color(s)}><i/>{s}</span>
+      <button className="iconButton" onClick={onClose} title="Close"><X size={18}/></button>
+     </div>
+    </div>
+
+    {/* Quick Stats Bar */}
+    <div className="controlStatsBar">
+     <div>
+      <span>Nozzle</span>
+      <strong>{temp(p.nozzle)}{p.nozzleTarget?` / ${p.nozzleTarget}°C`:''}</strong>
+     </div>
+     <div>
+      <span>Bed</span>
+      <strong>{temp(p.bed)}{p.bedTarget?` / ${p.bedTarget}°C`:''}</strong>
+     </div>
+     <div>
+      <span>Job</span>
+      <strong title={p.file||'None'}>{p.file?p.file.slice(0,18)+'...':'No job'}</strong>
+     </div>
+     <div>
+      <span>Progress</span>
+      <strong>{p.progress??0}%</strong>
+     </div>
+     <div>
+      <span>Remaining</span>
+      <strong>{p.remainingTime!=null?fmtDuration(p.remainingTime):'—'}</strong>
+     </div>
+    </div>
+
+    {/* Action Feedback Banner */}
+    {feedback&&(
+     <div className={'ctrlFeedback '+(feedback.type==='error'?'error':'success')}>
+      {feedback.type==='error'?<AlertTriangle size={15}/>:<CheckCircle2 size={15}/>}
+      <span>{feedback.text}</span>
+     </div>
+    )}
+
+    {/* Quick Action Buttons */}
+    <div className="ctrlSectionTitle">
+     <span>⚡ Emergency & Quick Actions</span>
+     <small style={{color:'#7d93ae'}}>Instant control commands executed via Moonraker</small>
+    </div>
+    <div className="ctrlActionsGrid">
+     <button className="ctrlBtn pause" disabled={sending} onClick={()=>sendCommand('pause')}>
+      <Pause size={14}/> Pause Print
+     </button>
+     <button className="ctrlBtn resume" disabled={sending} onClick={()=>sendCommand('resume')}>
+      <Play size={14}/> Resume Print
+     </button>
+     <button className="ctrlBtn cancel" disabled={sending} onClick={()=>sendCommand('cancel',null,`Are you sure you want to CANCEL the print on ${p.name}?`)}>
+      <Square size={14}/> Cancel Print
+     </button>
+     <button className="ctrlBtn cooldown" disabled={sending} onClick={()=>sendCommand('cooldown')}>
+      <Flame size={14}/> Cooldown Heaters
+     </button>
+     <button className="ctrlBtn home" disabled={sending} onClick={()=>sendCommand('home')}>
+      <Home size={14}/> Home All (G28)
+     </button>
+     <button className="ctrlBtn restart" disabled={sending} onClick={()=>sendCommand('firmware_restart',null,`Restart Klipper firmware on ${p.name}?`)}>
+      <RotateCcw size={14}/> Firmware Restart
+     </button>
+     <button className="ctrlBtn emergency" disabled={sending} onClick={()=>sendCommand('emergency_stop',null,`EMERGENCY STOP (M112): This immediately halts all motors and heaters on ${p.name}. Confirm?`)}>
+      <ShieldAlert size={14}/> Emergency Stop (M112)
+     </button>
+    </div>
+
+    {/* Live Terminal Console */}
+    <div className="ctrlSectionTitle" style={{marginTop:'18px'}}>
+     <span><Terminal size={14} style={{verticalAlign:'middle',marginRight:'5px'}}/> G-Code Terminal & Live Console</span>
+     <button className="textButton" style={{fontSize:'11px'}} onClick={loadLogs}>Refresh logs</button>
+    </div>
+
+    <div className="terminalBox" ref={logBoxRef}>
+     {logs.length?logs.map((item,idx)=>(
+      <div key={idx} className={'termLine '+(item.type==='command'?'cmd':'resp')}>
+       <span className="termTime">[{new Date(item.time*1000).toLocaleTimeString()}]</span>
+       <span className="termPrefix">{item.type==='command'?'> ':'  '}</span>
+       <span className="termMsg">{item.message}</span>
+      </div>
+     )):<div className="empty" style={{padding:'14px'}}>Awaiting terminal logs...</div>}
+    </div>
+
+    {/* Preset Quick Chips */}
+    <div className="presetChips">
+     <span style={{fontSize:'11px',color:'#778ea9',alignSelf:'center'}}>Quick:</span>
+     <button className="chip" onClick={()=>sendCommand('gcode','M115')}>M115 (Firmware)</button>
+     <button className="chip" onClick={()=>sendCommand('gcode','M105')}>M105 (Temps)</button>
+     <button className="chip" onClick={()=>sendCommand('gcode','M84')}>M84 (Motors Off)</button>
+     <button className="chip" onClick={()=>sendCommand('gcode','M106 S255')}>Fan 100%</button>
+     <button className="chip" onClick={()=>sendCommand('gcode','M106 S0')}>Fan Off</button>
+     <button className="chip" onClick={()=>sendCommand('gcode','STATUS')}>STATUS</button>
+    </div>
+
+    {/* Command Input Box */}
+    <form className="termInputRow" onSubmit={e=>{e.preventDefault();if(cmd.trim())sendCommand('gcode',cmd.trim())}}>
+     <input 
+      type="text" 
+      placeholder="Type custom G-code (e.g. M104 S200, G28, M117 Printing)..." 
+      value={cmd} 
+      onChange={e=>setCmd(e.target.value)} 
+      disabled={sending}
+     />
+     <button type="submit" className="primary" disabled={sending||!cmd.trim()}>
+      <Send size={14}/> {sending?'Sending...':'Send'}
+     </button>
+    </form>
+
+    {/* Web UI IP Footer */}
+    <div className="modalFooter">
+     <div style={{fontSize:'12px',color:'#849bb6'}}>
+      <strong>Direct Printer Web Interface:</strong>
+      <div style={{marginTop:'2px',fontSize:'11px',color:'#6b829e'}}>
+       {isLocal?'Connected via Local Wi-Fi':'Direct Fluidd requires farm LAN or VPN; commands above work from anywhere!'}
+      </div>
+     </div>
+     {printerUrl&&(
+      <a href={printerUrl} target="_blank" rel="noreferrer" className="openPrinterBtn" style={{width:'auto',margin:0,padding:'7px 12px',fontSize:'11px'}}>
+       <ExternalLink size={12}/> Open Fluidd ({p.host})
+      </a>
+     )}
+    </div>
+   </div>
+  </div>
+ );
 }
 
 function CompletedPage({data,onSync}){
@@ -631,12 +827,13 @@ function SettingsPage({list,reload,systemInfo}){const[items,setItems]=useState(l
 <div className="card tip"><ShieldCheck size={21}/><div><b>Security & Architecture</b><p>When opened locally on office Wi-Fi, the dashboard connects directly. When opened remotely, this host computer acts as the live telemetry relay so you never have to expose the raw printer IPs publicly.</p></div></div></div>}
 
 function App(){
- const[authed,setAuthed]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[systemInfo,setSystemInfo]=useState(null),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);
+ const[authed,setAuthed]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[systemInfo,setSystemInfo]=useState(null),[controlPrinter,setControlPrinter]=useState(null),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);
 
  async function refresh(){
   try{
    const [p,e,c,s]=await Promise.all([api('/printers'),api('/events'),api('/completed-prints'),api('/system-info')]);
    setPrinters(p);setEvents(e);setCompleted(c);setSystemInfo(s);setError('');setRefreshed(new Date());
+   setControlPrinter(curr=>curr?p.find(x=>x.id===curr.id)||curr:null);
   }catch(e){
    if(e.message==='Login required')setAuthed(false);else setError(e.message);
   }
@@ -715,7 +912,7 @@ function App(){
      </section>
 
      <div className="sectionTitle"><h2>All printers</h2><span>{printing} printing · {paused} paused</span></div>
-     <section className="printers">{printers.map(p=><PrinterCard key={p.id} p={p} isLocal={isLocal} systemInfo={systemInfo}/>)}</section>
+     <section className="printers">{printers.map(p=><PrinterCard key={p.id} p={p} isLocal={isLocal} systemInfo={systemInfo} onOpenControl={setControlPrinter}/>)}</section>
 
      <div className="sectionTitle">
       <h2>Completed Quantities by File</h2>
@@ -753,6 +950,16 @@ function App(){
       {events.length?events.map(e=><div className="event" key={e.id}><span className={'dot '+(e.type==='completed'?'teal':'amber')}/><div>{e.message}<small>{new Date(e.time).toLocaleString()} · {e.type}</small></div></div>):<div className="empty"><WifiOff size={22}/> No events recorded yet.</div>}
      </div>
     </>
+   )}
+
+   {controlPrinter&&(
+    <RemoteControlModal 
+     p={controlPrinter} 
+     isLocal={isLocal} 
+     systemInfo={systemInfo} 
+     onClose={()=>setControlPrinter(null)} 
+     onRefresh={refresh}
+    />
    )}
   </main>
  </div>;

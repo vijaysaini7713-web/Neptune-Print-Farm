@@ -11,3 +11,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
 echo Stopped background services.
 echo.
 pause
+

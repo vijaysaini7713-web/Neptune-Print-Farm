@@ -3,3 +3,4 @@ Set fso = CreateObject("Scripting.FileSystemObject")
 strDir = fso.GetParentFolderName(WScript.ScriptFullName) & "\.."
 WshShell.CurrentDirectory = strDir
 WshShell.Run "cmd.exe /c npm run live", 0, False
+
