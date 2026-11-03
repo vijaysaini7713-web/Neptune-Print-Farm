@@ -3,35 +3,35 @@
     "id": "printer-1",
     "name": "Neptune 4 Max - 01",
     "host": "192.168.1.101",
-    "port": 7125,
+    "port": 80,
     "enabled": false
   },
   {
     "id": "printer-2",
     "name": "Neptune 4 Max - 02",
     "host": "192.168.1.102",
-    "port": 7125,
+    "port": 80,
     "enabled": false
   },
   {
     "id": "printer-3",
     "name": "Neptune 4 Max - 03",
     "host": "192.168.1.103",
-    "port": 7125,
+    "port": 80,
     "enabled": false
   },
   {
     "id": "printer-4",
     "name": "Neptune 4 Max - 04",
     "host": "192.168.1.104",
-    "port": 7125,
+    "port": 80,
     "enabled": false
   },
   {
     "id": "printer-5",
     "name": "Neptune 4 Max - 05",
     "host": "192.168.1.105",
-    "port": 7125,
+    "port": 80,
     "enabled": false
   }
 ]
