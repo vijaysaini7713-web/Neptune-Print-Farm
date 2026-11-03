@@ -23,6 +23,8 @@ This dashboard is designed to work seamlessly both on the farm's local Wi-Fi and
 - **Local Dev Server:** `npm run dev` (Frontend: `http://localhost:5173`, Backend: `http://localhost:3080`)
 - **Single Production Server:** `npm start` (Runs on port `3080` serving the built UI and API)
 - **Make Live Remotely (Free Public Link):** `npm run live` (Starts server and creates a secure public tunnel URL)
+- **24/7 Always-On Auto-Start:** Double click `scripts\install-autostart.bat` so it automatically runs silently in the background whenever Windows starts.
+- **Stop Background Server:** Double click `scripts\stop-farm.bat`.
 
 ## Windows quick start (recommended)
 
