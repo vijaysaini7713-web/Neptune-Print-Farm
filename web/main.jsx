@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import{createRoot}from'react-dom/client';
-import{Printer,Settings,Activity,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink}from'lucide-react';
+import{Printer,Settings,Activity,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server}from'lucide-react';
 import './style.css';
 
 const api=async(url,options={})=>{const r=await fetch('/api'+url,{credentials:'same-origin',headers:{'content-type':'application/json'},...options});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data};
@@ -57,9 +57,30 @@ const formatFinishTime=etaIso=>{
  return `${dt.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}, ${timeStr}`;
 };
 
-function Login({done}){const[password,setPassword]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(false);async function submit(e){e.preventDefault();setLoading(true);setError('');try{await api('/login',{method:'POST',body:JSON.stringify({password})});done()}catch(e){setError(e.message)}finally{setLoading(false)}}return <main className="loginShell"><form onSubmit={submit} className="login card"><div className="logo"><Printer size={25}/> NEPTUNE <span>FARM</span></div><h1>Welcome back</h1><p>Monitor your entire 3D printer farm in one place.</p><label>Admin password</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Enter password" required autoFocus/><button className="primary full" disabled={loading}>{loading?'Signing in…':'Sign in to dashboard'}</button>{error&&<div className="error">{error}</div>}<small>Read-only printer monitoring</small></form></main>}
+function Login({done}){
+ const[password,setPassword]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(false),[sys,setSys]=useState(null);
+ useEffect(()=>{api('/system-info').then(setSys).catch(()=>{})},[]);
+ const isLocal = sys ? (sys.isLocalClient || ['localhost','127.0.0.1'].includes(window.location.hostname) || window.location.hostname.startsWith('172.16.') || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.')) : true;
+ async function submit(e){e.preventDefault();setLoading(true);setError('');try{await api('/login',{method:'POST',body:JSON.stringify({password})});done()}catch(e){setError(e.message)}finally{setLoading(false)}}
+ return <main className="loginShell">
+  <form onSubmit={submit} className="login card">
+   <div className="logo"><Printer size={25}/> NEPTUNE <span>FARM</span></div>
+   <div className={'netBadge '+(isLocal?'local':'remote')} style={{marginBottom:'16px'}}>
+    {isLocal?<Wifi size={13}/>:<Globe size={13}/>}
+    <span>{isLocal?`LAN Network (${sys?.primaryIp||'172.16.20.139'})`:`Remote Access (Host: ${sys?.primaryIp||'172.16.20.139'})`}</span>
+   </div>
+   <h1>Welcome back</h1>
+   <p>Monitor your entire 3D printer farm in one place.</p>
+   <label>Admin password</label>
+   <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Enter password" required autoFocus/>
+   <button className="primary full" disabled={loading}>{loading?'Signing in…':'Sign in to dashboard'}</button>
+   {error&&<div className="error">{error}</div>}
+   <small>Read-only printer monitoring</small>
+  </form>
+ </main>;
+}
 
-function PrinterCard({p}){
+function PrinterCard({p,isLocal,systemInfo}){
  const s=p.status||'connecting';
  const printerUrl=p.host?`http://${p.host}${p.port&&p.port!==80?':'+p.port:''}`:null;
  return <article className="card printerCard">
@@ -76,7 +97,14 @@ function PrinterCard({p}){
    <span className={'pill '+color(s)}><i/>{s}</span>
   </div>
   <h3>{p.name}</h3>
-  <div className="subline">{p.enabled?(p.port===80?'Port 80 (HTTP)':p.host+':'+p.port):'Not enabled'}</div>
+  <div className="subline">
+   {p.enabled?(
+    <span>
+     {p.port===80?'Port 80 (HTTP)':p.host+':'+p.port}
+     {!isLocal&&<span className="remoteTag"> · Relayed via Host</span>}
+    </span>
+   ):'Not enabled'}
+  </div>
   <div className="job" title={p.file}>{p.file||'No active G-code job'}</div>
 
   <div className="progressHead">
@@ -125,10 +153,18 @@ function PrinterCard({p}){
   {p.error&&<div className="errorText" title={p.error}>{p.error}</div>}
 
   {p.enabled&&printerUrl&&(
-   <a href={printerUrl} target="_blank" rel="noreferrer" className="openPrinterBtn" title={`Open ${p.name} Fluidd interface (${p.host})`}>
-    <ExternalLink size={13}/>
-    <span>Open Printer Web UI ({p.host})</span>
-   </a>
+   <div className="printerBtnWrap">
+    <a href={printerUrl} target="_blank" rel="noreferrer" className={'openPrinterBtn '+(isLocal?'':'remoteBtn')} title={isLocal?`Open ${p.name} Fluidd interface directly`: `Direct LAN IP ${p.host} (requires farm Wi-Fi or VPN)`}>
+     <ExternalLink size={13}/>
+     <span>{isLocal?`Open Printer Web UI (${p.host})`:`Open LAN Web UI (${p.host})`}</span>
+    </a>
+    {!isLocal&&(
+     <div className="remoteSubHint">
+      <Radio size={11}/>
+      <span>Telemetry live via farm host ({systemInfo?.primaryIp||'172.16.20.139'})</span>
+     </div>
+    )}
+   </div>
   )}
 
   <div className="updated">Updated: {p.updatedAt?new Date(p.updatedAt).toLocaleString():'Awaiting connection'}</div>
@@ -571,15 +607,36 @@ function CompletedPage({data,onSync}){
  </div>
 }
 
-function SettingsPage({list,reload}){const[items,setItems]=useState(list),[busy,setBusy]=useState(false),[message,setMessage]=useState('');useEffect(()=>setItems(list),[list]);function edit(i,key,value){setItems(old=>old.map((p,j)=>j===i?{...p,[key]:value}:p))}async function save(){setBusy(true);setMessage('');try{await api('/config',{method:'PUT',body:JSON.stringify(items)});await reload();setMessage('Saved! Printer monitoring will refresh.')}catch(e){setMessage(e.message)}finally{setBusy(false)}}async function telegram(){try{const r=await api('/test-telegram',{method:'POST'});setMessage(r.note)}catch(e){setMessage(e.message)}}return <div className="settings"><div className="titleRow"><div><h1>Printer settings</h1><p>Use each printer's local IP and port (Neptune 4 uses port <b>80</b>; standard Klipper uses 7125).</p></div><button className="outline" onClick={()=>setItems(a=>[...a,{id:'printer-'+Date.now(),name:'New printer',host:'192.168.1.100',port:80,enabled:false}])}><Plus size={16}/> Add printer</button></div><div className="card settingCard">{items.map((p,i)=><div key={p.id} className="settingRow"><div className="settingNum">{String(i+1).padStart(2,'0')}</div><label>Printer name<input value={p.name} onChange={e=>edit(i,'name',e.target.value)}/></label><label>IP / host<input value={p.host} onChange={e=>edit(i,'host',e.target.value)}/></label><label>Moonraker port<input type="number" min="1" max="65535" value={p.port} onChange={e=>edit(i,'port',Number(e.target.value))}/></label><label className="enabled"><input type="checkbox" checked={p.enabled} onChange={e=>edit(i,'enabled',e.target.checked)}/>Enabled</label><button title="Remove printer" className="iconButton" onClick={()=>setItems(a=>a.filter((_,j)=>j!==i))}><Trash2 size={17}/></button></div>)}<div className="settingActions"><button className="primary" onClick={save} disabled={busy}>{busy?'Saving…':'Save changes'}</button><button className="outline" onClick={telegram}><Bell size={16}/> Test Telegram</button>{message&&<span>{message}</span>}</div></div><div className="card tip"><ShieldCheck size={21}/><div><b>Security</b><p>Keep Moonraker and dashboard ports private. For phone access outside the office, use a secure tailnet/VPN such as Tailscale. Do not expose the printer IPs on the open internet.</p></div></div></div>}
+function SettingsPage({list,reload,systemInfo}){const[items,setItems]=useState(list),[busy,setBusy]=useState(false),[message,setMessage]=useState('');useEffect(()=>setItems(list),[list]);function edit(i,key,value){setItems(old=>old.map((p,j)=>j===i?{...p,[key]:value}:p))}async function save(){setBusy(true);setMessage('');try{await api('/config',{method:'PUT',body:JSON.stringify(items)});await reload();setMessage('Saved! Printer monitoring will refresh.')}catch(e){setMessage(e.message)}finally{setBusy(false)}}async function telegram(){try{const r=await api('/test-telegram',{method:'POST'});setMessage(r.note)}catch(e){setMessage(e.message)}}return <div className="settings"><div className="titleRow"><div><h1>Printer settings</h1><p>Use each printer's local IP and port (Neptune 4 uses port <b>80</b>; standard Klipper uses 7125).</p></div><button className="outline" onClick={()=>setItems(a=>[...a,{id:'printer-'+Date.now(),name:'New printer',host:'192.168.1.100',port:80,enabled:false}])}><Plus size={16}/> Add printer</button></div><div className="card settingCard">{items.map((p,i)=><div key={p.id} className="settingRow"><div className="settingNum">{String(i+1).padStart(2,'0')}</div><label>Printer name<input value={p.name} onChange={e=>edit(i,'name',e.target.value)}/></label><label>IP / host<input value={p.host} onChange={e=>edit(i,'host',e.target.value)}/></label><label>Moonraker port<input type="number" min="1" max="65535" value={p.port} onChange={e=>edit(i,'port',Number(e.target.value))}/></label><label className="enabled"><input type="checkbox" checked={p.enabled} onChange={e=>edit(i,'enabled',e.target.checked)}/>Enabled</label><button title="Remove printer" className="iconButton" onClick={()=>setItems(a=>a.filter((_,j)=>j!==i))}><Trash2 size={17}/></button></div>)}<div className="settingActions"><button className="primary" onClick={save} disabled={busy}>{busy?'Saving…':'Save changes'}</button><button className="outline" onClick={telegram}><Bell size={16}/> Test Telegram</button>{message&&<span>{message}</span>}</div></div>
+
+<div className="card settingCard" style={{marginTop:'19px'}}>
+ <h2><Server size={18} style={{verticalAlign:'middle',marginRight:'8px',color:'#5ea5ff'}}/> Farm Host & Live Access</h2>
+ <p style={{fontSize:'13px',color:'#8ea2bd',marginTop:'4px'}}>
+  This computer ({systemInfo?.hostname||'Farm Host'}) is the live bridge. It connects directly to your 5 printers on local LAN ({systemInfo?.primaryIp||'172.16.20.139'}).
+ </p>
+ <div className="netGrid">
+  <div className="netBox">
+   <span className="netBoxLabel">Local Wi-Fi / LAN URL</span>
+   <strong className="netBoxVal">http://{systemInfo?.primaryIp||'172.16.20.139'}:{systemInfo?.port||3080}</strong>
+   <small>Open this on any phone or PC connected to the same office Wi-Fi</small>
+  </div>
+  <div className="netBox">
+   <span className="netBoxLabel">Make Live Remotely</span>
+   <strong className="netBoxVal" style={{color:'#6ee7b7'}}>npm run live</strong>
+   <small>Generates a secure public HTTPS link to monitor your farm from outside</small>
+  </div>
+ </div>
+</div>
+
+<div className="card tip"><ShieldCheck size={21}/><div><b>Security & Architecture</b><p>When opened locally on office Wi-Fi, the dashboard connects directly. When opened remotely, this host computer acts as the live telemetry relay so you never have to expose the raw printer IPs publicly.</p></div></div></div>}
 
 function App(){
- const[authed,setAuthed]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);
+ const[authed,setAuthed]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[systemInfo,setSystemInfo]=useState(null),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);
 
  async function refresh(){
   try{
-   const [p,e,c]=await Promise.all([api('/printers'),api('/events'),api('/completed-prints')]);
-   setPrinters(p);setEvents(e);setCompleted(c);setError('');setRefreshed(new Date());
+   const [p,e,c,s]=await Promise.all([api('/printers'),api('/events'),api('/completed-prints'),api('/system-info')]);
+   setPrinters(p);setEvents(e);setCompleted(c);setSystemInfo(s);setError('');setRefreshed(new Date());
   }catch(e){
    if(e.message==='Login required')setAuthed(false);else setError(e.message);
   }
@@ -594,6 +651,16 @@ function App(){
  if(authed===null)return <div className="boot">Loading Neptune Print Farm…</div>;
  if(!authed)return <Login done={()=>setAuthed(true)}/>;
 
+ const isLocal = Boolean(
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1' ||
+  window.location.hostname.startsWith('172.16.') ||
+  window.location.hostname.startsWith('192.168.') ||
+  window.location.hostname.startsWith('10.') ||
+  (systemInfo?.primaryIp && window.location.hostname === systemInfo.primaryIp) ||
+  systemInfo?.isLocalClient === true
+ );
+
  const total=printers.length,printing=printers.filter(p=>p.status==='printing').length,paused=printers.filter(p=>p.status==='paused').length,online=printers.filter(p=>p.connected).length,issues=printers.filter(p=>p.status==='offline'||p.status==='error'||p.filamentDetected===false).length;
 
  return <div className="layout">
@@ -605,7 +672,10 @@ function App(){
    <button className={'nav '+(page==='alerts'?'active':'')} onClick={()=>setPage('alerts')}><Bell size={18}/> Alerts & events</button>
    <button className={'nav '+(page==='settings'?'active':'')} onClick={()=>setPage('settings')}><Settings size={18}/> Printer settings</button>
    <div className="asideFoot">
-    <div className="badgeInfo">READ-ONLY MONITORING</div>
+    <div className="badgeInfo">
+     <div>READ-ONLY MONITORING</div>
+     <div style={{marginTop:'5px',fontSize:'10px',color:'#506a88'}}>HOST: {systemInfo?.primaryIp||'172.16.20.139'}</div>
+    </div>
     <button className="nav" onClick={async()=>{await api('/logout',{method:'POST'});setAuthed(false)}}><LogOut size={18}/> Sign out</button>
    </div>
   </aside>
@@ -613,7 +683,10 @@ function App(){
   <main className="main">
    <header>
     <div className="mobileLogo"><Printer size={20}/> Neptune Farm</div>
-    <span className="live"><i/> Local network monitor</span>
+    <div className={'netBadge '+(isLocal?'local':'remote')} title={isLocal?`Connected via Local Farm LAN (${systemInfo?.primaryIp||'172.16.20.139'})`:`Remote Access: Telemetry is continuously relayed from your Farm Host PC (${systemInfo?.primaryIp||'172.16.20.139'})`}>
+     {isLocal?<Wifi size={13}/>:<Globe size={13}/>}
+     <span>{isLocal?`LAN Mode (${systemInfo?.primaryIp||'172.16.20.139'})`:`Remote Relay (${systemInfo?.primaryIp||'172.16.20.139'})`}</span>
+    </div>
     <span className="headerTime">{refreshed?'Last refresh '+refreshed.toLocaleTimeString():'Connecting…'}</span>
     <button className="iconButton" title="Refresh" onClick={refresh}><RefreshCw size={18}/></button>
    </header>
@@ -642,7 +715,7 @@ function App(){
      </section>
 
      <div className="sectionTitle"><h2>All printers</h2><span>{printing} printing · {paused} paused</span></div>
-     <section className="printers">{printers.map(p=><PrinterCard key={p.id} p={p}/>)}</section>
+     <section className="printers">{printers.map(p=><PrinterCard key={p.id} p={p} isLocal={isLocal} systemInfo={systemInfo}/>)}</section>
 
      <div className="sectionTitle">
       <h2>Completed Quantities by File</h2>
@@ -672,7 +745,7 @@ function App(){
    ):page==='completed'?(
     <CompletedPage data={completed} onSync={syncHistory}/>
    ):page==='settings'?(
-    <SettingsPage list={config} reload={async()=>{await loadConfig();await refresh()}}/>
+    <SettingsPage list={config} reload={async()=>{await loadConfig();await refresh()}} systemInfo={systemInfo}/>
    ):(
     <>
      <div className="titleRow"><div><h1>Alerts and event history</h1><p>Changes observed while this monitor was running.</p></div></div>

@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "concurrently \"node server/index.js\" \"vite --host 0.0.0.0\"",
     "build": "vite build",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "tunnel": "npx localtunnel --port 3080",
+    "live": "concurrently \"node server/index.js\" \"npx localtunnel --port 3080\""
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

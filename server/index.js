@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import os from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -230,6 +231,80 @@ app.post('/api/login',limitLogin,async(req,res)=>{
 app.post('/api/logout',(_req,res)=>{res.clearCookie('farm_session');res.json({ok:true})});
 
 function auth(req,res,next){try{if(jwt.verify(req.cookies.farm_session,secret).role!=='admin')throw Error('Denied');next()}catch{res.status(401).json({error:'Login required'})}}
+
+function getNetworkInfo(req){
+ const nets=os.networkInterfaces();
+ const localIps=[];
+ for(const name of Object.keys(nets)){
+  for(const net of nets[name]||[]){
+   if(net.family==='IPv4'&&!net.internal){
+    localIps.push({interface:name,address:net.address,netmask:net.netmask});
+   }
+  }
+ }
+ const primaryIp=localIps[0]?.address||'127.0.0.1';
+ const forwarded=req?.headers['x-forwarded-for'];
+ const clientIp=(typeof forwarded==='string'?forwarded.split(',')[0].trim():'')||req?.socket?.remoteAddress||'';
+ const isLocalClient=(
+  !clientIp||
+  clientIp.includes('127.0.0.1')||
+  clientIp.includes('::1')||
+  clientIp.startsWith('172.16.')||
+  clientIp.startsWith('192.168.')||
+  clientIp.startsWith('10.')||
+  localIps.some(x=>x.address===clientIp)
+ );
+ return {
+  hostname:os.hostname(),
+  port,
+  primaryIp,
+  localIps,
+  clientIp,
+  isLocalClient,
+  serverTime:new Date().toISOString(),
+  uptimeSec:Math.round(process.uptime()),
+  totalPrinters:printers.length,
+  onlinePrinters:printers.filter(p=>current.get(p.id)?.connected).length
+ };
+}
+
+app.get('/api/system-info',(req,res)=>{
+ const net=getNetworkInfo(req);
+ let authed=false;
+ try{
+  if(req.cookies.farm_session&&jwt.verify(req.cookies.farm_session,secret).role==='admin')authed=true;
+ }catch{}
+ res.json({...net,authenticated:authed});
+});
+
+app.all('/api/printers/:id/proxy/*',auth,async(req,res)=>{
+ const p=printers.find(x=>x.id===req.params.id);
+ if(!p||!p.enabled||!validHost(p.host))return res.status(404).json({error:'Printer not found or disabled'});
+ const subpath=req.params[0]||'';
+ const queryString=req.url.includes('?')?'?'+req.url.split('?')[1]:'';
+ const targetUrl='http://'+p.host+':'+p.port+'/'+subpath+queryString;
+ try{
+  const options={
+   method:req.method,
+   headers:{
+    'accept':req.headers['accept']||'*/*',
+    'content-type':req.headers['content-type']||'application/json'
+   },
+   signal:AbortSignal.timeout(12000)
+  };
+  if(['POST','PUT','PATCH'].includes(req.method)&&req.body&&Object.keys(req.body).length>0){
+   options.body=JSON.stringify(req.body);
+  }
+  const proxied=await fetch(targetUrl,options);
+  res.status(proxied.status);
+  const ct=proxied.headers.get('content-type');
+  if(ct)res.setHeader('content-type',ct);
+  const buf=await proxied.arrayBuffer();
+  res.send(Buffer.from(buf));
+ }catch(err){
+  res.status(502).json({error:'Failed to proxy to printer '+p.host+': '+err.message});
+ }
+});
 
 app.get('/api/me',auth,(_req,res)=>res.json({ok:true}));
 app.get('/api/printers',auth,(_req,res)=>res.json(printers.map(p=>current.get(p.id)||{...p,status:'connecting',connected:false})));

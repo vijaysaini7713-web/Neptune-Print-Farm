@@ -4,6 +4,26 @@ A read-only, mobile-friendly dashboard for monitoring ELEGOO Neptune 4 Max print
 
 **Status:** MVP / local network monitoring. Tested on live Neptune 4 Max farm.
 
+## Local vs Remote Live Architecture
+
+This dashboard is designed to work seamlessly both on the farm's local Wi-Fi and remotely:
+
+### 1. Local Network Mode (Automatic LAN IP Discovery)
+- When opened on the same office/farm Wi-Fi (e.g. `http://localhost:5173`, `http://localhost:3080`, or `http://<Farm-PC-IP>:3080`):
+  - The dashboard automatically detects **LAN Mode**.
+  - Clicking **"Open Printer Web UI"** immediately opens the printer's direct local IP (`http://172.16.20.xxx`) in your browser to access Fluidd/Klipper.
+
+### 2. Remote Live Mode (System Bridge & Relay)
+- When opened from outside the office (e.g. mobile data, home PC, or public URL):
+  - The dashboard automatically switches to **Remote Relay Mode**.
+  - All 5 printers' live statuses, remaining time, finish time, layers, completed quantities, and failure logs are **streamed live through this local host system**, which continuously polls the local printers.
+  - Built-in Moonraker Proxy endpoint: `/api/printers/:id/proxy/*` forwards commands and file metadata through the host server without exposing the printer IPs to the open internet.
+
+### Quick Commands:
+- **Local Dev Server:** `npm run dev` (Frontend: `http://localhost:5173`, Backend: `http://localhost:3080`)
+- **Single Production Server:** `npm start` (Runs on port `3080` serving the built UI and API)
+- **Make Live Remotely (Free Public Link):** `npm run live` (Starts server and creates a secure public tunnel URL)
+
 ## Windows quick start (recommended)
 
 1. Install [Node.js LTS](https://nodejs.org/).

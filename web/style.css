@@ -56,3 +56,18 @@
 .printerIpLink{display:inline-flex;align-items:center;gap:5px;color:#7e9bc0;text-decoration:none;font-size:11px}
 .printerIpLink:hover{color:#64aaff;text-decoration:underline}
 
+.netBadge{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.3px}
+.netBadge.local{background:#0e382d;color:#4eedb8;border:1px solid #1c6b54}
+.netBadge.remote{background:#1f284d;color:#9cb5ff;border:1px solid #374b88}
+.remoteTag{color:#90a9cc;font-size:10px;font-style:italic}
+.printerBtnWrap{display:flex;flex-direction:column;gap:5px;margin-top:14px}
+.printerBtnWrap .openPrinterBtn{margin-top:0}
+.openPrinterBtn.remoteBtn{background:#18233a;border-color:#2a3d60;color:#9bb7df}
+.openPrinterBtn.remoteBtn:hover{background:#233555;border-color:#486fa8;color:#fff}
+.remoteSubHint{display:flex;align-items:center;gap:5px;font-size:10px;color:#7e98b8;padding:0 4px}
+.netGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:14px}
+.netBox{background:#101827;border:1px solid #233247;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.netBoxLabel{font-size:11px;color:#7d93b0;text-transform:uppercase;font-weight:600;letter-spacing:.5px}
+.netBoxVal{font-size:14px;font-family:monospace;color:#6db2ff}
+.netBox small{color:#768da7;font-size:11px;margin-top:3px}
+
