@@ -110,22 +110,22 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
    )}
 
    <div className="fleetMainRow">
-    {/* Col 1: Identity */}
+    {/* Col 1: Identity (Status Pill on top, Printer name below, IP/Port at bottom) */}
     <div className="fleetCol identity">
      <div className="fleetPrinterIcon">
-      <Printer size={18}/>
+      <Printer size={19}/>
      </div>
      <div className="fleetIdentityText">
-      <h3 className="fleetPrinterName">{p.name}</h3>
+      <div className="fleetPillWrap">
+       <span className={'fleetPill '+color(s)}>
+        <i/>
+        {s==='completed'?'Completed':s==='offline'?'Offline':s==='printing'?'Printing':s==='paused'?'Paused':s==='idle'?'Idle':s}
+       </span>
+      </div>
+      <h3 className="fleetPrinterName" title={p.name}>{p.name}</h3>
       <div className="fleetSubline">
        <span>{p.host||'unknown'}{p.enabled?` · Port: ${p.port||80}`:' · Disabled'}</span>
       </div>
-     </div>
-     <div className="fleetPillWrap">
-      <span className={'fleetPill '+color(s)}>
-       <i/>
-       {s==='completed'?'Completed':s==='offline'?'Offline':s==='printing'?'Printing':s==='paused'?'Paused':s==='idle'?'Idle':s}
-      </span>
      </div>
     </div>
 
