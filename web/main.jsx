@@ -51,10 +51,10 @@ const formatFinishTime=etaIso=>{
  const tm=new Date();tm.setDate(tm.getDate()+1);
  const tomorrow=getLocalDateStr(tm);
  const etaDate=getLocalDateStr(dt);
- const timeStr=dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
- if(etaDate===today)return `Today, ${timeStr}`;
- if(etaDate===tomorrow)return `Tomorrow, ${timeStr}`;
- return `${dt.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}, ${timeStr}`;
+ const timeStr=dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true});
+ if(etaDate===today)return `Today at ${timeStr}`;
+ if(etaDate===tomorrow)return `Tomorrow at ${timeStr}`;
+ return `${dt.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})} at ${timeStr}`;
 };
 
 function Login({done}){
@@ -147,15 +147,48 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
       <span className="fleetProgressPct">{p.progress??0}%</span>
      </div>
      <div className="fleetJobFoot">
-      {isPrinting&&p.remainingTime!=null
-       ?`${fmtDuration(p.remainingTime)} remaining`
-       :isDone
-       ?'Print completed · Ready to clear'
-       :isIdle
-       ?'Ready for next job'
-       :isPaused
-       ?'Print paused'
-       :'Ready for next job'}
+      {isPrinting ? (
+       <div className="fleetTimeRow">
+        <span className="timeBadge remaining" title="Estimated time left">
+         <Clock size={13} className="timeIcon"/>
+         <span className="timeLabel">Remaining:</span>
+         <strong className="timeValue">{p.remainingTime != null ? fmtDuration(p.remainingTime) : '—'}</strong>
+        </span>
+
+        {p.eta && (
+         <span className="timeBadge completedBy" title="Estimated completion time">
+          <CheckCircle2 size={13} className="timeIcon"/>
+          <span className="timeLabel">Completed by:</span>
+          <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
+         </span>
+        )}
+       </div>
+      ) : isDone ? (
+       <span className="timeBadge done">
+        <CheckCircle2 size={13} className="timeIcon"/>
+        <strong className="timeValue">Print completed · Ready to clear</strong>
+       </span>
+      ) : isIdle ? (
+       <span className="timeBadge idle">
+        <span>Ready for next job</span>
+       </span>
+      ) : isPaused ? (
+       <div className="fleetTimeRow">
+        <span className="timeBadge paused">
+         <Pause size={13} className="timeIcon"/>
+         <span className="timeLabel">Paused ·</span>
+         <strong className="timeValue">{p.remainingTime != null ? fmtDuration(p.remainingTime) : '—'} left</strong>
+        </span>
+        {p.eta && (
+         <span className="timeBadge completedBy">
+          <span className="timeLabel">Completed by:</span>
+          <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
+         </span>
+        )}
+       </div>
+      ) : (
+       <span className="timeBadge standby">Standby</span>
+      )}
      </div>
     </div>
 
