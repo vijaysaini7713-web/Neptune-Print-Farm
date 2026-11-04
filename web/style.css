@@ -33,58 +33,57 @@ header{height:54px;border-bottom:1px solid #182335;display:flex;gap:14px;align-i
 .metricChip.attention{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.35);color:#fbbf24}
 .metricChip.time{background:#0b111c;border-color:#172233;color:#64748b}
 
-/* PRINTERS 5-GRID (SINGLE SCREEN NO-SCROLL LAYOUT) */
-.printersGrid5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:11px;margin-bottom:14px}
-@media(max-width:1420px){.printersGrid5{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:920px){.printersGrid5{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:640px){.printersGrid5{grid-template-columns:1fr}}
+/* 1920x1080 SYMMETRICAL 3x2 GRID */
+.farmGrid1080{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media(max-width:1360px){.farmGrid1080{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:768px){.farmGrid1080{grid-template-columns:1fr}}
 
-/* MODERN COMPACT PRINTER CARD */
-.printerCard{padding:13px 14px;display:flex;flex-direction:column;position:relative;transition:transform .18s,border-color .18s,box-shadow .18s;border-radius:11px}
+/* BALANCED PRINTER CARD (COMFORTABLE 1920x1080 PROPORTIONS) */
+.printerCard{padding:14px 16px;display:flex;flex-direction:column;position:relative;transition:transform .18s,border-color .18s,box-shadow .18s;border-radius:12px;min-height:310px}
 .printerCard:hover{transform:translateY(-2px)}
 
-/* HIGH-VISIBILITY COLOR CHANGE BLOCKS (VISIBLE FROM ACROSS THE ROOM) */
+/* HIGH-VISIBILITY COLOR CHANGE BLOCKS (VISIBLE ACROSS THE FARM ROOM) */
 .printerCard.state-completed{
  background:linear-gradient(155deg,#072b1d 0%,#041a11 100%)!important;
- border:2px solid #10b981!important;
- box-shadow:0 0 35px rgba(16,185,129,.36),inset 0 0 15px rgba(16,185,129,.12)!important;
+ border:2.5px solid #10b981!important;
+ box-shadow:0 0 35px rgba(16,185,129,.4),inset 0 0 16px rgba(16,185,129,.12)!important;
 }
 .printerCard.state-idle{
  background:linear-gradient(155deg,#0c213d 0%,#071426 100%)!important;
- border:2px solid #3b82f6!important;
- box-shadow:0 0 30px rgba(59,130,246,.28),inset 0 0 12px rgba(59,130,246,.09)!important;
+ border:2.5px solid #3b82f6!important;
+ box-shadow:0 0 32px rgba(59,130,246,.35),inset 0 0 14px rgba(59,130,246,.1)!important;
 }
 .printerCard.state-paused{
  background:linear-gradient(155deg,#2e1e0a 0%,#1a1104 100%)!important;
- border:2px solid #f59e0b!important;
+ border:2.5px solid #f59e0b!important;
  box-shadow:0 0 30px rgba(245,158,11,.32)!important;
 }
 .printerCard.state-error,.printerCard.state-offline{
  background:linear-gradient(155deg,#341118 0%,#1c080c 100%)!important;
- border:2px solid #ef4444!important;
+ border:2.5px solid #ef4444!important;
  box-shadow:0 0 30px rgba(239,68,68,.36)!important;
 }
 .printerCard.state-printing{
- background:linear-gradient(155deg,#101928 0%,#0c1320 100%);
- border:1px solid #22344c;
+ background:linear-gradient(155deg,#101c2e 0%,#0b1422 100%);
+ border:1px solid #1e3352;
 }
 
 /* DISTANCE VISIBILITY STATUS BANNERS */
-.stateBanner{padding:5px 8px;font-size:10.5px;font-weight:800;letter-spacing:.5px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;text-transform:uppercase}
-.stateBanner.completed{background:#10b981;color:#022c1d;box-shadow:0 0 16px rgba(16,185,129,.5);font-size:11px}
-.stateBanner.idle{background:#3b82f6;color:#041838;box-shadow:0 0 14px rgba(59,130,246,.5);font-size:11px}
-.stateBanner.paused{background:#f59e0b;color:#351f03;box-shadow:0 0 14px rgba(245,158,11,.5)}
-.stateBanner.error{background:#ef4444;color:#fff;box-shadow:0 0 14px rgba(239,68,68,.5)}
+.stateBanner{padding:6px 10px;font-size:11.5px;font-weight:800;letter-spacing:.6px;border-radius:7px;display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:9px;text-transform:uppercase}
+.stateBanner.completed{background:#10b981;color:#022c1d;box-shadow:0 0 20px rgba(16,185,129,.5)}
+.stateBanner.idle{background:#3b82f6;color:#041838;box-shadow:0 0 18px rgba(59,130,246,.5)}
+.stateBanner.paused{background:#f59e0b;color:#351f03;box-shadow:0 0 16px rgba(245,158,11,.5)}
+.stateBanner.error{background:#ef4444;color:#fff;box-shadow:0 0 16px rgba(239,68,68,.5)}
 
-.printerTop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
-.printerTopLeft{display:flex;align-items:center;gap:7px}
-.printerIcon{display:grid;place-items:center;background:#152235;color:#38bdf8;width:30px;height:30px;border-radius:7px}
-.printerName{font-size:14px;font-weight:800;margin:0;color:#f8fafc;line-height:1.2}
-.printerIpRow{display:flex;align-items:center;gap:3px;font-size:10px;margin-top:1px}
-.printerTopRight{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.printerTop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px}
+.printerTopLeft{display:flex;align-items:center;gap:9px}
+.printerIcon{display:grid;place-items:center;background:#152235;color:#38bdf8;width:34px;height:34px;border-radius:8px}
+.printerName{font-size:15px;font-weight:800;margin:0;color:#f8fafc;line-height:1.2}
+.printerIpRow{display:flex;align-items:center;gap:5px;font-size:11px;margin-top:2px}
+.printerTopRight{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 
-.pill{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:3px 7px;font-size:10px;font-weight:700;text-transform:capitalize}
-.pill i{width:5px;height:5px;border-radius:50%;background:currentColor}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:20px;padding:4px 9px;font-size:11px;font-weight:700;text-transform:capitalize}
+.pill i{width:6px;height:6px;border-radius:50%;background:currentColor}
 .pill.green{background:#0e3626;color:#34d399}
 .pill.teal{background:#0f373e;color:#38bdf8}
 .pill.amber{background:#38250b;color:#fbbf24}
@@ -92,56 +91,70 @@ header{height:54px;border-bottom:1px solid #182335;display:flex;gap:14px;align-i
 .pill.blue{background:#132a4a;color:#60a5fa}
 .pill.gray{background:#1d293a;color:#94a3b8}
 
-.filRunoutBadge{background:#450a0a;color:#f87171;border:1px solid #7f1d1d;font-size:9px;font-weight:800;padding:1px 5px;border-radius:4px;letter-spacing:.4px}
+.filRunoutBadge{background:#450a0a;color:#f87171;border:1px solid #7f1d1d;font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:4px;letter-spacing:.5px}
 
-.job{display:flex;align-items:center;gap:5px;font-size:11px;color:#94a3b8;background:rgba(0,0,0,.28);border-radius:5px;padding:4px 7px;margin:5px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.job{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#94a3b8;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.05);border-radius:6px;padding:5px 8px;margin:6px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .jobName{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.progressBarWrap{margin-bottom:6px}
-.progressHead{display:flex;justify-content:space-between;font-size:10.5px;color:#8193ac;margin-bottom:3px}
-.progressHead b{color:#f8fafc;font-weight:700}
-.bar{width:100%;height:6px;border-radius:6px;overflow:hidden;background:#131c2b}
-.barFill{height:100%;border-radius:6px;background:#38bdf8;transition:width .35s}
+.progressBarWrap{margin-bottom:7px}
+.progressHead{display:flex;justify-content:space-between;font-size:11px;color:#8fa2bd;margin-bottom:3px}
+.progressHead b{color:#f8fafc;font-weight:800}
+.bar{width:100%;height:7px;border-radius:7px;overflow:hidden;background:#131c2b}
+.barFill{height:100%;border-radius:7px;background:#38bdf8;transition:width .35s}
 .barFill.green{background:linear-gradient(90deg,#059669,#10b981)}
 .barFill.amber{background:linear-gradient(90deg,#d97706,#f59e0b)}
 .barFill.red{background:linear-gradient(90deg,#dc2626,#ef4444)}
 .barFill.blue{background:linear-gradient(90deg,#2563eb,#38bdf8)}
 
-.finishBannerCompact{display:flex;justify-content:space-between;align-items:center;background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.22);border-radius:6px;padding:4px 7px;font-size:10.5px;color:#38bdf8;margin:5px 0}
-.finishPart b{color:#f0f9ff;font-weight:700}
+.finishBanner1080{display:flex;justify-content:space-between;align-items:center;background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.22);border-radius:6px;padding:5px 9px;font-size:11.5px;margin:6px 0}
+.finishPart{display:flex;align-items:center;gap:5px}
+.finishLabel{font-size:9.5px;font-weight:700;color:#7dd3fc;letter-spacing:.4px}
+.finishVal{font-size:11.5px;font-weight:700;color:#f0f9ff}
 
-/* FACTS IN EXACTLY 2 LINES (3 COLUMNS x 2 ROWS) */
-.facts2x3{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 6px;background:rgba(7,12,20,.68);border:1px solid rgba(255,255,255,.06);border-radius:7px;padding:6px 8px;margin:6px 0}
+/* FACTS IN EXACTLY 2 LINES (3 COLUMNS x 2 ROWS) - COMFORTABLE & CLEAR */
+.facts2x3{display:grid;grid-template-columns:repeat(3,1fr);gap:5px 10px;background:rgba(7,12,20,.65);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:7px 10px;margin:7px 0}
 .factCell{display:flex;flex-direction:column;min-width:0}
-.factLabel{display:flex;align-items:center;gap:3px;font-size:8.5px;font-weight:700;color:#64748b;letter-spacing:.4px;text-transform:uppercase}
-.factVal{font-size:11px;font-weight:700;color:#e2e8f0;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.factLabel{display:flex;align-items:center;gap:4px;font-size:9.5px;font-weight:700;color:#64748b;letter-spacing:.5px;text-transform:uppercase}
+.factVal{font-size:12.5px;font-weight:700;color:#e2e8f0;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 .factVal.highlight{color:#34d399}
 
-.cardActionRow{display:grid;grid-template-columns:1.3fr 1fr;gap:5px;margin-top:6px}
-.controlBtnSmall{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 8px;background:#1e3553;color:#93c5fd;border:1px solid #2d4c75;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
-.controlBtnSmall:hover{background:#27466d;color:#fff;border-color:#4874aa}
-.openPrinterBtnSmall{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 8px;background:rgba(255,255,255,.04);color:#cbd5e1;border:1px solid rgba(255,255,255,.1);border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;transition:all .15s}
-.openPrinterBtnSmall:hover{background:rgba(255,255,255,.09);color:#fff}
-.openPrinterBtnSmall.remoteBtn{color:#93c5fd;border-color:#2a3d5e}
+.cardActionRow{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-top:8px}
+.controlBtn1080{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;background:#1e3553;color:#93c5fd;border:1px solid #2d4c75;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.controlBtn1080:hover{background:#27466d;color:#fff;border-color:#4874aa}
+.openPrinterBtn1080{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;background:rgba(255,255,255,.05);color:#cbd5e1;border:1px solid rgba(255,255,255,.12);border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s}
+.openPrinterBtn1080:hover{background:rgba(255,255,255,.1);color:#fff}
+.openPrinterBtn1080.remoteBtn{color:#93c5fd;border-color:#2a3d5e}
 
-.cardFoot{display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:#596d88;margin-top:5px;padding-top:4px;border-top:1px solid rgba(255,255,255,.05)}
-.printerIpLink{display:inline-flex;align-items:center;gap:3px;color:#7e9bc0;text-decoration:none;font-size:10px}
+.cardFoot{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#596d88;margin-top:auto;padding-top:6px;border-top:1px solid rgba(255,255,255,.05)}
+.printerIpLink{display:inline-flex;align-items:center;gap:4px;color:#7e9bc0;text-decoration:none;font-size:11px}
 .printerIpLink:hover{color:#38bdf8;text-decoration:underline}
 
-/* OVERVIEW BOTTOM DRAWER */
-.overviewBottomDrawer{background:#0b121e;border:1px solid #1a273b;border-radius:10px;padding:10px 14px;margin-top:6px}
-.bottomDrawerHeader{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:700;color:#94a3b8;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:8px}
-.bottomDrawerGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:800px){.bottomDrawerGrid{grid-template-columns:1fr}}
-.bottomCard strong{display:block;font-size:11px;color:#cbd5e1;margin-bottom:6px}
-.miniChips{display:flex;flex-wrap:wrap;gap:6px}
-.miniChip{display:flex;align-items:center;gap:6px;background:#111b2b;border:1px solid #1e2e44;border-radius:6px;padding:3px 7px;font-size:10.5px;color:#cbd5e1;max-width:240px}
-.miniChipName{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.miniChipQty{background:#064e3b;color:#34d399;padding:1px 5px;border-radius:4px;font-weight:700;font-size:10px}
-.miniEventList{display:flex;flex-direction:column;gap:4px}
-.miniEvent{display:flex;align-items:center;gap:6px;font-size:11px;color:#94a3b8}
-.miniEventMsg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
-.miniEventTime{color:#475569;font-size:10px;font-family:monospace}
+/* 6th SLOT: PRODUCTION & ACTIVITY HUB CARD */
+.farmHubCard{padding:14px 16px;display:flex;flex-direction:column;border-radius:12px;background:linear-gradient(160deg,#0e1726 0%,#0a111c 100%);border:1px solid #1e2e44;min-height:310px}
+.hubHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.06)}
+.hubHeaderLeft{display:flex;align-items:center;gap:8px}
+.hubIcon{display:grid;place-items:center;background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.3);width:32px;height:32px;border-radius:8px}
+.hubTitle{font-size:14px;font-weight:800;margin:0;color:#f8fafc}
+.hubSection{margin-bottom:9px}
+.hubSectionHead{display:flex;justify-content:space-between;align-items:center;font-size:9.5px;font-weight:700;color:#64748b;letter-spacing:.5px;margin-bottom:5px;text-transform:uppercase}
+.hubCount{color:#34d399;font-size:10.5px;font-weight:700}
+.hubChipsWrap{display:flex;flex-wrap:wrap;gap:5px}
+.hubChip{display:flex;align-items:center;gap:6px;background:#111b2b;border:1px solid #1e2e44;border-radius:6px;padding:4px 8px;font-size:11px;color:#cbd5e1;max-width:220px}
+.hubChipName{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hubChipQty{background:#064e3b;color:#34d399;padding:1px 6px;border-radius:4px;font-weight:700;font-size:10.5px}
+.hubEventsList{display:flex;flex-direction:column;gap:4px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.05);border-radius:7px;padding:6px 9px}
+.hubEventRow{display:flex;align-items:center;gap:6px;font-size:11px;color:#94a3b8}
+.hubEventMsg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.hubEventTime{color:#475569;font-size:10px;font-family:monospace}
+.hubEmpty{color:#64748b;font-size:11px;font-style:italic;padding:4px 0}
+.hubFoot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:6px;border-top:1px solid rgba(255,255,255,.05);font-size:10px}
+.hubFootLeft{display:flex;align-items:center;gap:5px;color:#748ba7}
+.netDot{width:6px;height:6px;border-radius:50%}
+.netDot.local{background:#10b981;box-shadow:0 0 6px #10b981}
+.netDot.remote{background:#3b82f6;box-shadow:0 0 6px #3b82f6}
+.hubHostIp{color:#94a3b8;font-family:monospace;font-size:9.5px}
+.hubNavBtn{background:rgba(255,255,255,.05);color:#94a3b8;border:1px solid rgba(255,255,255,.08);border-radius:5px;padding:3px 7px;font-size:10px;display:inline-flex;align-items:center;gap:4px}
+.hubNavBtn:hover{background:rgba(255,255,255,.1);color:#fff}
 
 /* NETWORK BADGE IN HEADER */
 .netBadge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:10.5px;font-weight:600;letter-spacing:.3px}

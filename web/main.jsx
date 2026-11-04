@@ -92,41 +92,42 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
   {/* High Visibility Distance Banner for Across-the-Room Recognition */}
   {isDone&&(
    <div className="stateBanner completed">
-    <CheckCircle2 size={13}/>
+    <CheckCircle2 size={15}/>
     <span>PRINT COMPLETED · READY TO CLEAR</span>
    </div>
   )}
   {isIdle&&(
    <div className="stateBanner idle">
-    <Clock size={13}/>
+    <Clock size={15}/>
     <span>PRINTER IDLE · READY FOR JOB</span>
    </div>
   )}
   {isPaused&&(
    <div className="stateBanner paused">
-    <Pause size={13}/>
+    <Pause size={15}/>
     <span>PRINT PAUSED · ATTENTION NEEDED</span>
    </div>
   )}
   {isError&&(
    <div className="stateBanner error">
-    <AlertTriangle size={13}/>
+    <AlertTriangle size={15}/>
     <span>{s==='offline'?'PRINTER OFFLINE':'ERROR / ATTENTION NEEDED'}</span>
    </div>
   )}
 
   <div className="printerTop">
    <div className="printerTopLeft">
-    <div className="printerIcon"><Printer size={17}/></div>
+    <div className="printerIcon"><Printer size={19}/></div>
     <div>
      <h3 className="printerName">{p.name}</h3>
      <div className="printerIpRow">
       {p.enabled&&printerUrl?(
        <a href={printerUrl} target="_blank" rel="noreferrer" className="printerIpLink" title={`Open ${p.name} Web UI (${p.host})`}>
         <span>{p.host}</span>
-        <ExternalLink size={10}/>
+        <ExternalLink size={11}/>
        </a>
       ):<span className="subline">Not enabled</span>}
+      <span className="portLabel">{p.port===80?'(Port 80)':`:${p.port}`}</span>
      </div>
     </div>
    </div>
@@ -139,13 +140,13 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
   </div>
 
   <div className="job" title={p.file||'No active job'}>
-   <Activity size={12} style={{flexShrink:0,opacity:.7}}/>
+   <Activity size={13} style={{flexShrink:0,opacity:.75}}/>
    <span className="jobName">{p.file||'No active G-code job'}</span>
   </div>
 
   <div className="progressBarWrap">
    <div className="progressHead">
-    <span>Progress</span>
+    <span>Print progress</span>
     <b>{p.progress??0}%</b>
    </div>
    <div className="bar">
@@ -154,61 +155,67 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
   </div>
 
   {s==='printing'&&p.eta&&(
-   <div className="finishBannerCompact">
-    <span className="finishPart">🏁 <b>{formatFinishTime(p.eta)}</b></span>
-    <span className="finishPart right">⏳ <b>{p.remainingTime!=null?fmtDuration(p.remainingTime):'—'}</b> left</span>
+   <div className="finishBanner1080">
+    <div className="finishPart">
+     <span className="finishLabel">FINISH TIME</span>
+     <strong className="finishVal">🏁 {formatFinishTime(p.eta)}</strong>
+    </div>
+    <div className="finishPart right">
+     <span className="finishLabel">REMAINING</span>
+     <strong className="finishVal">⏳ {p.remainingTime!=null?fmtDuration(p.remainingTime):'—'} left</strong>
+    </div>
    </div>
   )}
 
-  {/* Exactly 2 lines (3 columns x 2 rows) */}
+  {/* Exactly 2 lines (3 columns x 2 rows) - Spacious & Comfortable */}
   <div className="facts2x3">
    <div className="factCell">
-    <div className="factLabel"><Thermometer size={10}/> NOZZLE</div>
-    <div className="factVal">{temp(p.nozzle)}{p.nozzleTarget?` / ${p.nozzleTarget}°`:''}</div>
+    <div className="factLabel"><Thermometer size={12}/> NOZZLE</div>
+    <div className="factVal">{temp(p.nozzle)}{p.nozzleTarget?` / ${p.nozzleTarget}°C`:''}</div>
    </div>
    <div className="factCell">
-    <div className="factLabel"><Thermometer size={10}/> BED</div>
-    <div className="factVal">{temp(p.bed)}{p.bedTarget?` / ${p.bedTarget}°`:''}</div>
+    <div className="factLabel"><Thermometer size={12}/> BED</div>
+    <div className="factVal">{temp(p.bed)}{p.bedTarget?` / ${p.bedTarget}°C`:''}</div>
    </div>
    <div className="factCell">
-    <div className="factLabel"><Layers size={10}/> LAYER</div>
-    <div className="factVal">{p.layer!=null?`${p.layer}${p.totalLayers?' / '+p.totalLayers:''}`:p.z!=null?`${p.z.toFixed(1)}mm`:'—'}</div>
+    <div className="factLabel"><Layers size={12}/> LAYER</div>
+    <div className="factVal">{p.layer!=null?`${p.layer}${p.totalLayers?' / '+p.totalLayers:''}`:p.z!=null?`${p.z.toFixed(2)} mm`:'—'}</div>
    </div>
    <div className="factCell">
-    <div className="factLabel"><Clock size={10}/> ELAPSED</div>
+    <div className="factLabel"><Clock size={12}/> ELAPSED</div>
     <div className="factVal">{fmtDuration(p.duration)}</div>
    </div>
    <div className="factCell">
-    <div className="factLabel"><CheckCheck size={10}/> REMAINING</div>
+    <div className="factLabel"><CheckCheck size={12}/> REMAINING</div>
     <div className="factVal highlight">{p.remainingTime!=null?fmtDuration(p.remainingTime):isDone?'Done':'—'}</div>
    </div>
    <div className="factCell">
-    <div className="factLabel"><Clock size={10}/> TOTAL TIME</div>
+    <div className="factLabel"><Clock size={12}/> TOTAL TIME</div>
     <div className="factVal">{fmtDuration(p.totalDuration)}</div>
    </div>
   </div>
 
   {p.error&&<div className="errorText" title={p.error}>{p.error}</div>}
 
-  {/* Compact 1-line button row */}
+  {/* Comfortable, Balanced Action Buttons */}
   {p.enabled&&(
    <div className="cardActionRow">
-    <button className="controlBtnSmall" onClick={()=>onOpenControl(p)} title="Remote controls, emergency actions & G-code console">
-     <Sliders size={12}/>
-     <span>Controls</span>
+    <button className="controlBtn1080" onClick={()=>onOpenControl(p)} title="Remote controls, emergency actions & G-code console">
+     <Sliders size={13}/>
+     <span>Remote Controls & Terminal</span>
     </button>
     {printerUrl&&(
-     <a href={printerUrl} target="_blank" rel="noreferrer" className={'openPrinterBtnSmall '+(isLocal?'':'remoteBtn')} title={isLocal?`Open ${p.name} Fluidd interface directly`: `Direct LAN IP ${p.host} (requires farm Wi-Fi or VPN)`}>
-      <ExternalLink size={12}/>
-      <span>{isLocal?'Web UI':'LAN UI'}</span>
+     <a href={printerUrl} target="_blank" rel="noreferrer" className={'openPrinterBtn1080 '+(isLocal?'':'remoteBtn')} title={isLocal?`Open ${p.name} Fluidd interface directly`: `Direct LAN IP ${p.host} (requires farm Wi-Fi or VPN)`}>
+      <ExternalLink size={13}/>
+      <span>{isLocal?'Open Web UI':'LAN UI'}</span>
      </a>
     )}
    </div>
   )}
 
   <div className="cardFoot">
-   <span>Updated {p.updatedAt?new Date(p.updatedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'Waiting'}</span>
-   {!isLocal&&<span className="remoteTag"> · System Relay</span>}
+   <span>Updated: {p.updatedAt?new Date(p.updatedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'Waiting'}</span>
+   {!isLocal&&<span className="remoteTag"> · System Relay ({systemInfo?.primaryIp||'172.16.20.139'})</span>}
   </div>
  </article>;
 }
@@ -951,50 +958,87 @@ function App(){
       </div>
      </div>
 
-     {/* 5 Printers in a single responsive grid */}
-     <section className="printersGrid5">
-      {printers.map(p=><PrinterCard key={p.id} p={p} isLocal={isLocal} systemInfo={systemInfo} onOpenControl={setControlPrinter}/>)}
-     </section>
+     {/* 1920x1080 Symmetrical 3x2 Grid: 5 Printers + Farm Activity Hub */}
+     <section className="farmGrid1080">
+      {printers.map(p=>(
+       <PrinterCard 
+        key={p.id} 
+        p={p} 
+        isLocal={isLocal} 
+        systemInfo={systemInfo} 
+        onOpenControl={setControlPrinter}
+       />
+      ))}
 
-     {/* Collapsible / Compact Bottom Drawer for Production & Logs */}
-     <div className="overviewBottomDrawer">
-      <div className="bottomDrawerHeader">
-       <span>Quick Production & Activity</span>
-       <div style={{display:'flex',gap:'12px'}}>
-        <button className="textButton" onClick={()=>setPage('completed')}>Full Production Log →</button>
-        <button className="textButton" onClick={()=>setPage('alerts')}>All Events →</button>
-       </div>
-      </div>
-      <div className="bottomDrawerGrid">
-       <div className="bottomCard miniQty">
-        <strong>Completed Quantities by Model</strong>
-        {completed.summary.length?(
-         <div className="miniChips">
-          {completed.summary.slice(0,5).map(s=>(
-           <div key={s.file} className="miniChip" title={s.file}>
-            <span className="miniChipName">{s.file}</span>
-            <span className="miniChipQty">{s.quantity} pcs</span>
-           </div>
-          ))}
+      {/* 6th Slot: Production & Live Farm Activity Hub */}
+      <article className="card farmHubCard">
+       <div className="hubHeader">
+        <div className="hubHeaderLeft">
+         <div className="hubIcon"><CheckCheck size={18}/></div>
+         <div>
+          <h3 className="hubTitle">Production & Activity Hub</h3>
+          <span className="subline">Real-time stats & quick actions</span>
          </div>
-        ):<small style={{color:'#64748b'}}>No prints recorded yet.</small>}
+        </div>
+        <button className="textButton" style={{fontSize:'12px',fontWeight:'700'}} onClick={()=>setPage('completed')}>
+         View All →
+        </button>
        </div>
-       <div className="bottomCard miniEvents">
-        <strong>Latest Observed Events</strong>
-        {events.length?(
-         <div className="miniEventList">
-          {events.slice(0,3).map(e=>(
-           <div key={e.id} className="miniEvent">
+
+       {/* Production Summary Section */}
+       <div className="hubSection">
+        <div className="hubSectionHead">
+         <span>TODAY'S PRODUCTION QTY</span>
+         <span className="hubCount">{completed.summary.reduce((acc,c)=>acc+c.quantity,0)} pcs completed</span>
+        </div>
+        <div className="hubChipsWrap">
+         {completed.summary.length?(
+          completed.summary.slice(0,4).map(s=>(
+           <div key={s.file} className="hubChip" title={s.file}>
+            <span className="hubChipName">{s.file}</span>
+            <span className="hubChipQty">{s.quantity} pcs</span>
+           </div>
+          ))
+         ):(
+          <div className="hubEmpty">No print jobs completed today yet.</div>
+         )}
+        </div>
+       </div>
+
+       {/* Latest Farm Events Stream */}
+       <div className="hubSection events">
+        <div className="hubSectionHead">
+         <span>LATEST FARM EVENTS</span>
+         <button className="textButton" style={{fontSize:'11px'}} onClick={()=>setPage('alerts')}>History →</button>
+        </div>
+        <div className="hubEventsList">
+         {events.length?(
+          events.slice(0,3).map(e=>(
+           <div key={e.id} className="hubEventRow">
             <span className={'dot '+(e.type==='completed'?'teal':'amber')}/>
-            <span className="miniEventMsg">{e.message}</span>
-            <span className="miniEventTime">{new Date(e.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+            <span className="hubEventMsg" title={e.message}>{e.message}</span>
+            <span className="hubEventTime">{new Date(e.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
            </div>
-          ))}
-         </div>
-        ):<small style={{color:'#64748b'}}>No events recorded yet.</small>}
+          ))
+         ):(
+          <div className="hubEmpty">Awaiting farm events...</div>
+         )}
+        </div>
        </div>
-      </div>
-     </div>
+
+       {/* Farm Host & Mode Footer */}
+       <div className="hubFoot">
+        <div className="hubFootLeft">
+         <div className={'netDot '+(isLocal?'local':'remote')}/>
+         <span>{isLocal?'LAN Mode':'Remote Relay Mode'}</span>
+         <span className="hubHostIp">({systemInfo?.primaryIp||'172.16.20.139'})</span>
+        </div>
+        <button className="hubNavBtn" onClick={()=>setPage('settings')}>
+         <Settings size={12}/> Settings
+        </button>
+       </div>
+      </article>
+     </section>
     </>
    ):page==='completed'?(
     <CompletedPage data={completed} onSync={syncHistory}/>
