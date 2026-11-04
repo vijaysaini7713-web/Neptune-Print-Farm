@@ -117,10 +117,10 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .fleetCardProgressFill.completed .batteryGlowEdge{display:none}
 
 /* ENSURE ALL TEXT & CONTROLS REMAIN SHARP & CLICKABLE ON TOP */
-.fleetMainRow{display:grid;grid-template-columns:230px 1.6fr 1fr auto;align-items:center;gap:20px;position:relative;z-index:2}
+.fleetMainRow{display:grid;grid-template-columns:270px 1.55fr 1fr auto;align-items:center;gap:24px;position:relative;z-index:2}
 .fleetErrorBanner{position:relative;z-index:2}
-@media(max-width:1380px){.fleetMainRow{grid-template-columns:210px 1.4fr .9fr auto;gap:14px}}
-@media(max-width:1050px){.fleetMainRow{grid-template-columns:1fr;gap:12px}}
+@media(max-width:1440px){.fleetMainRow{grid-template-columns:250px 1.4fr .95fr auto;gap:18px}}
+@media(max-width:1120px){.fleetMainRow{grid-template-columns:1fr;gap:14px}}
 
 /* Col 1: Identity */
 .fleetCol.identity{display:flex;align-items:center;gap:12px;min-width:0}
@@ -128,8 +128,8 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .fleetIdentityText{display:flex;flex-direction:column;min-width:0;flex:1}
 .fleetPrinterName{font-size:15px;font-weight:800;color:#f8fafc;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fleetSubline{font-size:11px;color:#64748b;margin-top:2px;white-space:nowrap;font-family:monospace}
-.fleetPillWrap{flex-shrink:0}
-.fleetPill{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:3px 8px;font-size:11px;font-weight:700;text-transform:capitalize}
+.fleetPillWrap{flex-shrink:0;margin-left:auto}
+.fleetPill{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:3.5px 9px;font-size:11px;font-weight:700;text-transform:capitalize}
 .fleetPill i{width:5px;height:5px;border-radius:50%;background:currentColor}
 .fleetPill.green{background:rgba(16,185,129,.14);color:#34d399}
 .fleetPill.blue{background:rgba(59,130,246,.14);color:#60a5fa}
@@ -139,8 +139,8 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .fleetPill.gray{background:rgba(100,116,139,.14);color:#94a3b8}
 
 /* Col 2: Job & Progress */
-.fleetCol.jobProgress{display:flex;flex-direction:column;gap:5px;min-width:0}
-.fleetJobHead{display:flex;align-items:center;gap:6px;font-size:12.5px;color:#cbd5e1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fleetCol.jobProgress{display:flex;flex-direction:column;gap:6px;min-width:0}
+.fleetJobHead{display:flex;align-items:center;gap:7px;font-size:12.5px;color:#cbd5e1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fleetJobName{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fleetProgressWrap{display:flex;align-items:center;gap:10px}
 .fleetBar{flex:1;height:6px;background:#131d2c;border-radius:6px;overflow:hidden}
@@ -152,33 +152,33 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .fleetBarFill.teal{background:#2dd4bf}
 .fleetBarFill.gray{background:#475569}
 .fleetProgressPct{font-size:12px;font-weight:800;color:#cbd5e1;width:34px;text-align:right;font-variant-numeric:tabular-nums}
-.fleetJobFoot{margin-top:2px}
+.fleetJobFoot{margin-top:5px}
 
 /* TIME HIGHLIGHTS & BOLD PROMINENT BADGES */
-.fleetTimeRow{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px}
-.timeBadge{display:inline-flex;align-items:center;gap:6px;padding:3.5px 10px;border-radius:7px;font-size:12.5px;line-height:1.2}
-.timeBadge .timeIcon{flex-shrink:0}
-.timeBadge .timeLabel{font-size:11.5px;font-weight:600;opacity:.9}
-.timeBadge .timeValue{font-size:13.5px;font-weight:800;letter-spacing:.3px}
+.fleetTimeRow{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px}
+.fleetTimeBadge{display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:8px;font-size:12.5px;line-height:1.2;white-space:nowrap}
+.fleetTimeBadge .timeIcon{flex-shrink:0}
+.fleetTimeBadge .timeLabel{font-size:11.5px;font-weight:600;opacity:.9;margin-right:2px}
+.fleetTimeBadge .timeValue{font-size:13.5px;font-weight:800;letter-spacing:.3px}
 
 /* REMAINING TIME - HIGHLIGHTED VIBRANT CYAN */
-.timeBadge.remaining{background:rgba(14,165,233,.14);color:#38bdf8;border:1px solid rgba(14,165,233,.38);box-shadow:0 0 12px rgba(14,165,233,.12)}
-.timeBadge.remaining .timeValue{color:#ffffff;text-shadow:0 0 8px rgba(56,189,248,.6)}
+.fleetTimeBadge.remaining{background:rgba(14,165,233,.14);color:#38bdf8;border:1px solid rgba(14,165,233,.38);box-shadow:0 0 12px rgba(14,165,233,.12)}
+.fleetTimeBadge.remaining .timeValue{color:#ffffff;text-shadow:0 0 8px rgba(56,189,248,.6)}
 
 /* COMPLETED BY TIME - HIGHLIGHTED VIBRANT EMERALD */
-.timeBadge.completedBy{background:rgba(16,185,129,.14);color:#34d399;border:1px solid rgba(16,185,129,.38);box-shadow:0 0 12px rgba(16,185,129,.12)}
-.timeBadge.completedBy .timeValue{color:#ffffff;text-shadow:0 0 8px rgba(52,211,153,.6)}
+.fleetTimeBadge.completedBy{background:rgba(16,185,129,.14);color:#34d399;border:1px solid rgba(16,185,129,.38);box-shadow:0 0 12px rgba(16,185,129,.12)}
+.fleetTimeBadge.completedBy .timeValue{color:#ffffff;text-shadow:0 0 8px rgba(52,211,153,.6)}
 
 /* DONE / COMPLETED */
-.timeBadge.done{background:rgba(16,185,129,.16);color:#34d399;border:1px solid rgba(16,185,129,.4);font-size:13px}
-.timeBadge.done .timeValue{color:#f0fdf4}
+.fleetTimeBadge.done{background:rgba(16,185,129,.16);color:#34d399;border:1px solid rgba(16,185,129,.4);font-size:13px}
+.fleetTimeBadge.done .timeValue{color:#f0fdf4}
 
 /* PAUSED */
-.timeBadge.paused{background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.4)}
-.timeBadge.paused .timeValue{color:#fffbeb}
+.fleetTimeBadge.paused{background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.4)}
+.fleetTimeBadge.paused .timeValue{color:#fffbeb}
 
 /* IDLE & STANDBY */
-.timeBadge.idle,.timeBadge.standby{color:#71849d;font-size:12px;font-weight:600;padding:0}
+.fleetTimeBadge.idle,.fleetTimeBadge.standby{color:#71849d;font-size:12px;font-weight:600;padding:0}
 
 /* Col 3: Metrics */
 .fleetCol.metrics{display:flex;align-items:center;gap:24px}
@@ -239,11 +239,11 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .prodTable td{padding:10px 13px;border-bottom:1px solid #162335;color:#cbd5e1}
 .prodTable tr:hover td{background:#111b2b}
 .qtyBadge{display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;background:#064e3b;color:#34d399;border:1px solid #059669;padding:3px 8px;border-radius:14px}
+.failBadge{display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;background:#450a0a;color:#f87171;border:1px solid #7f1d1d;padding:3px 8px;border-radius:14px}
 .printerTag{display:inline-block;background:#152235;color:#93c5fd;padding:2px 6px;border-radius:5px;font-size:10px;margin:1px 3px 1px 0}
 .timePill{color:#94a3b8;font-weight:500}
-.timeBadge{display:inline-block;background:#101e33;color:#93c5fd;border:1px solid #1b3252;border-radius:4px;padding:2px 6px;font-size:10.5px;font-family:monospace;margin:1px 3px 1px 0}
-.failBadge{display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;background:#450a0a;color:#f87171;border:1px solid #7f1d1d;padding:3px 8px;border-radius:14px}
-.timeBadge.failed{background:#2a0d12;color:#f87171;border-color:#5c1d27}
+.prodTable .timeBadge, .dayCard .timeBadge{display:inline-block;background:#101e33;color:#93c5fd;border:1px solid #1b3252;border-radius:4px;padding:2px 6px;font-size:10.5px;font-family:monospace;margin:1px 3px 1px 0}
+.prodTable .timeBadge.failed, .dayCard .timeBadge.failed{background:#2a0d12;color:#f87171;border-color:#5c1d27}
 
 .dateFilterRow{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:14px}
 .dateInput{background:#0e1726;color:#eaf0fa;border:1px solid #203147;border-radius:7px;padding:6px 10px;font-size:11.5px;outline:none;color-scheme:dark}
@@ -281,6 +281,7 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .outline{display:inline-flex;gap:6px;align-items:center;padding:7px 11px;border:1px solid #203147;background:#0f1828;border-radius:7px;color:#cbd5e1;font-size:12px}
 
 /* SETTINGS & AUTH */
+.card{background:#0d1524;border:1px solid #18253a;border-radius:12px}
 .settingCard{padding:16px}
 .settingRow{display:grid;grid-template-columns:30px 1.5fr 1fr 100px 80px 32px;align-items:end;gap:10px;padding:10px 0;border-bottom:1px solid #1a273b}
 .settingNum{color:#475569;padding-bottom:10px;font-size:11px}
@@ -308,4 +309,418 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
  .mobileLogo{display:flex;align-items:center;gap:6px;font-weight:800;color:#38bdf8}
  .mobileNav{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto}
  .mobileNav button{background:#111b2b;color:#94a3b8;padding:7px 11px;border-radius:6px;font-size:11.5px;white-space:nowrap}
+}
+
+/* ==========================================================================
+   LIGHT THEME MODE (data-theme="light" or .theme-light)
+   ========================================================================== */
+html[data-theme="light"],
+[data-theme="light"] body,
+.theme-light{
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+[data-theme="light"] *{
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+[data-theme="light"] aside{
+  background: #ffffff;
+  border-right-color: #e2e8f0;
+}
+[data-theme="light"] .logoTitle{
+  color: #0f172a;
+}
+[data-theme="light"] .logoIconBox{
+  background: rgba(2, 132, 199, .12);
+  color: #0284c7;
+}
+[data-theme="light"] .asideLabel{
+  color: #64748b;
+}
+[data-theme="light"] .nav{
+  color: #475569;
+}
+[data-theme="light"] .nav:hover{
+  background: #f1f5f9;
+  color: #0f172a;
+}
+[data-theme="light"] .nav.active{
+  background: #e0f2fe;
+  color: #0284c7;
+  border-color: rgba(2, 132, 199, .25);
+}
+[data-theme="light"] .hostStatusBox{
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+[data-theme="light"] .hostStatusHead{
+  color: #059669;
+}
+[data-theme="light"] .hostStatusSub{
+  color: #64748b;
+}
+[data-theme="light"] .nav.signout{
+  color: #64748b;
+}
+[data-theme="light"] .nav.signout:hover{
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Header */
+[data-theme="light"] header{
+  border-bottom-color: #e2e8f0;
+}
+[data-theme="light"] .headerTime{
+  color: #64748b;
+}
+[data-theme="light"] .themeToggleBtn{
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+[data-theme="light"] .themeToggleBtn:hover{
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #0284c7;
+}
+[data-theme="light"] .iconButton{
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+[data-theme="light"] .iconButton:hover{
+  background: #f8fafc;
+  color: #0284c7;
+  border-color: #0284c7;
+}
+
+/* Fleet Overview Page */
+[data-theme="light"] .fleetCategoryTag{
+  color: #0284c7;
+}
+[data-theme="light"] .fleetMainTitle{
+  color: #0f172a;
+}
+[data-theme="light"] .fleetSubtitle{
+  color: #64748b;
+}
+[data-theme="light"] .fleetRefreshBtn{
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+[data-theme="light"] .fleetRefreshBtn:hover{
+  background: #f8fafc;
+  color: #0284c7;
+  border-color: #0284c7;
+}
+
+/* Stat Cards */
+[data-theme="light"] .fleetStatCard{
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+}
+[data-theme="light"] .fleetStatVal{
+  color: #0f172a;
+}
+[data-theme="light"] .fleetStatLabel{
+  color: #64748b;
+}
+
+/* Status Sub-bar */
+[data-theme="light"] .fleetStatusLeft strong{
+  color: #0f172a;
+}
+[data-theme="light"] .fleetStatusCount{
+  color: #64748b;
+}
+
+/* Fleet Cards */
+[data-theme="light"] .fleetCard{
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+}
+[data-theme="light"] .fleetCard.state-printing{
+  border-color: #93c5fd;
+  box-shadow: 0 2px 10px rgba(59,130,246,.08);
+}
+[data-theme="light"] .fleetCard.state-idle{
+  border-color: #e2e8f0;
+}
+[data-theme="light"] .fleetCard.state-completed{
+  border-color: #10b981;
+  box-shadow: 0 0 16px rgba(16,185,129,.18);
+}
+[data-theme="light"] .fleetCard.state-paused{
+  border-color: #f59e0b;
+  box-shadow: 0 0 16px rgba(245,158,11,.15);
+}
+
+[data-theme="light"] .fleetPrinterIcon{
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #0284c7;
+}
+[data-theme="light"] .fleetPrinterName{
+  color: #0f172a;
+}
+[data-theme="light"] .fleetSubline{
+  color: #64748b;
+}
+
+[data-theme="light"] .fleetJobHead{
+  color: #1e293b;
+}
+[data-theme="light"] .fleetBar{
+  background: #e2e8f0;
+}
+[data-theme="light"] .fleetProgressPct{
+  color: #334155;
+}
+
+/* Metrics */
+[data-theme="light"] .fleetMetricLabel{
+  color: #64748b;
+}
+[data-theme="light"] .fleetMetricVal{
+  color: #0f172a;
+}
+
+/* Buttons */
+[data-theme="light"] .fleetBtn{
+  background: #f8fafc;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+[data-theme="light"] .fleetBtn:hover{
+  background: #f1f5f9;
+  color: #0284c7;
+  border-color: #0284c7;
+}
+
+/* Battery Progress Layer in Light Mode */
+[data-theme="light"] .fleetCardProgressFill{
+  background: rgba(16,185,129,.12);
+  border-top-color: rgba(16,185,129,.35);
+  border-bottom-color: rgba(16,185,129,.35);
+  border-left-color: #10b981;
+  border-right-color: #059669;
+  box-shadow: inset 0 0 14px rgba(16,185,129,.06), 2px 0 10px rgba(16,185,129,.3);
+}
+[data-theme="light"] .fleetCardProgressFill.paused{
+  background: rgba(245,158,11,.12);
+  border-top-color: rgba(245,158,11,.35);
+  border-bottom-color: rgba(245,158,11,.35);
+  border-left-color: #f59e0b;
+  border-right-color: #d97706;
+}
+[data-theme="light"] .batteryGlowEdge{
+  background: #059669;
+  box-shadow: 0 0 8px rgba(5,150,105,.4);
+}
+[data-theme="light"] .fleetCardProgressFill.paused .batteryGlowEdge{
+  background: #d97706;
+  box-shadow: 0 0 8px rgba(217,119,6,.4);
+}
+
+/* High-Contrast Time Badges in Light Mode */
+[data-theme="light"] .fleetTimeBadge.remaining{
+  background: rgba(14,165,233,.12);
+  color: #0284c7;
+  border-color: rgba(2,132,199,.4);
+  box-shadow: 0 1px 4px rgba(2,132,199,.1);
+}
+[data-theme="light"] .fleetTimeBadge.remaining .timeLabel{
+  color: #0284c7;
+}
+[data-theme="light"] .fleetTimeBadge.remaining .timeValue{
+  color: #0369a1;
+  text-shadow: none;
+}
+
+[data-theme="light"] .fleetTimeBadge.completedBy{
+  background: rgba(16,185,129,.12);
+  color: #059669;
+  border-color: rgba(5,150,105,.4);
+  box-shadow: 0 1px 4px rgba(5,150,105,.1);
+}
+[data-theme="light"] .fleetTimeBadge.completedBy .timeLabel{
+  color: #059669;
+}
+[data-theme="light"] .fleetTimeBadge.completedBy .timeValue{
+  color: #047857;
+  text-shadow: none;
+}
+
+[data-theme="light"] .fleetTimeBadge.done{
+  background: rgba(16,185,129,.12);
+  color: #047857;
+  border-color: rgba(5,150,105,.4);
+}
+[data-theme="light"] .fleetTimeBadge.done .timeValue{
+  color: #047857;
+}
+
+[data-theme="light"] .fleetTimeBadge.paused{
+  background: rgba(245,158,11,.12);
+  color: #b45309;
+  border-color: rgba(217,119,6,.4);
+}
+[data-theme="light"] .fleetTimeBadge.paused .timeValue{
+  color: #b45309;
+}
+
+[data-theme="light"] .fleetTimeBadge.idle,
+[data-theme="light"] .fleetTimeBadge.standby{
+  color: #64748b;
+}
+
+/* Production, Settings & Modal in Light Mode */
+[data-theme="light"] .card{
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+[data-theme="light"] .card h1,
+[data-theme="light"] .card h2,
+[data-theme="light"] .card h3{
+  color: #0f172a;
+}
+[data-theme="light"] .card p{
+  color: #475569;
+}
+[data-theme="light"] .dayCard{
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+[data-theme="light"] .dayTitle{
+  color: #0f172a;
+}
+[data-theme="light"] .dayHeader{
+  border-bottom-color: #e2e8f0;
+}
+[data-theme="light"] .dayRow{
+  border-bottom-color: #f1f5f9;
+  color: #334155;
+}
+[data-theme="light"] .prodTable th{
+  background: #f8fafc;
+  color: #475569;
+  border-bottom-color: #e2e8f0;
+}
+[data-theme="light"] .prodTable td{
+  border-bottom-color: #f1f5f9;
+  color: #334155;
+}
+[data-theme="light"] .prodTable tr:hover td{
+  background: #f8fafc;
+}
+[data-theme="light"] .prodTable .timeBadge,
+[data-theme="light"] .dayCard .timeBadge{
+  background: #f1f5f9;
+  color: #0284c7;
+  border-color: #cbd5e1;
+}
+[data-theme="light"] .prodTable .timeBadge.failed,
+[data-theme="light"] .dayCard .timeBadge.failed{
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+[data-theme="light"] .searchBox input{
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+[data-theme="light"] .dateInput{
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  color-scheme: light;
+}
+[data-theme="light"] .dateBtn{
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+[data-theme="light"] .dateBtn.active{
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+[data-theme="light"] .subTabBtn{
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+[data-theme="light"] .subTabBtn.active{
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+[data-theme="light"] .statusFilterBtn{
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+[data-theme="light"] .statusFilterBtn.active.all{
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+[data-theme="light"] .settingRow{
+  border-bottom-color: #e2e8f0;
+}
+[data-theme="light"] .settingRow label{
+  color: #475569;
+}
+[data-theme="light"] .settingRow input:not([type=checkbox]){
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+[data-theme="light"] .netBox{
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+[data-theme="light"] .outline{
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+[data-theme="light"] .modalCard.controlModal{
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 20px 60px rgba(0,0,0,.15);
+}
+[data-theme="light"] .modalHeader{
+  border-bottom-color: #e2e8f0;
+  color: #0f172a;
+}
+[data-theme="light"] .controlStatsBar{
+  background: #f8fafc;
+  border-bottom-color: #e2e8f0;
+}
+[data-theme="light"] .controlStatsBar strong{
+  color: #0f172a;
+}
+[data-theme="light"] .ctrlSectionTitle{
+  color: #0f172a;
+}
+[data-theme="light"] .modalFooter{
+  background: #f8fafc;
+  border-top-color: #e2e8f0;
+}
+[data-theme="light"] .mobileNav button{
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
 }

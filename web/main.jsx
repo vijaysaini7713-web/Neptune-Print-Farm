@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import{createRoot}from'react-dom/client';
-import{Printer,Settings,Activity,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun}from'lucide-react';
+import{Printer,Settings,Activity,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon}from'lucide-react';
 import './style.css';
 
 const api=async(url,options={})=>{const r=await fetch('/api'+url,{credentials:'same-origin',headers:{'content-type':'application/json'},...options});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data};
@@ -149,14 +149,14 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
      <div className="fleetJobFoot">
       {isPrinting ? (
        <div className="fleetTimeRow">
-        <span className="timeBadge remaining" title="Estimated time left">
+        <span className="fleetTimeBadge remaining" title="Estimated time left">
          <Clock size={13} className="timeIcon"/>
          <span className="timeLabel">Remaining:</span>
          <strong className="timeValue">{p.remainingTime != null ? fmtDuration(p.remainingTime) : '—'}</strong>
         </span>
 
         {p.eta && (
-         <span className="timeBadge completedBy" title="Estimated completion time">
+         <span className="fleetTimeBadge completedBy" title="Estimated completion time">
           <CheckCircle2 size={13} className="timeIcon"/>
           <span className="timeLabel">Completed by:</span>
           <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
@@ -164,30 +164,30 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
         )}
        </div>
       ) : isDone ? (
-       <span className="timeBadge done">
+       <span className="fleetTimeBadge done">
         <CheckCircle2 size={13} className="timeIcon"/>
         <strong className="timeValue">Print completed · Ready to clear</strong>
        </span>
       ) : isIdle ? (
-       <span className="timeBadge idle">
+       <span className="fleetTimeBadge idle">
         <span>Ready for next job</span>
        </span>
       ) : isPaused ? (
        <div className="fleetTimeRow">
-        <span className="timeBadge paused">
+        <span className="fleetTimeBadge paused">
          <Pause size={13} className="timeIcon"/>
          <span className="timeLabel">Paused ·</span>
          <strong className="timeValue">{p.remainingTime != null ? fmtDuration(p.remainingTime) : '—'} left</strong>
         </span>
         {p.eta && (
-         <span className="timeBadge completedBy">
+         <span className="fleetTimeBadge completedBy">
           <span className="timeLabel">Completed by:</span>
           <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
          </span>
         )}
        </div>
       ) : (
-       <span className="timeBadge standby">Standby</span>
+       <span className="fleetTimeBadge standby">Standby</span>
       )}
      </div>
     </div>
@@ -911,6 +911,22 @@ function SettingsPage({list,reload,systemInfo}){const[items,setItems]=useState(l
 
 function App(){
  const[authed,setAuthed]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[systemInfo,setSystemInfo]=useState(null),[controlPrinter,setControlPrinter]=useState(null),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);
+ const[theme,setTheme]=useState(()=>{
+  try{
+   return localStorage.getItem('farm_theme')||'dark';
+  }catch(e){
+   return 'dark';
+  }
+ });
+
+ useEffect(()=>{
+  document.documentElement.setAttribute('data-theme',theme);
+  try{
+   localStorage.setItem('farm_theme',theme);
+  }catch(e){}
+ },[theme]);
+
+ const toggleTheme=()=>setTheme(t=>t==='dark'?'light':'dark');
 
  async function refresh(){
   try{
@@ -944,7 +960,7 @@ function App(){
  const total=printers.length,printing=printers.filter(p=>p.status==='printing').length,paused=printers.filter(p=>p.status==='paused').length,online=printers.filter(p=>p.connected).length,issues=printers.filter(p=>p.status==='offline'||p.status==='error'||p.filamentDetected===false).length;
  const sortedPrinters=[...printers].sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{numeric:true,sensitivity:'base'}));
 
- return <div className="layout">
+ return <div className={`layout theme-${theme}`}>
   <aside>
    <div className="logo">
     <div className="logoIconBox"><Printer size={20}/></div>
@@ -986,8 +1002,12 @@ function App(){
       <span>{isLocal?'LAN connected':'Remote connected'}</span>
      </div>
      <span className="headerTime">Updated {refreshed?refreshed.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true}):'--:--'}</span>
-     <button className="themeToggleBtn" onClick={()=>alert('Theme: Dark Fleet mode active')}>
-      <Sun size={13}/> Light
+     <button className="themeToggleBtn" onClick={toggleTheme} title={`Switch to ${theme==='dark'?'Light':'Dark'} mode`}>
+      {theme==='dark'?(
+       <><Sun size={13}/> Light</>
+      ):(
+       <><Moon size={13}/> Dark</>
+      )}
      </button>
      <button className="iconButton" title="Refresh telemetry" onClick={refresh}>
       <RefreshCw size={15}/>
