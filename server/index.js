@@ -423,7 +423,17 @@ app.put('/api/config',auth,(req,res)=>{
 
 app.post('/api/test-telegram',auth,(_req,res)=>{void telegram('Test notification from Neptune Print Farm');res.json({ok:true,note:'Delivery attempted; check your Telegram bot chat'})});
 const dist=path.join(root,'dist');
-if(fs.existsSync(dist)){app.use(express.static(dist));app.get('*',(_req,res)=>res.sendFile(path.join(dist,'index.html')))}
+if(fs.existsSync(dist)){
+ app.use(express.static(dist,{
+  setHeaders:(res,filePath)=>{
+   if(filePath.endsWith('.html'))res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
+  }
+ }));
+ app.get('*',(_req,res)=>{
+  res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.sendFile(path.join(dist,'index.html'));
+ });
+}
 
 app.listen(port,'0.0.0.0',()=>console.log('Neptune Print Farm listening on port '+port));
 void poll();
