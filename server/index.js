@@ -374,7 +374,11 @@ app.get('/api/printers/:id/console',auth,async(req,res)=>{
 });
 
 app.get('/api/me',auth,(_req,res)=>res.json({ok:true}));
-app.get('/api/printers',auth,(_req,res)=>res.json(printers.map(p=>current.get(p.id)||{...p,status:'connecting',connected:false})));
+app.get('/api/printers',auth,(_req,res)=>{
+ const list=printers.map(p=>current.get(p.id)||{...p,status:'connecting',connected:false});
+ list.sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{numeric:true,sensitivity:'base'}));
+ res.json(list);
+});
 app.get('/api/events',auth,(_req,res)=>res.json(events.slice(0,200)));
 app.get('/api/config',auth,(_req,res)=>res.json(printers));
 

@@ -891,6 +891,7 @@ function App(){
  );
 
  const total=printers.length,printing=printers.filter(p=>p.status==='printing').length,paused=printers.filter(p=>p.status==='paused').length,online=printers.filter(p=>p.connected).length,issues=printers.filter(p=>p.status==='offline'||p.status==='error'||p.filamentDetected===false).length;
+ const sortedPrinters=[...printers].sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{numeric:true,sensitivity:'base'}));
 
  return <div className="layout">
   <aside>
@@ -1018,9 +1019,9 @@ function App(){
       </div>
      </div>
 
-     {/* Horizontal Fleet Cards List */}
+     {/* Horizontal Fleet Cards List (Sorted Alphabetically A to Z) */}
      <section className="fleetList">
-      {printers.map(p=>(
+      {sortedPrinters.map(p=>(
        <PrinterCard 
         key={p.id} 
         p={p} 
