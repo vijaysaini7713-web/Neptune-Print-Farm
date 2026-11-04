@@ -101,9 +101,9 @@ async function syncAllHistory(){
 
 function normalize(p,body,meta){
  const s=body?.result?.status||{},ps=s.print_stats||{},sd=s.virtual_sdcard||{},gm=s.gcode_move||{};
- const sensed=Object.entries(s).filter(([k])=>k.startsWith('filament_switch_sensor ')||k.startsWith('filament_motion_sensor '));
- const enabled=sensed.filter(([,v])=>v.enabled!==0);
- const filament=enabled.length?enabled.every(([,v])=>v.filament_detected===true):null;
+ const sensed=Object.entries(s).filter(([k])=>k.startsWith('filament_switch_sensor ')||k.startsWith('filament_motion_sensor ')||k.startsWith('filament_sensor')||k.includes('filament'));
+ const enabled=sensed.filter(([,v])=>v && v.enabled!==0 && v.enabled!==false);
+ const filament=enabled.length?enabled.every(([,v])=>v.filament_detected===true||v.filament_detected===1):null;
  const state=ps.state||'unknown';
  const statuses={printing:'printing',paused:'paused',complete:'completed',error:'error',cancelled:'cancelled',standby:'idle'};
  const currentZ=(Array.isArray(gm.gcode_position)&&typeof gm.gcode_position[2]==='number')?Number(gm.gcode_position[2].toFixed(3)):null;
@@ -148,9 +148,13 @@ function normalize(p,body,meta){
  if(state==='complete'||(state==='standby'&&sd.progress>=0.98&&ps.filename&&duration>30)){
   computedStatus='completed';
  }
+ const isRunout = (filament === false && computedStatus !== 'completed');
+ if(isRunout && (computedStatus === 'idle' || computedStatus === 'unknown' || computedStatus === 'standby')){
+  computedStatus = 'runout';
+ }
  const finalProgress=computedStatus==='completed'?100:Math.max(0,Math.min(100,Math.round((sd.progress||0)*100)));
 
- return {...p,connected:true,status:computedStatus,rawState:state,file:ps.filename||'',progress:finalProgress,duration,totalDuration,remainingTime,eta,filamentUsed:ps.filament_used||0,layer,totalLayers,z:currentZ,nozzle:s.extruder?.temperature??null,nozzleTarget:s.extruder?.target??null,bed:s.heater_bed?.temperature??null,bedTarget:s.heater_bed?.target??null,filamentDetected:filament,filamentSensors:sensed.map(([name])=>name),updatedAt:new Date().toISOString()};
+ return {...p,connected:true,status:computedStatus,rawState:state,file:ps.filename||'',progress:finalProgress,duration,totalDuration,remainingTime,eta,filamentUsed:ps.filament_used||0,layer,totalLayers,z:currentZ,nozzle:s.extruder?.temperature??null,nozzleTarget:s.extruder?.target??null,bed:s.heater_bed?.temperature??null,bedTarget:s.heater_bed?.target??null,filamentDetected:filament,filamentRunout:isRunout,filamentSensors:sensed.map(([name])=>name),updatedAt:new Date().toISOString()};
 }
 
 async function scan(p){
@@ -161,7 +165,7 @@ async function scan(p){
   const discovery=await fetch(endpoint+'/printer/objects/list',{signal:AbortSignal.timeout(3500)});
   if(!discovery.ok)throw Error('Discovery HTTP '+discovery.status);
   const obj=await discovery.json();if(obj.error)throw Error(obj.error.message||'Moonraker discovery error');
-  const names=(obj.result?.objects||[]).filter(x=>x.startsWith('filament_switch_sensor ')||x.startsWith('filament_motion_sensor '));
+  const names=(obj.result?.objects||[]).filter(x=>x.startsWith('filament_switch_sensor ')||x.startsWith('filament_motion_sensor ')||x.startsWith('filament_sensor')||x.includes('filament'));
   const query=['print_stats','virtual_sdcard','extruder','heater_bed','gcode_move',...names].map(encodeURIComponent).join('&');
   const response=await fetch(endpoint+'/printer/objects/query?'+query,{signal:AbortSignal.timeout(4500)});
   if(!response.ok)throw Error('Status HTTP '+response.status);

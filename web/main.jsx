@@ -6,7 +6,7 @@ import './style.css';
 const api=async(url,options={})=>{const r=await fetch('/api'+url,{credentials:'same-origin',headers:{'content-type':'application/json'},...options});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data};
 const fmtDuration=n=>n==null?'—':Math.floor(n/3600)+'h '+Math.floor(n%3600/60)+'m';
 const temp=n=>typeof n==='number'?n.toFixed(1)+'°C':'—';
-const color=s=>({printing:'green',completed:'teal',idle:'blue',paused:'amber',offline:'red',error:'red',disabled:'gray',connecting:'gray',cancelled:'gray'})[s]||'gray';
+const color=s=>({printing:'green',completed:'teal',idle:'blue',paused:'amber',offline:'red',error:'red',disabled:'gray',connecting:'gray',cancelled:'gray',runout:'orange',filament_runout:'orange'})[s]||'gray';
 
 const getLocalDateStr=d=>{
  if(!d)return'';
@@ -84,16 +84,16 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
  const s=p.status||'connecting';
  const printerUrl=p.host?`http://${p.host}${p.port&&p.port!==80?':'+p.port:''}`:null;
  const isDone=s==='completed';
- const isIdle=s==='idle';
- const isPaused=s==='paused';
- const isError=s==='error'||s==='offline';
- const isPrinting=s==='printing';
- const hasRunout=p.filamentDetected===false;
- const hasIssue=isError||hasRunout||Boolean(p.error);
+ const hasRunout=(p.filamentDetected===false || p.filamentRunout===true || s==='runout') && !isDone;
+ const isError=(s==='error'||s==='offline') && !hasRunout;
+ const hasIssue=(isError||Boolean(p.error)) && !hasRunout;
+ const isIdle=s==='idle' && !hasRunout;
+ const isPaused=s==='paused' && !hasRunout;
+ const isPrinting=s==='printing' && !hasRunout;
  const progressVal=isDone?100:Math.max(0,Math.min(100,p.progress??0));
 
  return (
-  <article className={`fleetCard state-${s} ${hasIssue?'has-issue':''} ${isPrinting?'is-printing':''}`}>
+  <article className={`fleetCard state-${s} ${hasRunout?'has-runout':''} ${hasIssue?'has-issue':''} ${isPrinting?'is-printing':''}`}>
    {/* Transparent Battery Progress Fill Layer across entire printer bar */}
    {(isPrinting||isDone||(isPaused&&progressVal>0))&&(
     <div 
@@ -102,6 +102,11 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
     >
      <div className="batteryGlowEdge"/>
     </div>
+   )}
+
+   {/* Orange Alert Fill for Filament Runout */}
+   {hasRunout&&(
+    <div className="fleetCardRunoutFill"/>
    )}
 
    {/* Red Alert Fill for Disconnected / Error / Issue Printers */}
@@ -117,9 +122,9 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
      </div>
      <div className="fleetIdentityText">
       <div className="fleetPillWrap">
-       <span className={'fleetPill '+color(s)}>
+       <span className={'fleetPill '+(hasRunout ? 'orange' : color(s))}>
         <i/>
-        {s==='completed'?'Completed':s==='offline'?'Offline':s==='printing'?'Printing':s==='paused'?'Paused':s==='idle'?'Idle':s}
+        {hasRunout ? 'Filament Runout' : s==='completed'?'Completed':s==='offline'?'Offline':s==='printing'?'Printing':s==='paused'?'Paused':s==='idle'?'Idle':s}
        </span>
       </div>
       <h3 className="fleetPrinterName" title={p.name}>{p.name}</h3>
@@ -140,14 +145,29 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
      <div className="fleetProgressWrap">
       <div className="fleetBar">
        <div 
-        className={'fleetBarFill '+color(s)} 
+        className={'fleetBarFill '+(hasRunout ? 'orange' : color(s))} 
         style={{width:`${p.progress??0}%`}} 
        />
       </div>
       <span className="fleetProgressPct">{p.progress??0}%</span>
      </div>
      <div className="fleetJobFoot">
-      {isPrinting ? (
+      {hasRunout ? (
+       <div className="fleetTimeRow">
+        <span className="fleetTimeBadge runout" title="Filament sensor triggered">
+         <AlertTriangle size={13} className="timeIcon"/>
+         <span className="timeLabel">Filament khatam ho gaya:</span>
+         <strong className="timeValue">Replace with new filament</strong>
+        </span>
+        {p.remainingTime != null && (
+         <span className="fleetTimeBadge remaining" title="Estimated time left once resumed">
+          <Clock size={13} className="timeIcon"/>
+          <span className="timeLabel">Remaining:</span>
+          <strong className="timeValue">{fmtDuration(p.remainingTime)}</strong>
+         </span>
+        )}
+       </div>
+      ) : isPrinting ? (
        <div className="fleetTimeRow">
         <span className="fleetTimeBadge remaining" title="Estimated time left">
          <Clock size={13} className="timeIcon"/>
@@ -216,8 +236,8 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
 
     {/* Col 4: Badges & Action Buttons */}
     <div className="fleetCol actions">
-     {p.filamentDetected===false&&(
-      <span className="fleetRunoutBadge" title="Filament runout detected!">RUNOUT</span>
+     {hasRunout&&(
+      <span className="fleetRunoutBadge orange" title="Filament runout detected! Please replace spool">REPLACE FILAMENT</span>
      )}
      {p.enabled&&(
       <button 
