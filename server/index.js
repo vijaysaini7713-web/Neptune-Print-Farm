@@ -144,7 +144,13 @@ function normalize(p,body,meta){
   }
  }
 
- return {...p,connected:true,status:statuses[state]||'unknown',rawState:state,file:ps.filename||'',progress:Math.max(0,Math.min(100,Math.round((sd.progress||0)*100))),duration,totalDuration,remainingTime,eta,filamentUsed:ps.filament_used||0,layer,totalLayers,z:currentZ,nozzle:s.extruder?.temperature??null,nozzleTarget:s.extruder?.target??null,bed:s.heater_bed?.temperature??null,bedTarget:s.heater_bed?.target??null,filamentDetected:filament,filamentSensors:sensed.map(([name])=>name),updatedAt:new Date().toISOString()};
+ let computedStatus = statuses[state]||'unknown';
+ if(state==='complete'||(state==='standby'&&sd.progress>=0.98&&ps.filename&&duration>30)){
+  computedStatus='completed';
+ }
+ const finalProgress=computedStatus==='completed'?100:Math.max(0,Math.min(100,Math.round((sd.progress||0)*100)));
+
+ return {...p,connected:true,status:computedStatus,rawState:state,file:ps.filename||'',progress:finalProgress,duration,totalDuration,remainingTime,eta,filamentUsed:ps.filament_used||0,layer,totalLayers,z:currentZ,nozzle:s.extruder?.temperature??null,nozzleTarget:s.extruder?.target??null,bed:s.heater_bed?.temperature??null,bedTarget:s.heater_bed?.target??null,filamentDetected:filament,filamentSensors:sensed.map(([name])=>name),updatedAt:new Date().toISOString()};
 }
 
 async function scan(p){
@@ -163,6 +169,10 @@ async function scan(p){
   const filename=body?.result?.status?.print_stats?.filename;
   const meta=filename?await fetchMetadata(endpoint,filename):null;
   const next=normalize(p,body,meta),prev=last.get(p.id);
+  if(prev?.status==='completed'&&next.rawState==='standby'&&next.file===prev.file&&next.duration===0){
+   next.status='completed';
+   next.progress=100;
+  }
   current.set(p.id,next);last.set(p.id,next);
   if(prev?.connected&&prev.status!==next.status){
    if(['completed','paused','error'].includes(next.status)){
