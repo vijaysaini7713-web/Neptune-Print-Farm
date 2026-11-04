@@ -213,6 +213,8 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .fleetFilamentContent strong{display:block;font-size:12px;color:#fdba74;margin-bottom:2px;font-weight:700}
 .fleetFilamentContent span{display:block;font-size:11px;color:#fed7aa;line-height:1.4}
 .fleetBtn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;text-decoration:none;background:#111d30;color:#cbd5e1;border:1px solid #1f314d}
+.fleetBtn.control{background:rgba(37,99,235,.16);color:#93c5fd;border:1px solid rgba(59,130,246,.45);font-weight:700;box-shadow:0 0 10px rgba(37,99,235,.15)}
+.fleetBtn.control:hover{background:#2563eb;color:#ffffff;border-color:#60a5fa;box-shadow:0 0 16px rgba(37,99,235,.45)}
 .fleetBtn:hover{background:#192a45;color:#fff;border-color:#38bdf8}
 .fleetBtn.remote{color:#93c5fd}
 
@@ -333,6 +335,112 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
  .mobileNav{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto}
  .mobileNav button{background:#111b2b;color:#94a3b8;padding:7px 11px;border-radius:6px;font-size:11.5px;white-space:nowrap}
 }
+
+
+/* ==========================================================
+   UPGRADED REMOTE CONTROL MODAL STYLES
+   ========================================================== */
+.modalCard.controlModal{width:min(740px,100%);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.ctrlTabsBar{display:flex;gap:6px;padding:12px 18px 0;border-bottom:1px solid #1a283c;background:#09101b;overflow-x:auto}
+.ctrlTabBtn{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:8px 8px 0 0;font-size:12px;font-weight:700;color:#8ba0b8;background:transparent;border:1px solid transparent;border-bottom:0;cursor:pointer;transition:all .15s}
+.ctrlTabBtn:hover{color:#e2e8f0;background:#0e1726}
+.ctrlTabBtn.active{color:#38bdf8;background:#0e1726;border-color:#203147;border-bottom:2px solid #38bdf8}
+.ctrlTabContent{padding:16px 18px;overflow-y:auto;flex:1}
+
+/* JOG & MOTION D-PAD */
+.stepSelectorRow{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.stepPill{background:#111b2b;border:1px solid #1e2e44;color:#94a3b8;padding:4px 10px;border-radius:6px;font-size:11.5px;font-weight:700;cursor:pointer;transition:all .15s}
+.stepPill:hover{background:#17253a;color:#fff}
+.stepPill.active{background:#1e3a5f;color:#38bdf8;border-color:#38bdf8}
+.dpadContainer{display:flex;align-items:center;justify-content:center;gap:36px;margin:12px 0 16px}
+.dpadGrid{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(3,56px);gap:8px}
+.dpadBtn{display:flex;flex-direction:column;align-items:center;justify-content:center;background:#111d30;border:1px solid #1f314d;color:#cbd5e1;border-radius:10px;font-size:10px;font-weight:800;cursor:pointer;transition:all .15s}
+.dpadBtn:hover{background:#1b2d4b;color:#38bdf8;border-color:#38bdf8;box-shadow:0 0 12px rgba(56,189,248,.25)}
+.dpadBtn.home{background:#0e2942;color:#38bdf8;border-color:#1e4975}
+.dpadBtn.home:hover{background:#133c63;color:#fff}
+.zAxisCol{display:flex;flex-direction:column;gap:8px;align-items:center}
+.zBtn{display:flex;flex-direction:column;align-items:center;justify-content:center;width:64px;height:52px;background:#111d30;border:1px solid #1f314d;color:#cbd5e1;border-radius:10px;font-size:10.5px;font-weight:800;cursor:pointer;transition:all .15s}
+.zBtn:hover{background:#1b2d4b;color:#38bdf8;border-color:#38bdf8}
+.zBtn.home{height:44px;background:#0e2942;color:#38bdf8;border-color:#1e4975}
+.homingChipsRow{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chipBtn{background:#111b2b;border:1px solid #1e2e44;color:#94a3b8;padding:6px 12px;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;transition:all .15s}
+.chipBtn:hover{background:#17253a;color:#fff;border-color:#38bdf8}
+.chipBtn.warn{color:#f87171;border-color:#5c1d27}
+.chipBtn.warn:hover{background:#3b1118;color:#fff}
+
+/* TEMPERATURE PRESETS */
+.sectionSubHead{font-size:12px;font-weight:700;color:#cbd5e1;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+.tempPresetsGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:680px){.tempPresetsGrid{grid-template-columns:repeat(2,1fr)}}
+.presetCard{background:#101a2b;border:1px solid #1e2f47;border-radius:10px;padding:12px 14px;text-align:left;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;gap:3px}
+.presetCard:hover{border-color:#38bdf8;background:#14233a;box-shadow:0 0 14px rgba(56,189,248,.18)}
+.presetTitle{font-size:12px;font-weight:700;color:#93c5fd}
+.presetVals{font-size:16px;font-weight:800;color:#f8fafc}
+.presetCard small{color:#768ba6;font-size:10px}
+.presetCard.cool{border-color:#3b1d24;background:#1a0f14}
+.presetCard.cool .presetTitle{color:#f87171}
+.presetCard.cool:hover{border-color:#ef4444}
+.tempSetterGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:680px){.tempSetterGrid{grid-template-columns:1fr}}
+.tempSetterBox{background:#09101b;border:1px solid #1a283c;border-radius:8px;padding:10px 14px}
+.tempSetterBox label{display:block;font-size:11px;font-weight:700;color:#8fa0b5;margin-bottom:6px}
+.tempInputRow{display:flex;gap:6px;align-items:center}
+.tempInputRow input{width:90px;background:#0e1726;border:1px solid #1e2f47;color:#fff;padding:6px 10px;border-radius:6px;font-size:13px;font-weight:700}
+
+/* EXTRUDER & FAN */
+.extrudeGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.extrudeBtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;background:#111b2b;border:1px solid #1e2e44;color:#cbd5e1;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.extrudeBtn:hover{background:#17253a;color:#fff;border-color:#38bdf8}
+.extrudeBtn.in{color:#34d399}
+.extrudeBtn.out{color:#fbbf24}
+.fanGrid,.speedGrid{display:flex;flex-wrap:wrap;gap:8px}
+.modalFooterActions{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 18px 14px;background:#09101b;border-top:1px solid #182538}
+.actionGroupLeft{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* ==========================================================
+   PRODUCTION PAGE KPI CARDS & LIVE IN-PROGRESS PRODUCTION
+   ========================================================== */
+.prodKpiGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+@media(max-width:1250px){.prodKpiGrid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:768px){.prodKpiGrid{grid-template-columns:1fr}}
+.prodKpiCard{background:#0d1524;border:1px solid #18253a;border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.kpiIconBox{width:42px;height:42px;border-radius:10px;display:grid;place-items:center;flex-shrink:0}
+.kpiIconBox.completed{background:rgba(16,185,129,.14);color:#34d399}
+.kpiIconBox.inProgress{background:rgba(56,189,248,.14);color:#38bdf8}
+.kpiIconBox.failed{background:rgba(239,68,68,.14);color:#f87171}
+.kpiIconBox.rate{background:rgba(139,92,246,.14);color:#a78bfa}
+.kpiIconBox.time{background:rgba(245,158,11,.14);color:#fbbf24}
+.kpiContent{display:flex;flex-direction:column;gap:1px;min-width:0}
+.kpiLabel{font-size:11px;font-weight:700;color:#768ba6;letter-spacing:.3px}
+.kpiValue{font-size:20px;font-weight:800;color:#f8fafc;font-variant-numeric:tabular-nums}
+.kpiSub{font-size:10.5px;color:#64748b}
+
+/* LIVE IN-PROGRESS PRODUCTION SECTION */
+.liveProdSection{background:#09101b;border:1.5px solid #1c2e47;border-radius:14px;padding:16px 18px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.liveProdHeader{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #162438}
+.liveProdGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:12px}
+.liveProdCard{background:#0d1626;border:1px solid #1f334f;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;transition:all .2s}
+.liveProdCard:hover{border-color:#38bdf8;box-shadow:0 0 16px rgba(56,189,248,.15)}
+.liveProdHead{display:flex;justify-content:space-between;align-items:center}
+.liveProdFile{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.liveProdProgressWrap{display:flex;align-items:center;gap:10px}
+.liveProdBar{flex:1;height:7px;background:#131d2c;border-radius:6px;overflow:hidden}
+.liveProdBarFill{height:100%;border-radius:6px;background:#10b981}
+.liveProdPct{font-size:12px;font-weight:800;color:#34d399;width:34px;text-align:right;font-variant-numeric:tabular-nums}
+.liveProdFoot{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:2px}
+.liveProdEmpty{display:flex;align-items:center;gap:12px;padding:16px 20px;background:#0d1624;border:1px solid #18273b;border-radius:10px;color:#94a3b8;font-size:12.5px}
+.liveProdEmpty strong{display:block;color:#f1f5f9;font-size:13px;margin-bottom:2px}
+
+/* BADGES IN PRODUCTION TABLE */
+.inProgressBadge{display:inline-flex;align-items:center;gap:5px;background:rgba(14,165,233,.16);color:#38bdf8;border:1px solid rgba(14,165,233,.45);font-size:11px;font-weight:800;padding:3px 8px;border-radius:12px;box-shadow:0 0 8px rgba(14,165,233,.2)}
+.totalTargetBadge{display:inline-flex;align-items:center;gap:4px;background:#131f32;color:#f8fafc;border:1px solid #20334f;font-size:11.5px;font-weight:800;padding:3.5px 9px;border-radius:12px}
+.statusBadge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 8px;border-radius:12px}
+.statusBadge.completed{background:rgba(16,185,129,.16);color:#34d399;border:1px solid rgba(16,185,129,.4)}
+.statusBadge.failed{background:rgba(239,68,68,.16);color:#f87171;border:1px solid rgba(239,68,68,.4)}
+.printerTag.activePrinter{background:#1e3a5f;color:#38bdf8;border:1px solid #2b5687;font-weight:700}
+.prodFilterCard{padding:14px 18px;margin-bottom:20px}
+.statusFilterRow{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #1a283c}
+.filterTagLabel{font-size:11px;font-weight:700;letter-spacing:1px;color:#768ba6;display:flex;align-items:center;gap:6px;margin-right:6px}
 
 /* ==========================================================================
    LIGHT THEME MODE (data-theme="light" or .theme-light)
@@ -774,3 +882,40 @@ html[data-theme="light"],
   border: 1px solid #cbd5e1;
   color: #334155;
 }
+
+
+/* Light Theme overrides for upgraded components */
+[data-theme="light"] .fleetBtn.control{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+[data-theme="light"] .fleetBtn.control:hover{background:#2563eb;color:#ffffff}
+[data-theme="light"] .ctrlTabsBar{background:#f8fafc;border-bottom-color:#e2e8f0}
+[data-theme="light"] .ctrlTabBtn{color:#475569}
+[data-theme="light"] .ctrlTabBtn:hover{background:#f1f5f9;color:#0f172a}
+[data-theme="light"] .ctrlTabBtn.active{background:#ffffff;color:#0284c7;border-color:#cbd5e1;border-bottom:2px solid #0284c7}
+[data-theme="light"] .stepPill{background:#f8fafc;border-color:#cbd5e1;color:#475569}
+[data-theme="light"] .stepPill.active{background:#0284c7;color:#fff;border-color:#0284c7}
+[data-theme="light"] .dpadBtn{background:#f8fafc;border-color:#cbd5e1;color:#334155}
+[data-theme="light"] .dpadBtn:hover{background:#eff6ff;color:#0284c7;border-color:#0284c7}
+[data-theme="light"] .zBtn{background:#f8fafc;border-color:#cbd5e1;color:#334155}
+[data-theme="light"] .zBtn:hover{background:#eff6ff;color:#0284c7;border-color:#0284c7}
+[data-theme="light"] .chipBtn{background:#f8fafc;border-color:#cbd5e1;color:#475569}
+[data-theme="light"] .presetCard{background:#f8fafc;border-color:#cbd5e1}
+[data-theme="light"] .presetCard:hover{border-color:#0284c7;background:#eff6ff}
+[data-theme="light"] .presetVals{color:#0f172a}
+[data-theme="light"] .tempSetterBox{background:#f8fafc;border-color:#e2e8f0}
+[data-theme="light"] .tempInputRow input{background:#ffffff;border-color:#cbd5e1;color:#0f172a}
+[data-theme="light"] .extrudeBtn{background:#f8fafc;border-color:#cbd5e1;color:#334155}
+[data-theme="light"] .modalFooterActions{background:#f8fafc;border-top-color:#e2e8f0}
+[data-theme="light"] .prodKpiCard{background:#ffffff;border-color:#e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+[data-theme="light"] .kpiValue{color:#0f172a}
+[data-theme="light"] .liveProdSection{background:#ffffff;border-color:#e2e8f0;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+[data-theme="light"] .liveProdHeader{border-bottom-color:#e2e8f0}
+[data-theme="light"] .liveProdHeader h3{color:#0f172a!important}
+[data-theme="light"] .liveProdCard{background:#f8fafc;border-color:#e2e8f0}
+[data-theme="light"] .liveProdCard:hover{border-color:#0284c7}
+[data-theme="light"] .liveProdHead strong{color:#0f172a!important}
+[data-theme="light"] .liveProdFile{color:#1e293b}
+[data-theme="light"] .liveProdBar{background:#e2e8f0}
+[data-theme="light"] .liveProdEmpty{background:#f8fafc;border-color:#e2e8f0}
+[data-theme="light"] .liveProdEmpty strong{color:#0f172a}
+[data-theme="light"] .totalTargetBadge{background:#f1f5f9;color:#0f172a;border-color:#cbd5e1}
+[data-theme="light"] .statusFilterRow{border-bottom-color:#e2e8f0}
