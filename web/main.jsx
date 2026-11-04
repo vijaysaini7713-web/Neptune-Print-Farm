@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import{createRoot}from'react-dom/client';
-import{Printer,Settings,Activity,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders}from'lucide-react';
+import{Printer,Settings,Activity,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun}from'lucide-react';
 import './style.css';
 
 const api=async(url,options={})=>{const r=await fetch('/api'+url,{credentials:'same-origin',headers:{'content-type':'application/json'},...options});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data};
@@ -87,137 +87,126 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
  const isIdle=s==='idle';
  const isPaused=s==='paused';
  const isError=s==='error'||s==='offline';
+ const isPrinting=s==='printing';
 
- return <article className={`card printerCard state-${s}`}>
-  {/* High Visibility Distance Banner for Across-the-Room Recognition */}
-  {isDone&&(
-   <div className="stateBanner completed">
-    <CheckCircle2 size={15}/>
-    <span>PRINT COMPLETED · READY TO CLEAR</span>
-   </div>
-  )}
-  {isIdle&&(
-   <div className="stateBanner idle">
-    <Clock size={15}/>
-    <span>PRINTER IDLE · READY FOR JOB</span>
-   </div>
-  )}
-  {isPaused&&(
-   <div className="stateBanner paused">
-    <Pause size={15}/>
-    <span>PRINT PAUSED · ATTENTION NEEDED</span>
-   </div>
-  )}
-  {isError&&(
-   <div className="stateBanner error">
-    <AlertTriangle size={15}/>
-    <span>{s==='offline'?'PRINTER OFFLINE':'ERROR / ATTENTION NEEDED'}</span>
-   </div>
-  )}
-
-  <div className="printerTop">
-   <div className="printerTopLeft">
-    <div className="printerIcon"><Printer size={19}/></div>
-    <div>
-     <h3 className="printerName">{p.name}</h3>
-     <div className="printerIpRow">
-      {p.enabled&&printerUrl?(
-       <a href={printerUrl} target="_blank" rel="noreferrer" className="printerIpLink" title={`Open ${p.name} Web UI (${p.host})`}>
-        <span>{p.host}</span>
-        <ExternalLink size={11}/>
-       </a>
-      ):<span className="subline">Not enabled</span>}
-      <span className="portLabel">{p.port===80?'(Port 80)':`:${p.port}`}</span>
+ return (
+  <article className={`fleetCard state-${s}`}>
+   <div className="fleetMainRow">
+    {/* Col 1: Identity */}
+    <div className="fleetCol identity">
+     <div className="fleetPrinterIcon">
+      <Printer size={18}/>
+     </div>
+     <div className="fleetIdentityText">
+      <h3 className="fleetPrinterName">{p.name}</h3>
+      <div className="fleetSubline">
+       <span>{p.host||'unknown'}{p.enabled?` · Port: ${p.port||80}`:' · Disabled'}</span>
+      </div>
+     </div>
+     <div className="fleetPillWrap">
+      <span className={'fleetPill '+color(s)}>
+       <i/>
+       {s==='completed'?'Completed':s==='offline'?'Offline':s==='printing'?'Printing':s==='paused'?'Paused':s==='idle'?'Idle':s}
+      </span>
      </div>
     </div>
-   </div>
-   <div className="printerTopRight">
-    <span className={'pill '+color(s)}><i/>{s}</span>
-    {p.filamentDetected===false&&(
-     <span className="filRunoutBadge" title="Filament runout detected!">RUNOUT</span>
-    )}
-   </div>
-  </div>
 
-  <div className="job" title={p.file||'No active job'}>
-   <Activity size={13} style={{flexShrink:0,opacity:.75}}/>
-   <span className="jobName">{p.file||'No active G-code job'}</span>
-  </div>
-
-  <div className="progressBarWrap">
-   <div className="progressHead">
-    <span>Print progress</span>
-    <b>{p.progress??0}%</b>
-   </div>
-   <div className="bar">
-    <div className={'barFill '+color(s)} style={{width:(p.progress??0)+'%'}}/>
-   </div>
-  </div>
-
-  {s==='printing'&&p.eta&&(
-   <div className="finishBanner1080">
-    <div className="finishPart">
-     <span className="finishLabel">FINISH TIME</span>
-     <strong className="finishVal">🏁 {formatFinishTime(p.eta)}</strong>
+    {/* Col 2: Job & Progress */}
+    <div className="fleetCol jobProgress">
+     <div className="fleetJobHead">
+      <Activity size={13} style={{flexShrink:0,opacity:.8,color:isPrinting?'#38bdf8':'#64748b'}}/>
+      <span className="fleetJobName" title={p.file||'No active G-code job'}>
+       {p.file||'No active G-code job'}
+      </span>
+     </div>
+     <div className="fleetProgressWrap">
+      <div className="fleetBar">
+       <div 
+        className={'fleetBarFill '+color(s)} 
+        style={{width:`${p.progress??0}%`}} 
+       />
+      </div>
+      <span className="fleetProgressPct">{p.progress??0}%</span>
+     </div>
+     <div className="fleetJobFoot">
+      {isPrinting&&p.remainingTime!=null
+       ?`${fmtDuration(p.remainingTime)} remaining`
+       :isDone
+       ?'Print completed · Ready to clear'
+       :isIdle
+       ?'Ready for next job'
+       :isPaused
+       ?'Print paused'
+       :'Ready for next job'}
+     </div>
     </div>
-    <div className="finishPart right">
-     <span className="finishLabel">REMAINING</span>
-     <strong className="finishVal">⏳ {p.remainingTime!=null?fmtDuration(p.remainingTime):'—'} left</strong>
+
+    {/* Col 3: Telemetry Metrics */}
+    <div className="fleetCol metrics">
+     <div className="fleetMetricItem">
+      <div className="fleetMetricLabel"><Thermometer size={11}/> Nozzle</div>
+      <div className="fleetMetricVal">
+       {temp(p.nozzle)}{p.nozzleTarget?` / ${p.nozzleTarget}°`:''}
+      </div>
+     </div>
+     <div className="fleetMetricItem">
+      <div className="fleetMetricLabel"><Thermometer size={11}/> Bed</div>
+      <div className="fleetMetricVal">
+       {temp(p.bed)}{p.bedTarget?` / ${p.bedTarget}°`:''}
+      </div>
+     </div>
+     <div className="fleetMetricItem">
+      <div className="fleetMetricLabel"><Layers size={11}/> Layer</div>
+      <div className="fleetMetricVal">
+       {p.layer!=null?`${p.layer}${p.totalLayers?' / '+p.totalLayers:''}`:p.z!=null?`${p.z.toFixed(1)} mm`:'—'}
+      </div>
+     </div>
+    </div>
+
+    {/* Col 4: Badges & Action Buttons */}
+    <div className="fleetCol actions">
+     {p.filamentDetected===false&&(
+      <span className="fleetRunoutBadge" title="Filament runout detected!">RUNOUT</span>
+     )}
+     {p.enabled&&(
+      <button 
+       className="fleetBtn control" 
+       onClick={()=>onOpenControl(p)}
+       title="Remote controls, emergency actions & terminal console"
+      >
+       <Sliders size={13}/>
+       <span>Control</span>
+      </button>
+     )}
+     {printerUrl&&(
+      <a 
+       href={printerUrl} 
+       target="_blank" 
+       rel="noreferrer" 
+       className={'fleetBtn webui '+(isLocal?'':'remote')}
+       title={isLocal?`Open ${p.name} Fluidd interface directly`: `Direct LAN IP ${p.host} (requires farm Wi-Fi)`}
+      >
+       <ExternalLink size={13}/>
+       <span>Web UI</span>
+      </a>
+     )}
     </div>
    </div>
-  )}
 
-  {/* Exactly 2 lines (3 columns x 2 rows) - Spacious & Comfortable */}
-  <div className="facts2x3">
-   <div className="factCell">
-    <div className="factLabel"><Thermometer size={12}/> NOZZLE</div>
-    <div className="factVal">{temp(p.nozzle)}{p.nozzleTarget?` / ${p.nozzleTarget}°C`:''}</div>
-   </div>
-   <div className="factCell">
-    <div className="factLabel"><Thermometer size={12}/> BED</div>
-    <div className="factVal">{temp(p.bed)}{p.bedTarget?` / ${p.bedTarget}°C`:''}</div>
-   </div>
-   <div className="factCell">
-    <div className="factLabel"><Layers size={12}/> LAYER</div>
-    <div className="factVal">{p.layer!=null?`${p.layer}${p.totalLayers?' / '+p.totalLayers:''}`:p.z!=null?`${p.z.toFixed(2)} mm`:'—'}</div>
-   </div>
-   <div className="factCell">
-    <div className="factLabel"><Clock size={12}/> ELAPSED</div>
-    <div className="factVal">{fmtDuration(p.duration)}</div>
-   </div>
-   <div className="factCell">
-    <div className="factLabel"><CheckCheck size={12}/> REMAINING</div>
-    <div className="factVal highlight">{p.remainingTime!=null?fmtDuration(p.remainingTime):isDone?'Done':'—'}</div>
-   </div>
-   <div className="factCell">
-    <div className="factLabel"><Clock size={12}/> TOTAL TIME</div>
-    <div className="factVal">{fmtDuration(p.totalDuration)}</div>
-   </div>
-  </div>
-
-  {p.error&&<div className="errorText" title={p.error}>{p.error}</div>}
-
-  {/* Comfortable, Balanced Action Buttons */}
-  {p.enabled&&(
-   <div className="cardActionRow">
-    <button className="controlBtn1080" onClick={()=>onOpenControl(p)} title="Remote controls, emergency actions & G-code console">
-     <Sliders size={13}/>
-     <span>Remote Controls & Terminal</span>
-    </button>
-    {printerUrl&&(
-     <a href={printerUrl} target="_blank" rel="noreferrer" className={'openPrinterBtn1080 '+(isLocal?'':'remoteBtn')} title={isLocal?`Open ${p.name} Fluidd interface directly`: `Direct LAN IP ${p.host} (requires farm Wi-Fi or VPN)`}>
-      <ExternalLink size={13}/>
-      <span>{isLocal?'Open Web UI':'LAN UI'}</span>
-     </a>
-    )}
-   </div>
-  )}
-
-  <div className="cardFoot">
-   <span>Updated: {p.updatedAt?new Date(p.updatedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'Waiting'}</span>
-   {!isLocal&&<span className="remoteTag"> · System Relay ({systemInfo?.primaryIp||'172.16.20.139'})</span>}
-  </div>
- </article>;
+   {/* Error / Offline Banner */}
+   {isError&&(
+    <div className="fleetErrorBanner">
+     <AlertTriangle size={15} className="fleetErrorIcon"/>
+     <div className="fleetErrorContent">
+      <strong>Can't reach this printer</strong>
+      <span>
+       {p.error||`Connection timed out while contacting Moonraker at ${p.host}:${p.port}. Check the printer power, IP address, and Moonraker port.`}
+      </span>
+     </div>
+    </div>
+   )}
+  </article>
+ );
 }
 
 function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
@@ -905,34 +894,57 @@ function App(){
 
  return <div className="layout">
   <aside>
-   <div className="logo"><Printer size={25}/> NEPTUNE <span>FARM</span></div>
-   <div className="asideLabel">WORKSPACE</div>
-   <button className={'nav '+(page==='overview'?'active':'')} onClick={()=>setPage('overview')}><Activity size={18}/> Live overview</button>
-   <button className={'nav '+(page==='completed'?'active':'')} onClick={()=>setPage('completed')}><CheckCheck size={18}/> Production & Qty</button>
-   <button className={'nav '+(page==='alerts'?'active':'')} onClick={()=>setPage('alerts')}><Bell size={18}/> Alerts & events</button>
-   <button className={'nav '+(page==='settings'?'active':'')} onClick={()=>setPage('settings')}><Settings size={18}/> Printer settings</button>
+   <div className="logo">
+    <div className="logoIconBox"><Printer size={20}/></div>
+    <div className="logoTitle">NEPTUNE <span>FARM</span></div>
+   </div>
+   <div className="asideLabel">FARM</div>
+   <button className={'nav '+(page==='overview'?'active':'')} onClick={()=>setPage('overview')}>
+    <Activity size={17}/> <span>Fleet overview</span>
+   </button>
+   <button className={'nav '+(page==='completed'?'active':'')} onClick={()=>setPage('completed')}>
+    <CheckCheck size={17}/> <span>Production</span>
+   </button>
+   <button className={'nav '+(page==='alerts'?'active':'')} onClick={()=>setPage('alerts')}>
+    <Bell size={17}/> <span>Alerts & events</span>
+    {events.length>0&&<span className="asideBadge">{events.length>9?'9+':events.length}</span>}
+   </button>
+   <button className={'nav '+(page==='settings'?'active':'')} onClick={()=>setPage('settings')}>
+    <Settings size={17}/> <span>Printer settings</span>
+   </button>
    <div className="asideFoot">
-    <div className="badgeInfo">
-     <div>READ-ONLY MONITORING</div>
-     <div style={{marginTop:'5px',fontSize:'10px',color:'#506a88'}}>HOST: {systemInfo?.primaryIp||'172.16.20.139'}</div>
+    <div className="hostStatusBox">
+     <div className="hostStatusHead">
+      <span className="liveDot green"/>
+      <span>Farm host connected</span>
+     </div>
+     <div className="hostStatusSub">HOST: {systemInfo?.primaryIp||'172.16.20.139'}</div>
     </div>
-    <button className="nav" onClick={async()=>{await api('/logout',{method:'POST'});setAuthed(false)}}><LogOut size={18}/> Sign out</button>
+    <button className="nav signout" onClick={async()=>{await api('/logout',{method:'POST'});setAuthed(false)}}>
+     <LogOut size={16}/> <span>Sign out</span>
+    </button>
    </div>
   </aside>
 
   <main className="main">
    <header>
-    <div className="mobileLogo"><Printer size={20}/> Neptune Farm</div>
-    <div className={'netBadge '+(isLocal?'local':'remote')} title={isLocal?`Connected via Local Farm LAN (${systemInfo?.primaryIp||'172.16.20.139'})`:`Remote Access: Telemetry is continuously relayed from your Farm Host PC (${systemInfo?.primaryIp||'172.16.20.139'})`}>
-     {isLocal?<Wifi size={13}/>:<Globe size={13}/>}
-     <span>{isLocal?`LAN Mode (${systemInfo?.primaryIp||'172.16.20.139'})`:`Remote Relay (${systemInfo?.primaryIp||'172.16.20.139'})`}</span>
+    <div className="headerLeftGroup">
+     <div className={'netBadge '+(isLocal?'local':'remote')} title={isLocal?`Connected via Local Farm LAN (${systemInfo?.primaryIp||'172.16.20.139'})`:`Remote Access: Telemetry is continuously relayed from Farm Host PC (${systemInfo?.primaryIp||'172.16.20.139'})`}>
+      <span className="liveDot green"/>
+      <span>{isLocal?'LAN connected':'Remote connected'}</span>
+     </div>
+     <span className="headerTime">Updated {refreshed?refreshed.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true}):'--:--'}</span>
+     <button className="themeToggleBtn" onClick={()=>alert('Theme: Dark Fleet mode active')}>
+      <Sun size={13}/> Light
+     </button>
+     <button className="iconButton" title="Refresh telemetry" onClick={refresh}>
+      <RefreshCw size={15}/>
+     </button>
     </div>
-    <span className="headerTime">{refreshed?'Last refresh '+refreshed.toLocaleTimeString():'Connecting…'}</span>
-    <button className="iconButton" title="Refresh" onClick={refresh}><RefreshCw size={18}/></button>
    </header>
 
    <div className="mobileNav">
-    <button onClick={()=>setPage('overview')}>Overview</button>
+    <button onClick={()=>setPage('overview')}>Fleet overview</button>
     <button onClick={()=>setPage('completed')}>Production</button>
     <button onClick={()=>setPage('alerts')}>Alerts</button>
     <button onClick={()=>setPage('settings')}>Settings</button>
@@ -942,24 +954,72 @@ function App(){
 
    {page==='overview'?(
     <>
-     <div className="overviewHeaderBar">
-      <div className="overviewTitle">
-       <h1>Print Farm Live Overview</h1>
-       <span className="subline">{total} Connected Printers · Real-Time Telemetry</span>
+     {/* PRINTER FLEET Page Title Header */}
+     <div className="fleetPageHeader">
+      <div className="fleetTitleWrap">
+       <span className="fleetCategoryTag">PRINTER FLEET</span>
+       <h1 className="fleetMainTitle">Fleet Overview</h1>
+       <p className="fleetSubtitle">Monitor your printers, jobs, and connection health.</p>
       </div>
-      <div className="farmMetrics">
-       <div className="metricChip total"><Printer size={13}/><span><b>{total}</b> Total</span></div>
-       <div className="metricChip printing"><Activity size={13}/><span><b>{printing}</b> Printing</span></div>
-       <div className="metricChip idle"><Clock size={13}/><span><b>{Math.max(0, online - printing - (issues+paused))}</b> Idle</span></div>
-       {(issues+paused)>0&&(
-        <div className="metricChip attention"><AlertTriangle size={13}/><span><b>{issues+paused}</b> Attention</span></div>
-       )}
-       <div className="metricChip time"><Calendar size={13}/><span>{new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</span></div>
+      <div className="fleetHeaderActions">
+       <button className="fleetAddBtn" onClick={()=>setPage('settings')}>
+        <Plus size={15}/> Add printer
+       </button>
+       <button className="fleetRefreshBtn" onClick={refresh} title="Refresh telemetry">
+        <RefreshCw size={14}/> Refresh
+       </button>
       </div>
      </div>
 
-     {/* 1920x1080 Symmetrical 3x2 Grid: 5 Printers + Farm Activity Hub */}
-     <section className="farmGrid1080">
+     {/* 4 Fleet Stat Cards */}
+     <section className="fleetStatsGrid">
+      <div className="fleetStatCard total">
+       <div className="fleetStatIconBox total"><Printer size={18}/></div>
+       <div className="fleetStatInfo">
+        <span className="fleetStatLabel">Total printers</span>
+        <strong className="fleetStatVal">{total}</strong>
+       </div>
+      </div>
+
+      <div className="fleetStatCard online">
+       <div className="fleetStatIconBox online"><CheckCircle2 size={18}/></div>
+       <div className="fleetStatInfo">
+        <span className="fleetStatLabel">Online</span>
+        <strong className="fleetStatVal">{online}</strong>
+       </div>
+      </div>
+
+      <div className="fleetStatCard attention">
+       <div className="fleetStatIconBox attention"><AlertTriangle size={18}/></div>
+       <div className="fleetStatInfo">
+        <span className="fleetStatLabel">Needs attention</span>
+        <strong className="fleetStatVal">{issues + paused}</strong>
+       </div>
+      </div>
+
+      <div className="fleetStatCard offline">
+       <div className="fleetStatIconBox offline"><WifiOff size={18}/></div>
+       <div className="fleetStatInfo">
+        <span className="fleetStatLabel">Offline / errors</span>
+        <strong className="fleetStatVal">{Math.max(0, total - online)}</strong>
+       </div>
+      </div>
+     </section>
+
+     {/* Printer status subheader */}
+     <div className="fleetStatusSubBar">
+      <div className="fleetStatusLeft">
+       <strong>Printer status</strong>
+       <span className="fleetStatusCount">{online} of {total} printers connected</span>
+      </div>
+      <div className="fleetStatusRight">
+       <span className="livePulseDot"/>
+       <span>Live updates: every 5 sec</span>
+      </div>
+     </div>
+
+     {/* Horizontal Fleet Cards List */}
+     <section className="fleetList">
       {printers.map(p=>(
        <PrinterCard 
         key={p.id} 
@@ -969,75 +1029,6 @@ function App(){
         onOpenControl={setControlPrinter}
        />
       ))}
-
-      {/* 6th Slot: Production & Live Farm Activity Hub */}
-      <article className="card farmHubCard">
-       <div className="hubHeader">
-        <div className="hubHeaderLeft">
-         <div className="hubIcon"><CheckCheck size={18}/></div>
-         <div>
-          <h3 className="hubTitle">Production & Activity Hub</h3>
-          <span className="subline">Real-time stats & quick actions</span>
-         </div>
-        </div>
-        <button className="textButton" style={{fontSize:'12px',fontWeight:'700'}} onClick={()=>setPage('completed')}>
-         View All →
-        </button>
-       </div>
-
-       {/* Production Summary Section */}
-       <div className="hubSection">
-        <div className="hubSectionHead">
-         <span>TODAY'S PRODUCTION QTY</span>
-         <span className="hubCount">{completed.summary.reduce((acc,c)=>acc+c.quantity,0)} pcs completed</span>
-        </div>
-        <div className="hubChipsWrap">
-         {completed.summary.length?(
-          completed.summary.slice(0,4).map(s=>(
-           <div key={s.file} className="hubChip" title={s.file}>
-            <span className="hubChipName">{s.file}</span>
-            <span className="hubChipQty">{s.quantity} pcs</span>
-           </div>
-          ))
-         ):(
-          <div className="hubEmpty">No print jobs completed today yet.</div>
-         )}
-        </div>
-       </div>
-
-       {/* Latest Farm Events Stream */}
-       <div className="hubSection events">
-        <div className="hubSectionHead">
-         <span>LATEST FARM EVENTS</span>
-         <button className="textButton" style={{fontSize:'11px'}} onClick={()=>setPage('alerts')}>History →</button>
-        </div>
-        <div className="hubEventsList">
-         {events.length?(
-          events.slice(0,3).map(e=>(
-           <div key={e.id} className="hubEventRow">
-            <span className={'dot '+(e.type==='completed'?'teal':'amber')}/>
-            <span className="hubEventMsg" title={e.message}>{e.message}</span>
-            <span className="hubEventTime">{new Date(e.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
-           </div>
-          ))
-         ):(
-          <div className="hubEmpty">Awaiting farm events...</div>
-         )}
-        </div>
-       </div>
-
-       {/* Farm Host & Mode Footer */}
-       <div className="hubFoot">
-        <div className="hubFootLeft">
-         <div className={'netDot '+(isLocal?'local':'remote')}/>
-         <span>{isLocal?'LAN Mode':'Remote Relay Mode'}</span>
-         <span className="hubHostIp">({systemInfo?.primaryIp||'172.16.20.139'})</span>
-        </div>
-        <button className="hubNavBtn" onClick={()=>setPage('settings')}>
-         <Settings size={12}/> Settings
-        </button>
-       </div>
-      </article>
      </section>
     </>
    ):page==='completed'?(
