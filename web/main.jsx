@@ -88,9 +88,27 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
  const isPaused=s==='paused';
  const isError=s==='error'||s==='offline';
  const isPrinting=s==='printing';
+ const hasRunout=p.filamentDetected===false;
+ const hasIssue=isError||hasRunout||Boolean(p.error);
+ const progressVal=isDone?100:Math.max(0,Math.min(100,p.progress??0));
 
  return (
-  <article className={`fleetCard state-${s}`}>
+  <article className={`fleetCard state-${s} ${hasIssue?'has-issue':''} ${isPrinting?'is-printing':''}`}>
+   {/* Transparent Battery Progress Fill Layer across entire printer bar */}
+   {(isPrinting||isDone||(isPaused&&progressVal>0))&&(
+    <div 
+     className={`fleetCardProgressFill ${isDone?'completed':''} ${isPaused?'paused':''}`} 
+     style={{width:`${progressVal}%`}}
+    >
+     <div className="batteryGlowEdge"/>
+    </div>
+   )}
+
+   {/* Red Alert Fill for Disconnected / Error / Issue Printers */}
+   {hasIssue&&(
+    <div className="fleetCardIssueFill"/>
+   )}
+
    <div className="fleetMainRow">
     {/* Col 1: Identity */}
     <div className="fleetCol identity">

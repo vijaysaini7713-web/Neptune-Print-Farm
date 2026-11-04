@@ -69,16 +69,33 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .fleetStatusRight{display:flex;align-items:center;gap:6px;color:#34d399;font-size:11.5px;font-weight:600}
 .livePulseDot{width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981}
 
-/* FLEET PRINTER LIST & HORIZONTAL ROW CARDS */
+/* FLEET PRINTER LIST & HORIZONTAL BATTERY-STYLE CARDS */
 .fleetList{display:flex;flex-direction:column;gap:12px}
-.fleetCard{background:#0d1524;border:1px solid #18253a;border-radius:12px;padding:14px 20px;transition:all .18s;position:relative}
+.fleetCard{background:#0d1524;border:1px solid #18253a;border-radius:12px;padding:14px 20px;transition:all .25s ease;position:relative;overflow:hidden}
 .fleetCard.state-printing{border-color:#1e3a5f}
-.fleetCard.state-offline,.fleetCard.state-error{border-color:#ef4444;box-shadow:0 0 20px rgba(239,68,68,.16)}
-.fleetCard.state-paused{border-color:#f59e0b;box-shadow:0 0 20px rgba(245,158,11,.16)}
 .fleetCard.state-idle{border-color:#1c2b42}
-.fleetCard.state-completed{border-color:#10b981;box-shadow:0 0 20px rgba(16,185,129,.2)}
+.fleetCard.state-completed{border-color:#10b981;box-shadow:0 0 20px rgba(16,185,129,.25)}
+.fleetCard.state-paused{border-color:#f59e0b;box-shadow:0 0 20px rgba(245,158,11,.18)}
 
-.fleetMainRow{display:grid;grid-template-columns:250px 1.4fr 1.2fr auto;align-items:center;gap:20px}
+/* RED BAR WHEN PRINTER HAS ISSUE / DISCONNECTED */
+.fleetCard.has-issue,.fleetCard.state-offline,.fleetCard.state-error{
+ border:1.5px solid #ef4444!important;
+ background:linear-gradient(90deg,rgba(239,68,68,.16) 0%,rgba(239,68,68,.05) 100%)!important;
+ box-shadow:0 0 28px rgba(239,68,68,.25),inset 0 0 12px rgba(239,68,68,.08)!important;
+}
+.fleetCardIssueFill{position:absolute;inset:0;background:linear-gradient(90deg,rgba(239,68,68,.14) 0%,rgba(239,68,68,.04) 100%);border-left:4px solid #ef4444;z-index:1;pointer-events:none}
+
+/* TRANSPARENT BATTERY-STYLE PROGRESS FILL LAYER */
+.fleetCardProgressFill{position:absolute;top:0;left:0;bottom:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(16,185,129,.06) 0%,rgba(16,185,129,.22) 100%);transition:width .6s cubic-bezier(0.4,0,0.2,1)}
+.fleetCardProgressFill.paused{background:linear-gradient(90deg,rgba(245,158,11,.06) 0%,rgba(245,158,11,.22) 100%)}
+.fleetCardProgressFill.completed{background:linear-gradient(90deg,rgba(16,185,129,.12) 0%,rgba(16,185,129,.28) 100%)}
+.batteryGlowEdge{position:absolute;right:0;top:0;bottom:0;width:3px;background:#34d399;box-shadow:0 0 10px #34d399,0 0 18px rgba(52,211,153,.6)}
+.fleetCardProgressFill.paused .batteryGlowEdge{background:#fbbf24;box-shadow:0 0 10px #fbbf24}
+.fleetCardProgressFill.completed .batteryGlowEdge{display:none}
+
+/* ENSURE ALL TEXT & CONTROLS REMAIN SHARP & CLICKABLE ON TOP */
+.fleetMainRow{display:grid;grid-template-columns:250px 1.4fr 1.2fr auto;align-items:center;gap:20px;position:relative;z-index:2}
+.fleetErrorBanner{position:relative;z-index:2}
 @media(max-width:1380px){.fleetMainRow{grid-template-columns:220px 1.2fr 1fr auto;gap:14px}}
 @media(max-width:1050px){.fleetMainRow{grid-template-columns:1fr;gap:12px}}
 
