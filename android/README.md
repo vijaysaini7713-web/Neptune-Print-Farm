@@ -51,3 +51,4 @@ Official Android companion app for **Neptune Print Farm**. Enables remote monito
 In the Android app, tap the **Settings (gear)** icon at the top right to configure:
 - **Server URL**: Choose between the Cloudflare Remote Tunnel or your Local Workshop IP (`172.16.20.139:3080`).
 - **Test Notifications**: Tap the bell icon in the top bar to send a test alert to your phone.
+

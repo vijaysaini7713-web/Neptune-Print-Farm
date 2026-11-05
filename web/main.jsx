@@ -1,7 +1,43 @@
+
 import React,{useEffect,useState} from 'react';
 import{createRoot}from'react-dom/client';
 import{Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap,Key,Lock,Copy,Check,Cpu,HardDrive}from'lucide-react';
 import './style.css';
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function subscribeToWebPush(sendTest = true) {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+    throw new Error('Push notifications are not supported on this browser.');
+  }
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') {
+    throw new Error('Notification permission was denied. Please allow notifications in Chrome site settings.');
+  }
+  const reg = await (navigator.serviceWorker.ready || navigator.serviceWorker.register('/sw.js'));
+  const { publicKey } = await api('/push-vapid-key');
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey)
+    });
+  }
+  await api('/push-subscribe', { method: 'POST', body: JSON.stringify(sub) });
+  if (sendTest) {
+    await api('/push-test', { method: 'POST' });
+  }
+  return sub;
+}
 
 const api=async(url,options={})=>{const r=await fetch('/api'+url,{credentials:'same-origin',headers:{'content-type':'application/json'},...options});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data};
 const fmtDuration=n=>n==null?'—':Math.floor(n/3600)+'h '+Math.floor(n%3600/60)+'m';
@@ -1931,7 +1967,64 @@ function SettingsPage({list,reload,systemInfo}){
       </div>
 
       {/* 5. Host Diagnostics & System Stats */}
-      <div className="card settingCard hostCard" style={{gridColumn:'1 / -1'}}>
+      
+      {/* Phone Push Notifications Card */}
+      <div className="card settingCard hostCard" style={{gridColumn:'1 / -1',borderColor:'rgba(56,189,248,.35)'}}>
+       <div className="hostCardHead">
+        <div className="hostCardIconBox" style={{background:'rgba(56,189,248,.15)',color:'#38bdf8'}}><Bell size={18}/></div>
+        <div>
+         <h3>Phone Push Notifications (PWA & Android App)</h3>
+         <p>Receive instant phone alerts when prints complete, material runs out, or heater errors occur</p>
+        </div>
+       </div>
+
+       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'12px',marginBottom:'12px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+         <span className="liveDot green"/>
+         <span style={{fontSize:'13px',fontWeight:600,color:'#f1f5f9'}}>
+          {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'
+           ? 'Push notifications are ACTIVE on this device'
+           : 'Push notifications are NOT enabled on this device yet'}
+         </span>
+        </div>
+        <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+         <button 
+          className="primary" 
+          type="button" 
+          onClick={async()=>{
+           try {
+            await subscribeToWebPush(true);
+            alert('🎉 Phone push notifications activated! A test alert was sent to your phone notification shade.');
+           } catch(e) {
+            alert('Failed to enable push: ' + (e.message || e));
+           }
+          }}
+         >
+          <Bell size={14}/> Enable Phone Push Notifications
+         </button>
+         <button 
+          className="outline" 
+          type="button" 
+          onClick={async()=>{
+           try {
+            await subscribeToWebPush(false).catch(()=>{});
+            const res = await api('/push-test', { method:'POST' });
+            alert(res.message || 'Test push notification sent to your phone!');
+           } catch(e) {
+            alert(e.message || 'Failed to send test push.');
+           }
+          }}
+         >
+          <Send size={14}/> Send Test Push to Phone
+         </button>
+        </div>
+       </div>
+       <small style={{color:'#7f93ad',fontSize:'11.5px',lineHeight:'1.5'}}>
+        💡 <b>How it works:</b> Tap "Enable Phone Push Notifications" on your Android phone. When approved, alerts will pop up in your phone's notification shade with sound and vibration even when the screen is locked!
+       </small>
+      </div>
+
+<div className="card settingCard hostCard" style={{gridColumn:'1 / -1'}}>
        <div className="hostCardHead">
         <div className="hostCardIconBox diag"><Cpu size={18}/></div>
         <div>
@@ -1989,6 +2082,13 @@ function SettingsPage({list,reload,systemInfo}){
 
 function App(){
  const[authed,setAuthed]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[systemInfo,setSystemInfo]=useState(null),[controlPrinter,setControlPrinter]=useState(null),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);
+ const[pushActive,setPushActive]=useState(typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted');
+
+ useEffect(()=>{
+  if(typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && 'serviceWorker' in navigator){
+   subscribeToWebPush(false).then(()=>setPushActive(true)).catch(e=>console.debug('Push auto-sync:', e));
+  }
+ },[]);
  const[theme,setTheme]=useState(()=>{
   try{
    return localStorage.getItem('farm_theme')||'dark';
@@ -2098,6 +2198,21 @@ function App(){
       <span>{isLocal?'LAN connected':'Remote connected'}</span>
      </div>
      <span className="headerTime">Updated {refreshed?refreshed.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true}):'--:--'}</span>
+     <button 
+      className="pushHeaderBtn" 
+      onClick={async()=>{
+       try {
+        await subscribeToWebPush(true);
+        setPushActive(true);
+        alert('🔔 Test push notification sent to your phone!');
+       } catch(e) {
+        alert('Push notification alert: ' + (e.message || e));
+       }
+      }}
+      title="Enable or test real-time phone push notifications"
+     >
+      <Bell size={13}/> <span>{pushActive ? 'Push Active (Test)' : 'Enable Alerts'}</span>
+     </button>
      <button className="themeToggleBtn" onClick={toggleTheme} title={`Switch to ${theme==='dark'?'Light':'Dark'} mode`}>
       {theme==='dark'?(
        <><Sun size={13}/> Light</>

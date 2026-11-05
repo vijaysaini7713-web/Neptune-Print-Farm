@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import webpush from 'web-push';
 import express from 'express';
 import os from 'node:os';
 import fs from 'node:fs';
@@ -26,14 +27,53 @@ const defaultHostSettings = {
  publicTunnelUrl: 'https://exciting-cooking-tap-developments.trycloudflare.com'
 };
 const read=(file,fallback)=>{try{return JSON.parse(fs.readFileSync(file,'utf8'))}catch{return fallback}};
+const save=(file,value)=>fs.writeFileSync(file,JSON.stringify(value,null,2),{mode:0o600});
 let hostSettings = { ...defaultHostSettings, ...read(hostSettingsFile, {}) };
+const vapidFile = path.join(dataDir, 'vapid.json');
+const pushSubsFile = path.join(dataDir, 'push_subscriptions.json');
+let vapidKeys = read(vapidFile, null);
+if (!vapidKeys || !vapidKeys.publicKey || !vapidKeys.privateKey) {
+ vapidKeys = webpush.generateVAPIDKeys();
+ save(vapidFile, vapidKeys);
+}
+try {
+ webpush.setVapidDetails('mailto:support@neptunefarm.local', vapidKeys.publicKey, vapidKeys.privateKey);
+} catch (e) {
+ console.warn('VAPID setup:', e.message);
+}
+let pushSubscriptions = read(pushSubsFile, []);
+
+async function sendPushToAll({ title, body, tag, url }) {
+ if (!pushSubscriptions.length) return;
+ const payload = JSON.stringify({
+  title: title || 'Neptune Print Farm',
+  body: body || '',
+  tag: tag || 'farm-alert',
+  url: url || '/'
+ });
+ const deadEndpoints = new Set();
+ await Promise.all(
+  pushSubscriptions.map(async (sub) => {
+   try {
+    await webpush.sendNotification(sub, payload);
+   } catch (err) {
+    if (err.statusCode === 404 || err.statusCode === 410) {
+     deadEndpoints.add(sub.endpoint);
+    }
+   }
+  })
+ );
+ if (deadEndpoints.size > 0) {
+  pushSubscriptions = pushSubscriptions.filter((s) => !deadEndpoints.has(s.endpoint));
+  save(pushSubsFile, pushSubscriptions);
+ }
+}
 let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{});
 const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map();
 const secret=process.env.JWT_SECRET,password=process.env.ADMIN_PASSWORD;
 if(!secret||secret.length<32||!password||password.startsWith('replace-with')||password.startsWith('change-this')){console.error('Set ADMIN_PASSWORD and a 32+ character JWT_SECRET in .env');process.exit(1)}
 const passwordHash=bcrypt.hashSync(password,11);
 let currentPasswordHash=hostSettings.passwordHash||passwordHash;
-const save=(file,value)=>fs.writeFileSync(file,JSON.stringify(value,null,2),{mode:0o600});
 
 async function telegram(message, type){
  const token = hostSettings.telegramToken || process.env.TELEGRAM_BOT_TOKEN;
@@ -55,7 +95,20 @@ async function telegram(message, type){
 function record(printerId,type,message){
  events.unshift({id:crypto.randomUUID(),printerId,type,message,time:new Date().toISOString()});
  events=events.slice(0,2000);save(historyFile,events);
- if(['completed','paused','error','runout','offline'].includes(type))void telegram(message);
+ if(['completed','paused','error','runout','offline'].includes(type)){
+  void telegram(message, type);
+  let title = '🖨 Neptune Farm Alert';
+  if (type === 'completed') title = '🎉 Print Finished!';
+  else if (type === 'runout') title = '⚠️ Filament Runout Detected!';
+  else if (type === 'error') title = '🚨 Printer Error / Shutdown!';
+  else if (type === 'paused') title = '⏸️ Print Paused';
+  void sendPushToAll({
+   title,
+   body: message,
+   tag: 'farm-' + type,
+   url: '/'
+  });
+ }
 }
 
 const validHost=h=>typeof h==='string'&&h.length>0&&h.length<255&&/^[a-zA-Z0-9.-]+$/.test(h)&&!h.startsWith('-');
@@ -764,6 +817,52 @@ app.post('/api/host-settings/test-telegram', auth, async (req, res) => {
  } catch(e) {
   res.status(500).json({ error: 'Failed to contact Telegram API: ' + e.message });
  }
+});
+
+
+app.get('/api/push-vapid-key', (_req, res) => {
+ res.json({ publicKey: vapidKeys.publicKey });
+});
+
+app.get('/api/push-status', auth, (_req, res) => {
+ res.json({ count: pushSubscriptions.length, devices: pushSubscriptions.map(s => ({ createdAt: s.createdAt, userAgent: s.userAgent })) });
+});
+
+app.post('/api/push-subscribe', auth, (req, res) => {
+ const sub = req.body;
+ if (!sub || !sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
+  return res.status(400).json({ error: 'Invalid push subscription' });
+ }
+ const idx = pushSubscriptions.findIndex((s) => s.endpoint === sub.endpoint);
+ if (idx >= 0) {
+  pushSubscriptions[idx] = {
+   ...sub,
+   updatedAt: new Date().toISOString(),
+   userAgent: req.headers['user-agent'] || ''
+  };
+ } else {
+  pushSubscriptions.push({
+   ...sub,
+   createdAt: new Date().toISOString(),
+   userAgent: req.headers['user-agent'] || ''
+  });
+ }
+ save(pushSubsFile, pushSubscriptions);
+ res.json({ ok: true, count: pushSubscriptions.length });
+});
+
+app.post('/api/push-test', auth, async (_req, res) => {
+ if (!pushSubscriptions.length) {
+  return res.status(400).json({
+   error: 'No phone or browser is subscribed yet. Tap "Enable Push Notifications" in your phone app first!'
+  });
+ }
+ await sendPushToAll({
+  title: '🔔 Neptune Farm Test Alert',
+  body: 'Push notifications are working live on your Android phone!',
+  tag: 'test'
+ });
+ res.json({ ok: true, message: 'Notification sent to ' + pushSubscriptions.length + ' registered device(s)!' });
 });
 
 app.post('/api/host-settings/detect-telegram-chat', auth, async (req, res) => {

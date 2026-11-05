@@ -1435,6 +1435,37 @@ html[data-theme="light"],
 [data-theme="light"] .totalTargetBadge{background:#f1f5f9;color:#0f172a;border-color:#cbd5e1}
 [data-theme="light"] .statusFilterRow{border-bottom-color:#e2e8f0}
 
+/* Push Header Button */
+.pushHeaderBtn{
+ display:inline-flex;
+ align-items:center;
+ gap:5px;
+ background:rgba(56,189,248,.12);
+ border:1px solid rgba(56,189,248,.3);
+ color:#38bdf8;
+ border-radius:7px;
+ padding:5px 10px;
+ font-size:12px;
+ font-weight:600;
+ cursor:pointer;
+ transition:all .15s ease;
+}
+.pushHeaderBtn:hover{
+ background:rgba(56,189,248,.2);
+ border-color:#38bdf8;
+ color:#ffffff;
+}
+
+[data-theme="light"] .pushHeaderBtn{
+ background:#eff6ff;
+ border-color:#bfdbfe;
+ color:#1d4ed8;
+}
+[data-theme="light"] .pushHeaderBtn:hover{
+ background:#dbeafe;
+ color:#1e40af;
+}
+
 /* Light Theme Overrides for Host Setup & Mobile Nav */
 [data-theme="light"] .mobileNav{background:#ffffff;border-color:#cbd5e1;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 [data-theme="light"] .mobileNav button{color:#64748b}

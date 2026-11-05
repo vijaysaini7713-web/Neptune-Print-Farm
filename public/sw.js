@@ -9,7 +9,7 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Pass through network requests, fallback to cache for offline static assets
+  // Pass through API calls
   if (event.request.url.includes('/api/')) {
     return;
   }
@@ -18,28 +18,49 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Native Web Push Notification handler
+// Web Push Notification handler (sent from server via Google FCM / Web Push)
 self.addEventListener('push', (event) => {
   let data = {};
-  try {
-    data = event.data ? event.data.json() : {};
-  } catch (e) {
-    data = { title: 'Neptune Farm Alert', body: event.data ? event.data.text() : 'Printer status changed' };
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { title: 'Neptune Print Farm', body: event.data.text() };
+    }
   }
 
+  const title = data.title || 'Neptune Print Farm';
   const options = {
-    body: data.body || 'Printer update',
+    body: data.body || 'Farm update notification',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    vibrate: [200, 100, 200],
+    vibrate: [200, 100, 200, 100, 200],
+    tag: data.tag || 'farm-update',
+    renotify: true,
     data: {
       url: data.url || '/'
     }
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Neptune Print Farm', options)
+    self.registration.showNotification(title, options)
   );
+});
+
+// Local notification triggered from client via postMessage
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, options } = event.data;
+    self.registration.showNotification(title, {
+      body: options?.body || '',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      vibrate: [200, 100, 200],
+      tag: options?.tag || 'farm-alert',
+      renotify: true,
+      data: options?.data || { url: '/' }
+    });
+  }
 });
 
 self.addEventListener('notificationclick', (event) => {
@@ -48,7 +69,7 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
       for (let client of windowClients) {
-        if (client.url === urlToOpen && 'focus' in client) {
+        if ('focus' in client) {
           return client.focus();
         }
       }

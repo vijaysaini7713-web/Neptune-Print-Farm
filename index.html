@@ -16,9 +16,14 @@
     <script type="module" src="/web/main.jsx"></script>
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
-        });
+        const registerSW = () => {
+          navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW reg err:', err));
+        };
+        if (document.readyState === 'complete') {
+          registerSW();
+        } else {
+          window.addEventListener('load', registerSW);
+        }
       }
     </script>
   </body>
