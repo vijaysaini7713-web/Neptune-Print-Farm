@@ -1876,7 +1876,8 @@ function SettingsPage({list,reload,systemInfo}){
           {key:'completed',label:'Print Completed'},
           {key:'runout',label:'Filament Runout'},
           {key:'error',label:'Shutdown / Heater Error'},
-          {key:'paused',label:'Print Paused'}
+          {key:'paused',label:'Print Paused'},
+          {key:'offline',label:'Offline (>5 min)'}
          ].map(ev=>(
           <label key={ev.key} className="tgEventCheck">
            <input 

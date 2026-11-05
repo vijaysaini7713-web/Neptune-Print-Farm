@@ -70,6 +70,7 @@ async function sendPushToAll({ title, body, tag, url }) {
 }
 let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{});
 const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map();
+const offlineSince=new Map(),offlineAlertSent=new Map();
 const secret=process.env.JWT_SECRET,password=process.env.ADMIN_PASSWORD;
 if(!secret||secret.length<32||!password||password.startsWith('replace-with')||password.startsWith('change-this')){console.error('Set ADMIN_PASSWORD and a 32+ character JWT_SECRET in .env');process.exit(1)}
 const passwordHash=bcrypt.hashSync(password,11);
@@ -96,12 +97,14 @@ function record(printerId,type,message){
  events.unshift({id:crypto.randomUUID(),printerId,type,message,time:new Date().toISOString()});
  events=events.slice(0,2000);save(historyFile,events);
  if(['completed','paused','error','runout','offline'].includes(type)){
-  void telegram(message, type);
+  const tgType = (type === 'offline' && !hostSettings.telegramEvents?.includes('offline')) ? 'error' : type;
+  void telegram(message, tgType);
   let title = '🖨 Neptune Farm Alert';
   if (type === 'completed') title = '🎉 Print Finished!';
   else if (type === 'runout') title = '⚠️ Filament Runout Detected!';
   else if (type === 'error') title = '🚨 Printer Error / Shutdown!';
   else if (type === 'paused') title = '⏸️ Print Paused';
+  else if (type === 'offline') title = '⚠️ Printer Offline (>5 min)';
   void sendPushToAll({
    title,
    body: message,
@@ -332,17 +335,17 @@ async function scan(p){
  if(!validHost(p.host)||!Number.isInteger(p.port)||p.port<1||p.port>65535){current.set(p.id,{...p,status:'error',connected:false,error:'Invalid host or port'});return}
  try{
   const endpoint='http://'+p.host+':'+p.port;
-  const discovery=await fetch(endpoint+'/printer/objects/list',{signal:AbortSignal.timeout(3500)});
+  const discovery=await fetch(endpoint+'/printer/objects/list',{signal:AbortSignal.timeout(4500)});
   if(!discovery.ok)throw Error('Discovery HTTP '+discovery.status);
   const obj=await discovery.json();if(obj.error)throw Error(obj.error.message||'Moonraker discovery error');
   const names=(obj.result?.objects||[]).filter(x=>x.startsWith('filament_switch_sensor ')||x.startsWith('filament_motion_sensor ')||x.startsWith('filament_sensor')||x.includes('filament'));
   const query=['print_stats','virtual_sdcard','extruder','heater_bed','gcode_move','webhooks',...names].map(encodeURIComponent).join('&');
   
   const [response, gcodeRes, histRes, infoRes] = await Promise.all([
-   fetch(endpoint+'/printer/objects/query?'+query,{signal:AbortSignal.timeout(4500)}),
-   fetch(endpoint+'/server/gcode_store?count=30',{signal:AbortSignal.timeout(3500)}).catch(()=>null),
-   fetch(endpoint+'/server/history/list?limit=1',{signal:AbortSignal.timeout(3500)}).catch(()=>null),
-   fetch(endpoint+'/printer/info',{signal:AbortSignal.timeout(3500)}).catch(()=>null)
+   fetch(endpoint+'/printer/objects/query?'+query,{signal:AbortSignal.timeout(5500)}),
+   fetch(endpoint+'/server/gcode_store?count=30',{signal:AbortSignal.timeout(4500)}).catch(()=>null),
+   fetch(endpoint+'/server/history/list?limit=1',{signal:AbortSignal.timeout(4500)}).catch(()=>null),
+   fetch(endpoint+'/printer/info',{signal:AbortSignal.timeout(4500)}).catch(()=>null)
   ]);
   if(!response.ok)throw Error('Status HTTP '+response.status);
   const body=await response.json();if(body.error)throw Error(body.error.message||'Moonraker status error');
@@ -423,6 +426,16 @@ async function scan(p){
   const next=normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason);
   current.set(p.id,next);last.set(p.id,next);
 
+  // If printer was previously offline, handle reconnect & clear alert tracking
+  if(offlineSince.has(p.id)){
+   const wasAlerted=offlineAlertSent.get(p.id);
+   offlineSince.delete(p.id);
+   offlineAlertSent.delete(p.id);
+   if(wasAlerted){
+    record(p.id,'offline',`${p.name}: Back ONLINE (reconnected)`);
+   }
+  }
+
   if(prev?.connected&&prev.status!==next.status){
    if(['completed','paused','error'].includes(next.status)){
     record(p.id,next.status,p.name+': '+next.status.toUpperCase()+' — '+(next.file||'No filename'));
@@ -473,7 +486,7 @@ async function scan(p){
  }catch(e){
   const previous=last.get(p.id);
   const errMsg=e.message||'Unknown error';
-  let isShutdown=errMsg.includes('shutdown')||errMsg.includes('Printer is shutdown')||errMsg.includes('not heating at expected rate');
+  let isShutdown=errMsg.includes('shutdown')||errMsg.includes('Printer is shutdown')||errMsg.includes('not heating at expected rate')||errMsg.includes('verify_heater')||errMsg.includes('FIRMWARE_RESTART');
   let shutdownReason=null;
   try{
    const infoCheck=await fetch('http://'+p.host+':'+p.port+'/printer/info',{signal:AbortSignal.timeout(2000)});
@@ -486,20 +499,44 @@ async function scan(p){
    }
   }catch{}
 
+  if(!offlineSince.has(p.id)){
+   offlineSince.set(p.id,Date.now());
+  }
+  const elapsedMs=Date.now()-offlineSince.get(p.id);
+  const FIVE_MINUTES_MS=5*60*1000;
+
+  // Brief network jitter smoothing (under 15s) when previously printing so dashboard doesn't flicker
+  const isBriefNetworkGlitch=!isShutdown && elapsedMs<15000 && previous?.connected && previous?.status==='printing';
+
   const next={
    ...p,
-   connected:!isShutdown,
-   status:'error',
-   rawState:isShutdown?'shutdown':'offline',
+   connected: isShutdown ? false : (isBriefNetworkGlitch ? true : false),
+   status: isShutdown ? 'error' : (isBriefNetworkGlitch ? previous.status : 'offline'),
+   rawState: isShutdown ? 'shutdown' : 'offline',
    isShutdown,
-   shutdownReason:shutdownReason||(isShutdown?errMsg:null),
-   error:shutdownReason||errMsg,
-   updatedAt:previous?.updatedAt||null,
-   progress:previous?.progress||0,
-   file:previous?.file||''
+   shutdownReason: shutdownReason || (isShutdown ? errMsg : null),
+   error: shutdownReason || errMsg,
+   updatedAt: previous?.updatedAt || null,
+   progress: previous?.progress || 0,
+   file: previous?.file || '',
+   duration: previous?.duration || 0,
+   offlineSince: offlineSince.get(p.id)
   };
   current.set(p.id,next);last.set(p.id,next);
-  if(previous?.connected)record(p.id,'error',p.name+': '+(isShutdown?'SHUTDOWN':'OFFLINE')+' ('+(shutdownReason||errMsg)+')');
+
+  if(isShutdown){
+   // Real Klipper hardware shutdown (e.g. bed verify heater error) -> Alert immediately
+   if(previous?.connected && !previous?.isShutdown){
+    record(p.id,'error',p.name+': SHUTDOWN ('+(shutdownReason||errMsg)+')');
+   }
+  }else{
+   // Network / Moonraker timeout -> Only send notification if printer has been offline continuously for > 5 minutes!
+   if(elapsedMs>=FIVE_MINUTES_MS && !offlineAlertSent.get(p.id)){
+    offlineAlertSent.set(p.id,true);
+    const mins=Math.round(elapsedMs/60000);
+    record(p.id,'offline',`${p.name}: OFFLINE for >${mins} min (${shutdownReason||errMsg})`);
+   }
+  }
  }
 }
 
