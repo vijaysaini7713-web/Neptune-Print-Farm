@@ -13,10 +13,10 @@ import rateLimit from 'express-rate-limit';
 const app=express(),port=Number(process.env.PORT||3080),root=process.cwd();
 const dataDir=path.join(root,'data'),configDir=path.join(root,'config');
 fs.mkdirSync(dataDir,{recursive:true});
-const configFile=path.join(configDir,'printers.json'),exampleFile=path.join(configDir,'printers.example.json'),historyFile=path.join(dataDir,'events.json'),completedFile=path.join(dataDir,'completed_prints.json'),jobsFile=path.join(dataDir,'print_jobs.json');
+const configFile=path.join(configDir,'printers.json'),exampleFile=path.join(configDir,'printers.example.json'),historyFile=path.join(dataDir,'events.json'),completedFile=path.join(dataDir,'completed_prints.json'),jobsFile=path.join(dataDir,'print_jobs.json'),clearedFile=path.join(dataDir,'cleared_prints.json');
 const read=(file,fallback)=>{try{return JSON.parse(fs.readFileSync(file,'utf8'))}catch{return fallback}};
-let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[]));
-const current=new Map(),last=new Map();
+let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{});
+const current=new Map(),last=new Map(),completedState=new Map();
 const secret=process.env.JWT_SECRET,password=process.env.ADMIN_PASSWORD;
 if(!secret||secret.length<32||!password||password.startsWith('replace-with')||password.startsWith('change-this')){console.error('Set ADMIN_PASSWORD and a 32+ character JWT_SECRET in .env');process.exit(1)}
 const passwordHash=bcrypt.hashSync(password,11);
@@ -99,7 +99,7 @@ async function syncAllHistory(){
  await Promise.all(printers.map(syncPrinterHistory));
 }
 
-function normalize(p,body,meta){
+function normalize(p,body,meta,compInfo){
  const s=body?.result?.status||{},ps=s.print_stats||{},sd=s.virtual_sdcard||{},gm=s.gcode_move||{};
  const sensed=Object.entries(s).filter(([k])=>k.startsWith('filament_switch_sensor ')||k.startsWith('filament_motion_sensor ')||k.startsWith('filament_sensor')||k.includes('filament'));
  const enabled=sensed.filter(([,v])=>v && v.enabled!==0 && v.enabled!==false);
@@ -145,16 +145,45 @@ function normalize(p,body,meta){
  }
 
  let computedStatus = statuses[state]||'unknown';
- if(state==='complete'||(state==='standby'&&sd.progress>=0.98&&ps.filename&&duration>30)){
+ if(compInfo && state!=='printing'){
+  computedStatus='completed';
+ }else if(state==='complete'||(state==='standby'&&sd.progress>=0.98&&ps.filename&&duration>30)){
   computedStatus='completed';
  }
  const isRunout = (filament === false && computedStatus !== 'completed');
- if(isRunout && (computedStatus === 'idle' || computedStatus === 'unknown' || computedStatus === 'standby')){
+ if(isRunout && (computedStatus === 'idle' || computedStatus === 'unknown' || computedStatus === 'standby' || computedStatus === 'paused')){
   computedStatus = 'runout';
  }
  const finalProgress=computedStatus==='completed'?100:Math.max(0,Math.min(100,Math.round((sd.progress||0)*100)));
+ const finalFile=computedStatus==='completed'?(compInfo?.file||ps.filename||''):(ps.filename||'');
+ const finalDuration=computedStatus==='completed'?(compInfo?.duration||duration):duration;
+ const finalFilament=computedStatus==='completed'?(compInfo?.filamentUsed||ps.filament_used||0):(ps.filament_used||0);
 
- return {...p,connected:true,status:computedStatus,rawState:state,file:ps.filename||'',progress:finalProgress,duration,totalDuration,remainingTime,eta,filamentUsed:ps.filament_used||0,layer,totalLayers,z:currentZ,nozzle:s.extruder?.temperature??null,nozzleTarget:s.extruder?.target??null,bed:s.heater_bed?.temperature??null,bedTarget:s.heater_bed?.target??null,filamentDetected:filament,filamentRunout:isRunout,filamentSensors:sensed.map(([name])=>name),updatedAt:new Date().toISOString()};
+ return {
+  ...p,
+  connected:true,
+  status:computedStatus,
+  rawState:state,
+  file:finalFile,
+  progress:finalProgress,
+  duration:finalDuration,
+  totalDuration,
+  remainingTime:computedStatus==='completed'?null:remainingTime,
+  eta:computedStatus==='completed'?null:eta,
+  filamentUsed:finalFilament,
+  layer,
+  totalLayers,
+  z:currentZ,
+  nozzle:s.extruder?.temperature??null,
+  nozzleTarget:s.extruder?.target??null,
+  bed:s.heater_bed?.temperature??null,
+  bedTarget:s.heater_bed?.target??null,
+  filamentDetected:filament,
+  filamentRunout:isRunout,
+  filamentSensors:sensed.map(([name])=>name),
+  completedAt:compInfo?.completedAt||null,
+  updatedAt:new Date().toISOString()
+ };
 }
 
 async function scan(p){
@@ -167,40 +196,98 @@ async function scan(p){
   const obj=await discovery.json();if(obj.error)throw Error(obj.error.message||'Moonraker discovery error');
   const names=(obj.result?.objects||[]).filter(x=>x.startsWith('filament_switch_sensor ')||x.startsWith('filament_motion_sensor ')||x.startsWith('filament_sensor')||x.includes('filament'));
   const query=['print_stats','virtual_sdcard','extruder','heater_bed','gcode_move',...names].map(encodeURIComponent).join('&');
-  const response=await fetch(endpoint+'/printer/objects/query?'+query,{signal:AbortSignal.timeout(4500)});
+  
+  const [response, gcodeRes, histRes] = await Promise.all([
+   fetch(endpoint+'/printer/objects/query?'+query,{signal:AbortSignal.timeout(4500)}),
+   fetch(endpoint+'/server/gcode_store?count=30',{signal:AbortSignal.timeout(3500)}).catch(()=>null),
+   fetch(endpoint+'/server/history/list?limit=1',{signal:AbortSignal.timeout(3500)}).catch(()=>null)
+  ]);
   if(!response.ok)throw Error('Status HTTP '+response.status);
   const body=await response.json();if(body.error)throw Error(body.error.message||'Moonraker status error');
-  const filename=body?.result?.status?.print_stats?.filename;
-  const meta=filename?await fetchMetadata(endpoint,filename):null;
-  const next=normalize(p,body,meta),prev=last.get(p.id);
-  if(prev?.status==='completed'&&next.rawState==='standby'&&next.file===prev.file&&next.duration===0){
-   next.status='completed';
-   next.progress=100;
+  
+  const gcodeData=gcodeRes&&gcodeRes.ok?await gcodeRes.json().catch(()=>null):null;
+  const histData=histRes&&histRes.ok?await histRes.json().catch(()=>null):null;
+  const gcodeLogs=(gcodeData?.result?.gcode_store||[]).map(x=>x.message||'');
+  const hasCompletionLog=gcodeLogs.some(m=>
+   m.includes('Done printing file')||
+   m.includes('Command {clear_plr} finished')||
+   m.includes('Running Command {clear_plr}')||
+   m.includes('clear_plr')
+  );
+  
+  const latestJob=histData?.result?.jobs?.[0]||null;
+  const isJobCompleted=(latestJob?.status==='completed');
+  const isCleared=latestJob&&clearedPrints[p.id]?.jobId===latestJob.job_id;
+  const prev=last.get(p.id);
+  const rawState=body?.result?.status?.print_stats?.state||'unknown';
+  const duration=Math.round(body?.result?.status?.print_stats?.print_duration||0);
+  const progressRatio=body?.result?.status?.virtual_sdcard?.progress||0;
+
+  if(rawState==='printing'){
+   completedState.delete(p.id);
+   if(latestJob?.job_id&&clearedPrints[p.id]?.jobId!==latestJob.job_id){
+    clearedPrints[p.id]={jobId:latestJob.job_id,startedAt:new Date().toISOString()};
+    save(clearedFile,clearedPrints);
+   }
+  }else{
+   const shouldBeCompleted = (
+    rawState==='complete' ||
+    completedState.has(p.id) ||
+    (isJobCompleted && !isCleared) ||
+    (hasCompletionLog && (!clearedPrints[p.id] || clearedPrints[p.id]?.jobId!==latestJob?.job_id)) ||
+    ((prev?.status==='printing'||prev?.status==='paused') && rawState==='standby' && (prev?.progress>=92 || duration>60 || progressRatio>=0.95))
+   );
+
+   if(shouldBeCompleted){
+    const existingComp=completedState.get(p.id);
+    const compFile=latestJob?.filename||existingComp?.file||prev?.file||body?.result?.status?.print_stats?.filename||'Completed Model';
+    const compDuration=(latestJob?.print_duration&&latestJob.print_duration>0)?Math.round(latestJob.print_duration):(existingComp?.duration||prev?.duration||duration||0);
+    const compFilament=latestJob?.filament_used||existingComp?.filamentUsed||prev?.filamentUsed||0;
+    const compCompletedAt=existingComp?.completedAt||(latestJob?.end_time?new Date(latestJob.end_time*1000).toISOString():new Date().toISOString());
+    const compJobId=latestJob?.job_id||existingComp?.jobId||null;
+
+    completedState.set(p.id,{
+     file:compFile,
+     duration:compDuration,
+     filamentUsed:compFilament,
+     completedAt:compCompletedAt,
+     jobId:compJobId
+    });
+   }
   }
+
+  const compInfo=completedState.get(p.id)||null;
+  const filename=compInfo?.file||body?.result?.status?.print_stats?.filename;
+  const meta=filename?await fetchMetadata(endpoint,filename):null;
+  const next=normalize(p,body,meta,compInfo);
   current.set(p.id,next);last.set(p.id,next);
+
   if(prev?.connected&&prev.status!==next.status){
    if(['completed','paused','error'].includes(next.status)){
     record(p.id,next.status,p.name+': '+next.status.toUpperCase()+' — '+(next.file||'No filename'));
    }
    if(next.status==='completed'&&next.file){
     const liveId=p.id+'_live_'+Date.now();
-    allJobs.unshift({
-     id:liveId,
-     jobId:null,
-     printerId:p.id,
-     printerName:p.name,
-     file:next.file,
-     status:'completed',
-     isCompleted:true,
-     isFailed:false,
-     completedAt:new Date().toISOString(),
-     duration:next.duration||0,
-     filamentUsed:next.filamentUsed||0
-    });
-    if(allJobs.length>4000)allJobs=allJobs.slice(0,4000);
-    save(jobsFile,allJobs);
-    save(completedFile,allJobs.filter(x=>x.isCompleted));
-    void syncPrinterHistory(p);
+    const existing=allJobs.find(x=>x.printerId===p.id&&x.file===next.file&&Math.abs(new Date(x.completedAt)-new Date(next.completedAt||Date.now()))<60000);
+    if(!existing){
+     allJobs.unshift({
+      id:liveId,
+      jobId:compInfo?.jobId||null,
+      printerId:p.id,
+      printerName:p.name,
+      file:next.file,
+      status:'completed',
+      isCompleted:true,
+      isFailed:false,
+      completedAt:next.completedAt||new Date().toISOString(),
+      duration:next.duration||0,
+      filamentUsed:next.filamentUsed||0
+     });
+     if(allJobs.length>4000)allJobs=allJobs.slice(0,4000);
+     save(jobsFile,allJobs);
+     save(completedFile,allJobs.filter(x=>x.isCompleted));
+     void syncPrinterHistory(p);
+    }
    }else if(['error','cancelled'].includes(next.status)&&(next.file||prev.file)){
     const liveId=p.id+'_live_fail_'+Date.now();
     allJobs.unshift({
@@ -375,6 +462,23 @@ app.get('/api/printers/:id/console',auth,async(req,res)=>{
  }catch(err){
   res.status(502).json({error:'Failed to fetch printer console: '+err.message});
  }
+});
+
+app.post('/api/printers/:id/clear-completed',auth,async(req,res)=>{
+ const p=printers.find(x=>x.id===req.params.id);
+ if(!p)return res.status(404).json({error:'Printer not found'});
+ const comp=completedState.get(p.id);
+ completedState.delete(p.id);
+ const jobId=comp?.jobId||'cleared_'+Date.now();
+ clearedPrints[p.id]={jobId,clearedAt:new Date().toISOString(),filename:comp?.file||''};
+ save(clearedFile,clearedPrints);
+ const cur=current.get(p.id);
+ if(cur){
+  const updated={...cur,status:cur.rawState==='printing'?'printing':'idle',progress:cur.rawState==='printing'?cur.progress:0};
+  current.set(p.id,updated);last.set(p.id,updated);
+ }
+ record(p.id,'cleared',`${p.name}: Bed cleared, printer ready for next job`);
+ res.json({ok:true});
 });
 
 app.get('/api/me',auth,(_req,res)=>res.json({ok:true}));

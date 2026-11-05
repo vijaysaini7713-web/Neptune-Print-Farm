@@ -74,7 +74,7 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .fleetCard{background:#0d1524;border:1px solid #18253a;border-radius:12px;padding:14px 20px;transition:all .25s ease;position:relative;overflow:hidden}
 .fleetCard.state-printing{border-color:#1e3a5f}
 .fleetCard.state-idle{border-color:#1c2b42}
-.fleetCard.state-completed{border-color:#10b981;box-shadow:0 0 20px rgba(16,185,129,.25)}
+.fleetCard.state-completed{border:1.5px solid #a855f7!important;background:linear-gradient(135deg,rgba(168,85,247,.12) 0%,rgba(13,21,36,.96) 65%)!important;box-shadow:0 0 28px rgba(168,85,247,.28),inset 0 0 14px rgba(168,85,247,.08)!important}
 .fleetCard.state-paused{border-color:#f59e0b;box-shadow:0 0 20px rgba(245,158,11,.18)}
 
 /* ORANGE BAR WHEN FILAMENT RUNOUT DETECTED */
@@ -113,13 +113,7 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
  border-right:2.5px solid #fbbf24;
  box-shadow:inset 0 0 14px rgba(245,158,11,.08),2px 0 12px rgba(251,191,36,.45);
 }
-.fleetCardProgressFill.completed{
- width:100%!important;
- background:rgba(16,185,129,.2);
- border:1.5px solid #10b981;
- border-radius:12px;
- box-shadow:0 0 22px rgba(16,185,129,.3);
-}
+.fleetCardProgressFill.completed{width:100%!important;background:rgba(168,85,247,.22)!important;border:1.5px solid #a855f7!important;border-radius:12px;box-shadow:0 0 24px rgba(168,85,247,.35)}
 .batteryGlowEdge{position:absolute;right:0;top:0;bottom:0;width:2.5px;background:#34d399;box-shadow:0 0 10px #34d399,0 0 18px rgba(52,211,153,.6)}
 .fleetCardProgressFill.paused .batteryGlowEdge{background:#fbbf24;box-shadow:0 0 10px #fbbf24}
 .fleetCardProgressFill.completed .batteryGlowEdge{display:none}
@@ -144,6 +138,8 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .fleetPill.blue{background:rgba(59,130,246,.14);color:#60a5fa}
 .fleetPill.amber{background:rgba(245,158,11,.14);color:#fbbf24}
 .fleetPill.red{background:rgba(239,68,68,.14);color:#f87171}
+.fleetPill.purple{background:rgba(168,85,247,.20);color:#c084fc;border:1px solid rgba(168,85,247,.5);box-shadow:0 0 10px rgba(168,85,247,.2)}
+.fleetPill.purple i{background:#c084fc;box-shadow:0 0 6px #c084fc}
 .fleetPill.teal{background:rgba(20,184,166,.14);color:#2dd4bf}
 .fleetPill.gray{background:rgba(100,116,139,.14);color:#94a3b8}
 
@@ -159,6 +155,7 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .fleetBarFill.blue{background:#3b82f6}
 .fleetBarFill.amber{background:#f59e0b}
 .fleetBarFill.red{background:#ef4444}
+.fleetBarFill.purple{background:linear-gradient(90deg,#9333ea,#c084fc)!important;box-shadow:0 0 10px rgba(168,85,247,.6)}
 .fleetBarFill.teal{background:#2dd4bf}
 .fleetBarFill.gray{background:#475569}
 .fleetProgressPct{font-size:12px;font-weight:800;color:#cbd5e1;width:34px;text-align:right;font-variant-numeric:tabular-nums}
@@ -186,6 +183,23 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .fleetTimeBadge.completedBy .timeValue{color:#ffffff;text-shadow:0 0 8px rgba(52,211,153,.6)}
 
 /* DONE / COMPLETED */
+.fleetTimeBadge.completed{background:rgba(168,85,247,.18);color:#d8b4fe;border:1px solid rgba(168,85,247,.5);box-shadow:0 0 14px rgba(168,85,247,.18)}
+.fleetTimeBadge.completed .timeIcon{color:#c084fc}
+.fleetTimeBadge.completed .timeLabel{color:#e9d5ff}
+.fleetTimeBadge.completed .timeValue{color:#ffffff;text-shadow:0 0 8px rgba(192,132,252,.7)}
+.fleetClearBedBtn{display:inline-flex;align-items:center;gap:6px;padding:3.5px 11px;border-radius:8px;background:linear-gradient(135deg,#7c3aed 0%,#a855f7 100%);color:#ffffff;font-weight:700;font-size:11.5px;border:1px solid #c084fc;cursor:pointer;transition:all .2s ease;box-shadow:0 0 12px rgba(168,85,247,.35)}
+.fleetClearBedBtn:hover{filter:brightness(1.15);transform:translateY(-1px);box-shadow:0 0 18px rgba(168,85,247,.65)}
+.fleetBtn.clearBedTop{background:linear-gradient(135deg,#7c3aed 0%,#a855f7 100%)!important;color:#ffffff!important;border:1px solid #c084fc!important;box-shadow:0 0 12px rgba(168,85,247,.35)!important}
+.fleetBtn.clearBedTop:hover{filter:brightness(1.15);box-shadow:0 0 18px rgba(168,85,247,.65)}
+.fleetCompletedBanner{margin-top:12px;padding:10px 14px;border-radius:9px;background:rgba(168,85,247,.14);border:1px solid rgba(168,85,247,.4);display:flex;align-items:center;gap:12px;animation:fadeIn .25s ease;position:relative;z-index:2}
+.fleetCompletedIcon{color:#c084fc;flex-shrink:0}
+.fleetCompletedContent{flex:1;display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:#e9d5ff}
+.fleetCompletedContent strong{color:#ffffff;font-size:13px}
+.fleetCompletedContent b{color:#d8b4fe}
+.fleetClearBedBannerBtn{padding:5px 14px;border-radius:7px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#ffffff;border:1px solid #c084fc;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .2s ease;box-shadow:0 0 10px rgba(168,85,247,.4);white-space:nowrap}
+.fleetClearBedBannerBtn:hover{filter:brightness(1.15);box-shadow:0 0 16px rgba(168,85,247,.7)}
+.dot.purple{background:#a855f7;box-shadow:0 0 8px #a855f7}
+.liveProdBarFill.purple{background:linear-gradient(90deg,#9333ea,#c084fc)}
 .fleetTimeBadge.done{background:rgba(16,185,129,.16);color:#34d399;border:1px solid rgba(16,185,129,.4);font-size:13px}
 .fleetTimeBadge.done .timeValue{color:#f0fdf4}
 
@@ -587,8 +601,46 @@ html[data-theme="light"],
   border-color: #e2e8f0;
 }
 [data-theme="light"] .fleetCard.state-completed{
-  border-color: #10b981;
-  box-shadow: 0 0 16px rgba(16,185,129,.18);
+  border-color: #9333ea!important;
+  background: linear-gradient(135deg, rgba(168,85,247,.08) 0%, #ffffff 70%)!important;
+  box-shadow: 0 0 20px rgba(168,85,247,.22)!important;
+}
+[data-theme="light"] .fleetCardProgressFill.completed{
+  background: rgba(168,85,247,.12)!important;
+  border: 1.5px solid #9333ea!important;
+  box-shadow: 0 0 14px rgba(168,85,247,.2)!important;
+}
+[data-theme="light"] .fleetPill.purple{
+  background: #f3e8ff;
+  color: #7e22ce;
+  border: 1px solid #d8b4fe;
+}
+[data-theme="light"] .fleetPill.purple i{
+  background: #7e22ce;
+}
+[data-theme="light"] .fleetTimeBadge.completed{
+  background: #f3e8ff;
+  color: #7e22ce;
+  border: 1px solid #d8b4fe;
+  box-shadow: 0 0 10px rgba(168,85,247,.12);
+}
+[data-theme="light"] .fleetTimeBadge.completed .timeLabel{
+  color: #6b21a8;
+}
+[data-theme="light"] .fleetTimeBadge.completed .timeValue{
+  color: #581c87;
+  text-shadow: none;
+}
+[data-theme="light"] .fleetCompletedBanner{
+  background: #fdf4ff;
+  border-color: #e9d5ff;
+  color: #4c1d95;
+}
+[data-theme="light"] .fleetCompletedContent strong{
+  color: #3b0764;
+}
+[data-theme="light"] .fleetCompletedContent b{
+  color: #7e22ce;
 }
 [data-theme="light"] .fleetCard.state-paused{
   border-color: #f59e0b;

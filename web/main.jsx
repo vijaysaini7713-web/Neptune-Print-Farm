@@ -6,7 +6,7 @@ import './style.css';
 const api=async(url,options={})=>{const r=await fetch('/api'+url,{credentials:'same-origin',headers:{'content-type':'application/json'},...options});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data};
 const fmtDuration=n=>n==null?'—':Math.floor(n/3600)+'h '+Math.floor(n%3600/60)+'m';
 const temp=n=>typeof n==='number'?n.toFixed(1)+'°C':'—';
-const color=s=>({printing:'green',completed:'teal',idle:'blue',paused:'amber',offline:'red',error:'red',disabled:'gray',connecting:'gray',cancelled:'gray',runout:'orange',filament_runout:'orange'})[s]||'gray';
+const color=s=>({printing:'green',completed:'purple',idle:'blue',paused:'amber',offline:'red',error:'red',disabled:'gray',connecting:'gray',cancelled:'gray',runout:'orange',filament_runout:'orange'})[s]||'gray';
 
 const getLocalDateStr=d=>{
  if(!d)return'';
@@ -80,7 +80,7 @@ function Login({done}){
  </main>;
 }
 
-function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
+function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed}){
  const s=p.status||'connecting';
  const printerUrl=p.host?`http://${p.host}${p.port&&p.port!==80?':'+p.port:''}`:null;
  const isDone=s==='completed';
@@ -124,7 +124,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
       <div className="fleetPillWrap">
        <span className={'fleetPill '+(hasRunout ? 'orange' : color(s))}>
         <i/>
-        {hasRunout ? 'Filament Runout' : s==='completed'?'Completed':s==='offline'?'Offline':s==='printing'?'Printing':s==='paused'?'Paused':s==='idle'?'Idle':s}
+        {hasRunout ? 'Filament Runout' : s==='completed'?'Print Completed':s==='offline'?'Offline':s==='printing'?'Printing':s==='paused'?'Paused':s==='idle'?'Idle':s}
        </span>
       </div>
       <h3 className="fleetPrinterName" title={p.name}>{p.name}</h3>
@@ -137,9 +137,9 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
     {/* Col 2: Job & Progress */}
     <div className="fleetCol jobProgress">
      <div className="fleetJobHead">
-      <Activity size={13} style={{flexShrink:0,opacity:.8,color:isPrinting?'#38bdf8':'#64748b'}}/>
-      <span className="fleetJobName" title={p.file||'No active G-code job'}>
-       {p.file||'No active G-code job'}
+      {isDone ? <Sparkles size={13} style={{flexShrink:0,color:'#c084fc'}}/> : <Activity size={13} style={{flexShrink:0,opacity:.8,color:isPrinting?'#38bdf8':'#64748b'}}/>}
+      <span className="fleetJobName" title={p.file||(isDone?'Print Finished':'No active G-code job')}>
+       {p.file||(isDone?'Print Finished':'No active G-code job')}
       </span>
      </div>
      <div className="fleetProgressWrap">
@@ -184,10 +184,21 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
         )}
        </div>
       ) : isDone ? (
-       <span className="fleetTimeBadge done">
-        <CheckCircle2 size={13} className="timeIcon"/>
-        <strong className="timeValue">Print completed · Ready to clear</strong>
-       </span>
+       <div className="fleetTimeRow completedRow">
+        <span className="fleetTimeBadge completed" title="Print completed successfully">
+         <CheckCircle2 size={13} className="timeIcon"/>
+         <span className="timeLabel">Print Completed ·</span>
+         <strong className="timeValue">{p.duration ? fmtDuration(p.duration) + ' total' : 'Finished'}</strong>
+        </span>
+        <button 
+         className="fleetClearBedBtn" 
+         onClick={(e)=>{e.stopPropagation();onClearBed&&onClearBed(p);}}
+         title="Mark model removed from bed and reset printer to Idle"
+        >
+         <CheckCircle2 size={13}/>
+         <span>Clear Bed</span>
+        </button>
+       </div>
       ) : isIdle ? (
        <span className="fleetTimeBadge idle">
         <span>Ready for next job</span>
@@ -236,6 +247,16 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
 
     {/* Col 4: Badges & Action Buttons */}
     <div className="fleetCol actions">
+     {isDone&&(
+      <button 
+       className="fleetBtn clearBedTop" 
+       onClick={()=>onClearBed&&onClearBed(p)} 
+       title="Acknowledge printed model removed from build plate"
+      >
+       <CheckCircle2 size={13}/>
+       <span>Clear Bed</span>
+      </button>
+     )}
      {hasRunout&&(
       <span className="fleetRunoutBadge orange" title="Filament runout detected! Please replace spool">REPLACE FILAMENT</span>
      )}
@@ -263,6 +284,26 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl}){
      )}
     </div>
    </div>
+
+   {/* Print Completed Banner */}
+   {isDone&&(
+    <div className="fleetCompletedBanner">
+     <Sparkles size={16} className="fleetCompletedIcon"/>
+     <div className="fleetCompletedContent">
+      <strong>🎉 Print Finished Successfully! Ready to clear bed</strong>
+      <span>
+       {p.file ? `Model "${p.file}" has finished printing.` : 'Print job completed.'} Remove printed model from build plate and click <b>Clear Bed</b> when ready.
+      </span>
+     </div>
+     <button 
+      className="fleetClearBedBannerBtn"
+      onClick={()=>onClearBed&&onClearBed(p)}
+     >
+      <CheckCircle2 size={14}/>
+      <span>Clear Bed</span>
+     </button>
+    </div>
+   )}
 
    {/* Error / Offline Banner */}
    {isError&&(
@@ -1330,6 +1371,14 @@ function App(){
 
  async function loadConfig(){try{setConfig(await api('/config'))}catch(e){setError(e.message)}}
  async function syncHistory(){await api('/completed-prints/sync',{method:'POST'});await refresh()}
+ async function handleClearBed(printer){
+  try{
+   await api(`/printers/${printer.id}/clear-completed`,{method:'POST'});
+   await refresh();
+  }catch(err){
+   alert('Failed to clear bed: '+(err.message||err));
+  }
+ }
 
  useEffect(()=>{api('/me').then(()=>setAuthed(true)).catch(()=>setAuthed(false))},[]);
  useEffect(()=>{if(!authed)return;refresh();loadConfig();const t=setInterval(refresh,5000);return()=>clearInterval(t)},[authed]);
@@ -1489,6 +1538,7 @@ function App(){
         isLocal={isLocal} 
         systemInfo={systemInfo} 
         onOpenControl={setControlPrinter}
+        onClearBed={handleClearBed}
        />
       ))}
      </section>
@@ -1501,7 +1551,7 @@ function App(){
     <>
      <div className="titleRow"><div><h1>Alerts and event history</h1><p>Changes observed while this monitor was running.</p></div></div>
      <div className="card activity">
-      {events.length?events.map(e=><div className="event" key={e.id}><span className={'dot '+(e.type==='completed'?'teal':'amber')}/><div>{e.message}<small>{new Date(e.time).toLocaleString()} · {e.type}</small></div></div>):<div className="empty"><WifiOff size={22}/> No events recorded yet.</div>}
+      {events.length?events.map(e=><div className="event" key={e.id}><span className={'dot '+(e.type==='completed'?'purple':'amber')}/><div>{e.message}<small>{new Date(e.time).toLocaleString()} · {e.type}</small></div></div>):<div className="empty"><WifiOff size={22}/> No events recorded yet.</div>}
      </div>
     </>
    )}
