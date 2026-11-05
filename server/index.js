@@ -16,7 +16,7 @@ fs.mkdirSync(dataDir,{recursive:true});
 const configFile=path.join(configDir,'printers.json'),exampleFile=path.join(configDir,'printers.example.json'),historyFile=path.join(dataDir,'events.json'),completedFile=path.join(dataDir,'completed_prints.json'),jobsFile=path.join(dataDir,'print_jobs.json'),clearedFile=path.join(dataDir,'cleared_prints.json');
 const read=(file,fallback)=>{try{return JSON.parse(fs.readFileSync(file,'utf8'))}catch{return fallback}};
 let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{});
-const current=new Map(),last=new Map(),completedState=new Map();
+const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map();
 const secret=process.env.JWT_SECRET,password=process.env.ADMIN_PASSWORD;
 if(!secret||secret.length<32||!password||password.startsWith('replace-with')||password.startsWith('change-this')){console.error('Set ADMIN_PASSWORD and a 32+ character JWT_SECRET in .env');process.exit(1)}
 const passwordHash=bcrypt.hashSync(password,11);
@@ -106,6 +106,15 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason){
  const filament=enabled.length?enabled.every(([,v])=>v.filament_detected===true||v.filament_detected===1):null;
  const state=ps.state||'unknown';
  const statuses={printing:'printing',paused:'paused',complete:'completed',error:'error',cancelled:'cancelled',standby:'idle'};
+ const isShutdown = Boolean(
+  isKlippyShutdown ||
+  wh.state === 'shutdown' ||
+  wh.state === 'error' ||
+  state === 'error' ||
+  (typeof wh.state_message === 'string' && (wh.state_message.includes('shutdown') || wh.state_message.includes('Printer is shutdown') || wh.state_message.includes('not heating at expected rate') || wh.state_message.includes('verify_heater'))) ||
+  (typeof ps.message === 'string' && (ps.message.includes('shutdown') || ps.message.includes('Printer is shutdown')))
+ );
+ const activeShutdownReason = (shutdownReason || wh.state_message || ps.message || (isShutdown ? 'Printer is shutdown' : null));
  const currentZ=(Array.isArray(gm.gcode_position)&&typeof gm.gcode_position[2]==='number')?Number(gm.gcode_position[2].toFixed(3)):null;
  let layer=ps.info?.current_layer??null,totalLayers=ps.info?.total_layer??null;
  if(layer==null&&meta?.layer_count){
@@ -123,38 +132,78 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason){
  }
 
  let totalDuration=null,remainingTime=null,eta=null;
- const duration=Math.round(ps.print_duration||0),progressRatio=sd.progress||0;
- if(state==='printing'||state==='paused'){
-  const slicerEst=(typeof meta?.estimated_time==='number'&&meta.estimated_time>0)?meta.estimated_time:null;
-  if(slicerEst){
-   totalDuration=Math.round(slicerEst);
-   if(progressRatio>0.03&&duration>60){
-    const progressEst=duration/progressRatio;
-    if(progressEst>slicerEst*0.4&&progressEst<slicerEst*2.5){
-     totalDuration=Math.round(slicerEst*(1-progressRatio)+progressEst*progressRatio);
+ const duration=Math.round(ps.print_duration||0),progressRatio=Math.max(0,Math.min(1,sd.progress||0));
+ const speedFactor=(typeof gm?.speed_factor==='number'&&gm.speed_factor>0.05&&gm.speed_factor<10)
+  ?Number(gm.speed_factor.toFixed(2))
+  :1.0;
+
+ if((state==='printing'||state==='paused')&&!isShutdown){
+  if(progressRatio>=0.999){
+   remainingTime=0;
+   totalDuration=duration;
+   eta=new Date().toISOString();
+  }else{
+   const remainingRatio=Math.max(0,1-progressRatio);
+   const slicerEst=(typeof meta?.estimated_time==='number'&&meta.estimated_time>0)?meta.estimated_time:null;
+
+   // 1. Slicer remaining adjusted immediately by current real-time speed factor
+   let slicerRemaining=null;
+   if(slicerEst){
+    slicerRemaining=Math.max(0,Math.round((slicerEst*remainingRatio)/speedFactor));
+   }
+
+   // 2. Rolling velocity from recent samples (last 20-90 seconds)
+   const now=Date.now();
+   let samples=progressSamples.get(p.id)||[];
+   if(samples.length&&(samples[samples.length-1].file!==ps.filename||progressRatio<samples[samples.length-1].progress-0.05)){
+    samples=[];
+   }
+   samples.push({time:now,progress:progressRatio,duration,file:ps.filename});
+   samples=samples.filter(s=>now-s.time<=90000);
+   progressSamples.set(p.id,samples);
+
+   let rollingRemaining=null;
+   if(samples.length>=3){
+    const oldest=samples[0];
+    const deltaTime=(now-oldest.time)/1000;
+    const deltaProgress=progressRatio-oldest.progress;
+    if(deltaTime>=15&&deltaProgress>0.0002){
+     const progressPerSec=deltaProgress/deltaTime;
+     if(progressPerSec>0){
+      rollingRemaining=Math.max(0,Math.round(remainingRatio/progressPerSec));
+     }
     }
    }
-   remainingTime=Math.max(0,Math.round(totalDuration-duration));
-  }else if(progressRatio>0.01&&duration>20){
-   totalDuration=Math.round(duration/progressRatio);
-   remainingTime=Math.max(0,Math.round(totalDuration-duration));
-  }
-  if(remainingTime!=null&&remainingTime>0){
-   eta=new Date(Date.now()+remainingTime*1000).toISOString();
+
+   // 3. Cumulative progress estimate (adjusted by speed factor)
+   let cumulativeRemaining=null;
+   if(progressRatio>0.01&&duration>20){
+    const secPerRatio=duration/progressRatio;
+    cumulativeRemaining=Math.max(0,Math.round((secPerRatio*remainingRatio)/speedFactor));
+   }
+
+   // 4. Blend to compute accurate remainingTime
+   if(slicerRemaining!=null){
+    if(rollingRemaining!=null&&rollingRemaining>15&&rollingRemaining<slicerRemaining*2.5&&rollingRemaining>slicerRemaining*0.35){
+     const weight=Math.min(0.65,0.3+progressRatio*0.35);
+     remainingTime=Math.round(slicerRemaining*(1-weight)+rollingRemaining*weight);
+    }else{
+     remainingTime=slicerRemaining;
+    }
+   }else if(rollingRemaining!=null&&rollingRemaining>15){
+    remainingTime=rollingRemaining;
+   }else if(cumulativeRemaining!=null){
+    remainingTime=cumulativeRemaining;
+   }
+
+   if(remainingTime!=null&&remainingTime>=0){
+    totalDuration=Math.round(duration+remainingTime);
+    eta=new Date(now+remainingTime*1000).toISOString();
+   }
   }
  }
 
- const isShutdown = Boolean(
-  isKlippyShutdown ||
-  wh.state === 'shutdown' ||
-  wh.state === 'error' ||
-  state === 'error' ||
-  (typeof wh.state_message === 'string' && (wh.state_message.includes('shutdown') || wh.state_message.includes('Printer is shutdown') || wh.state_message.includes('not heating at expected rate') || wh.state_message.includes('verify_heater'))) ||
-  (typeof ps.message === 'string' && (ps.message.includes('shutdown') || ps.message.includes('Printer is shutdown')))
- );
- const activeShutdownReason = (shutdownReason || wh.state_message || ps.message || (isShutdown ? 'Printer is shutdown' : null));
-
- let computedStatus = statuses[state]||'unknown';
+  let computedStatus = statuses[state]||'unknown';
  if(isShutdown){
   computedStatus = 'error';
  }else if(compInfo && state!=='printing'){
@@ -185,6 +234,7 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason){
   totalDuration,
   remainingTime:computedStatus==='completed'?null:remainingTime,
   eta:computedStatus==='completed'?null:eta,
+  speedFactor,
   filamentUsed:finalFilament,
   layer,
   totalLayers,

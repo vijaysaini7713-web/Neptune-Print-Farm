@@ -203,6 +203,14 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
           <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
          </span>
         )}
+
+        {p.speedFactor && p.speedFactor !== 1 && (
+         <span className="fleetTimeBadge speedFactor" title={`Printing speed override: ${Math.round(p.speedFactor * 100)}%`}>
+          <Zap size={13} className="timeIcon"/>
+          <span className="timeLabel">Speed:</span>
+          <strong className="timeValue">{Math.round(p.speedFactor * 100)}%</strong>
+         </span>
+        )}
        </div>
       ) : isDone ? (
        <div className="fleetTimeRow completedRow">
@@ -235,6 +243,14 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
          <span className="fleetTimeBadge completedBy">
           <span className="timeLabel">Completed by:</span>
           <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
+         </span>
+        )}
+
+        {p.speedFactor && p.speedFactor !== 1 && (
+         <span className="fleetTimeBadge speedFactor" title={`Printing speed override: ${Math.round(p.speedFactor * 100)}%`}>
+          <Zap size={13} className="timeIcon"/>
+          <span className="timeLabel">Speed:</span>
+          <strong className="timeValue">{Math.round(p.speedFactor * 100)}%</strong>
          </span>
         )}
        </div>
@@ -1065,6 +1081,11 @@ function CompletedPage({data,onSync,printers=[]}){
          {p.eta&&(
           <span className="timeBadge completedBy" style={{fontSize:'11.5px',padding:'3px 8px'}}>
            <CheckCircle2 size={12}/> Complete by: <strong>{formatFinishTime(p.eta)}</strong>
+          </span>
+         )}
+         {p.speedFactor && p.speedFactor !== 1 && (
+          <span className="timeBadge speedFactor" style={{fontSize:'11.5px',padding:'3px 8px',background:'rgba(234,179,8,.15)',color:'#fde047',border:'1px solid rgba(234,179,8,.4)'}}>
+           <Zap size={12}/> Speed: <strong>{Math.round(p.speedFactor * 100)}%</strong>
           </span>
          )}
         </div>
