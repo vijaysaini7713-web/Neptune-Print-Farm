@@ -203,6 +203,77 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .fleetTimeBadge.done{background:rgba(16,185,129,.16);color:#34d399;border:1px solid rgba(16,185,129,.4);font-size:13px}
 .fleetTimeBadge.done .timeValue{color:#f0fdf4}
 
+/* SHUTDOWN BADGE & RESTART BUTTON */
+.fleetTimeBadge.shutdown{
+ background:rgba(239,68,68,.18);
+ color:#fca5a5;
+ border:1px solid rgba(239,68,68,.5);
+ box-shadow:0 0 14px rgba(239,68,68,.18);
+}
+.fleetTimeBadge.shutdown .timeIcon{color:#ef4444}
+.fleetTimeBadge.shutdown .timeLabel{color:#fca5a5;font-weight:700}
+.fleetTimeBadge.shutdown .timeValue{color:#ffffff;text-shadow:0 0 8px rgba(239,68,68,.7)}
+
+.fleetBtn.restart{
+ background:linear-gradient(135deg,#dc2626 0%,#ef4444 100%)!important;
+ color:#ffffff!important;
+ border:1px solid #f87171!important;
+ font-weight:700;
+ box-shadow:0 0 14px rgba(239,68,68,.4)!important;
+ display:inline-flex;
+ align-items:center;
+ gap:6px;
+}
+.fleetBtn.restart:hover{
+ filter:brightness(1.15);
+ box-shadow:0 0 20px rgba(239,68,68,.7)!important;
+ transform:translateY(-1px);
+}
+
+.fleetErrorBanner.is-shutdown{
+ border-color:#ef4444!important;
+ background:rgba(239,68,68,.16)!important;
+ box-shadow:0 0 20px rgba(239,68,68,.25)!important;
+}
+.fleetErrorBanner.is-shutdown .fleetErrorIcon{
+ color:#ef4444!important;
+ animation:pulse 1.8s infinite;
+}
+.fleetErrorBanner.is-shutdown strong{
+ color:#ffffff!important;
+}
+.fleetErrorBanner.is-shutdown .fleetErrorMsg{
+ color:#fecaca!important;
+ font-family:monospace;
+ font-size:12px;
+ line-height:1.45;
+ white-space:pre-wrap;
+ word-break:break-word;
+}
+.fleetFirmwareRestartBtn{
+ padding:6px 14px;
+ border-radius:7px;
+ background:linear-gradient(135deg,#dc2626 0%,#ef4444 100%);
+ color:#ffffff;
+ border:1px solid #fca5a5;
+ font-weight:800;
+ font-size:12px;
+ cursor:pointer;
+ display:inline-flex;
+ align-items:center;
+ gap:6px;
+ transition:all .2s ease;
+ box-shadow:0 0 12px rgba(239,68,68,.4);
+ white-space:nowrap;
+ flex-shrink:0;
+}
+.fleetFirmwareRestartBtn:hover{
+ filter:brightness(1.18);
+ box-shadow:0 0 18px rgba(239,68,68,.75);
+ transform:translateY(-1px);
+}
+
+
 /* PAUSED */
 .fleetTimeBadge.paused{background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.4)}
 .fleetTimeBadge.paused .timeValue{color:#fffbeb}
@@ -642,6 +713,31 @@ html[data-theme="light"],
 [data-theme="light"] .fleetCompletedContent b{
   color: #7e22ce;
 }
+
+[data-theme="light"] .fleetTimeBadge.shutdown{
+ background:#fef2f2;
+ color:#dc2626;
+ border:1px solid #fca5a5;
+ box-shadow:0 0 10px rgba(239,68,68,.12);
+}
+[data-theme="light"] .fleetTimeBadge.shutdown .timeLabel{
+ color:#b91c1c;
+}
+[data-theme="light"] .fleetTimeBadge.shutdown .timeValue{
+ color:#991b1b;
+ text-shadow:none;
+}
+[data-theme="light"] .fleetErrorBanner.is-shutdown{
+ background:#fef2f2!important;
+ border-color:#fca5a5!important;
+}
+[data-theme="light"] .fleetErrorBanner.is-shutdown strong{
+ color:#991b1b!important;
+}
+[data-theme="light"] .fleetErrorBanner.is-shutdown .fleetErrorMsg{
+ color:#7f1d1d!important;
+}
+
 [data-theme="light"] .fleetCard.state-paused{
   border-color: #f59e0b;
   box-shadow: 0 0 16px rgba(245,158,11,.15);

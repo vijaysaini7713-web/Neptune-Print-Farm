@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import{createRoot}from'react-dom/client';
-import{Printer,Settings,Activity,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap}from'lucide-react';
+import{Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap}from'lucide-react';
 import './style.css';
 
 const api=async(url,options={})=>{const r=await fetch('/api'+url,{credentials:'same-origin',headers:{'content-type':'application/json'},...options});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data};
@@ -80,20 +80,33 @@ function Login({done}){
  </main>;
 }
 
-function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed}){
+function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRestart}){
  const s=p.status||'connecting';
  const printerUrl=p.host?`http://${p.host}${p.port&&p.port!==80?':'+p.port:''}`:null;
  const isDone=s==='completed';
- const hasRunout=(p.filamentDetected===false || p.filamentRunout===true || s==='runout') && !isDone;
- const isError=(s==='error'||s==='offline') && !hasRunout;
- const hasIssue=(isError||Boolean(p.error)) && !hasRunout;
- const isIdle=s==='idle' && !hasRunout;
- const isPaused=s==='paused' && !hasRunout;
- const isPrinting=s==='printing' && !hasRunout;
+ const isShutdown = Boolean(
+  p.isShutdown ||
+  s==='shutdown' ||
+  (s==='error' && (p.error && (
+   p.error.toLowerCase().includes('shutdown') ||
+   p.error.includes('Printer is shutdown') ||
+   p.error.includes('not heating at expected rate') ||
+   p.error.includes('verify_heater') ||
+   p.error.includes('FIRMWARE_RESTART')
+  ))) ||
+  p.shutdownReason
+ );
+ const effectiveStatus = isShutdown ? 'error' : s;
+ const hasRunout=(p.filamentDetected===false || p.filamentRunout===true || s==='runout') && !isDone && !isShutdown;
+ const isError=(effectiveStatus==='error'||s==='offline'||isShutdown) && !hasRunout;
+ const hasIssue=(isError||Boolean(p.error)||isShutdown) && !hasRunout;
+ const isIdle=s==='idle' && !hasRunout && !isShutdown;
+ const isPaused=s==='paused' && !hasRunout && !isShutdown;
+ const isPrinting=s==='printing' && !hasRunout && !isShutdown;
  const progressVal=isDone?100:Math.max(0,Math.min(100,p.progress??0));
 
  return (
-  <article className={`fleetCard state-${s} ${hasRunout?'has-runout':''} ${hasIssue?'has-issue':''} ${isPrinting?'is-printing':''}`}>
+  <article className={`fleetCard state-${effectiveStatus} ${hasRunout?'has-runout':''} ${hasIssue?'has-issue':''} ${isPrinting?'is-printing':''} ${isShutdown?'is-shutdown':''}`}>
    {/* Transparent Battery Progress Fill Layer across entire printer bar */}
    {(isPrinting||isDone||(isPaused&&progressVal>0))&&(
     <div 
@@ -122,9 +135,9 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed}){
      </div>
      <div className="fleetIdentityText">
       <div className="fleetPillWrap">
-       <span className={'fleetPill '+(hasRunout ? 'orange' : color(s))}>
+       <span className={'fleetPill '+(hasRunout ? 'orange' : color(effectiveStatus))}>
         <i/>
-        {hasRunout ? 'Filament Runout' : s==='completed'?'Print Completed':s==='offline'?'Offline':s==='printing'?'Printing':s==='paused'?'Paused':s==='idle'?'Idle':s}
+        {hasRunout ? 'Filament Runout' : isShutdown ? 'Printer Shutdown' : effectiveStatus==='completed'?'Print Completed':effectiveStatus==='offline'?'Offline':effectiveStatus==='error'?'Printer Shutdown':effectiveStatus==='printing'?'Printing':effectiveStatus==='paused'?'Paused':effectiveStatus==='idle'?'Idle':effectiveStatus}
        </span>
       </div>
       <h3 className="fleetPrinterName" title={p.name}>{p.name}</h3>
@@ -166,6 +179,14 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed}){
           <strong className="timeValue">{fmtDuration(p.remainingTime)}</strong>
          </span>
         )}
+       </div>
+      ) : isShutdown ? (
+       <div className="fleetTimeRow">
+        <span className="fleetTimeBadge shutdown" title={p.shutdownReason || p.error || 'Printer is shutdown'}>
+         <AlertTriangle size={13} className="timeIcon"/>
+         <span className="timeLabel">Klipper Error:</span>
+         <strong className="timeValue">Printer is shutdown · FIRMWARE_RESTART required</strong>
+        </span>
        </div>
       ) : isPrinting ? (
        <div className="fleetTimeRow">
@@ -247,6 +268,16 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed}){
 
     {/* Col 4: Badges & Action Buttons */}
     <div className="fleetCol actions">
+     {isShutdown&&(
+      <button 
+       className="fleetBtn restart" 
+       onClick={()=>onFirmwareRestart&&onFirmwareRestart(p)}
+       title="Send FIRMWARE_RESTART to reset Klipper firmware"
+      >
+       <RotateCcw size={13}/>
+       <span>Firmware Restart</span>
+      </button>
+     )}
      {isDone&&(
       <button 
        className="fleetBtn clearBedTop" 
@@ -305,16 +336,26 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed}){
     </div>
    )}
 
-   {/* Error / Offline Banner */}
+   {/* Error / Offline / Shutdown Banner */}
    {isError&&(
-    <div className="fleetErrorBanner">
-     <AlertTriangle size={15} className="fleetErrorIcon"/>
+    <div className={`fleetErrorBanner ${isShutdown ? 'is-shutdown' : ''}`}>
+     <AlertTriangle size={16} className="fleetErrorIcon"/>
      <div className="fleetErrorContent">
-      <strong>Can't reach this printer</strong>
-      <span>
-       {p.error||`Connection timed out while contacting Moonraker at ${p.host}:${p.port}. Check the printer power, IP address, and Moonraker port.`}
+      <strong>{isShutdown ? '🚨 Printer is shutdown (Klipper Error)' : "Can't reach this printer"}</strong>
+      <span className="fleetErrorMsg">
+       {p.shutdownReason || p.error || `Connection timed out while contacting Moonraker at ${p.host}:${p.port}. Check the printer power, IP address, and Moonraker port.`}
       </span>
      </div>
+     {isShutdown&&(
+      <button 
+       className="fleetFirmwareRestartBtn"
+       onClick={()=>onFirmwareRestart&&onFirmwareRestart(p)}
+       title="Restart Klipper firmware and reload config"
+      >
+       <RotateCcw size={13}/>
+       <span>FIRMWARE_RESTART</span>
+      </button>
+     )}
     </div>
    )}
   </article>
@@ -1539,6 +1580,7 @@ function App(){
         systemInfo={systemInfo} 
         onOpenControl={setControlPrinter}
         onClearBed={handleClearBed}
+        onFirmwareRestart={handleFirmwareRestart}
        />
       ))}
      </section>

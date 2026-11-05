@@ -99,8 +99,8 @@ async function syncAllHistory(){
  await Promise.all(printers.map(syncPrinterHistory));
 }
 
-function normalize(p,body,meta,compInfo){
- const s=body?.result?.status||{},ps=s.print_stats||{},sd=s.virtual_sdcard||{},gm=s.gcode_move||{};
+function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason){
+ const s=body?.result?.status||{},ps=s.print_stats||{},sd=s.virtual_sdcard||{},gm=s.gcode_move||{},wh=s.webhooks||{};
  const sensed=Object.entries(s).filter(([k])=>k.startsWith('filament_switch_sensor ')||k.startsWith('filament_motion_sensor ')||k.startsWith('filament_sensor')||k.includes('filament'));
  const enabled=sensed.filter(([,v])=>v && v.enabled!==0 && v.enabled!==false);
  const filament=enabled.length?enabled.every(([,v])=>v.filament_detected===true||v.filament_detected===1):null;
@@ -144,13 +144,25 @@ function normalize(p,body,meta,compInfo){
   }
  }
 
+ const isShutdown = Boolean(
+  isKlippyShutdown ||
+  wh.state === 'shutdown' ||
+  wh.state === 'error' ||
+  state === 'error' ||
+  (typeof wh.state_message === 'string' && (wh.state_message.includes('shutdown') || wh.state_message.includes('Printer is shutdown') || wh.state_message.includes('not heating at expected rate') || wh.state_message.includes('verify_heater'))) ||
+  (typeof ps.message === 'string' && (ps.message.includes('shutdown') || ps.message.includes('Printer is shutdown')))
+ );
+ const activeShutdownReason = (shutdownReason || wh.state_message || ps.message || (isShutdown ? 'Printer is shutdown' : null));
+
  let computedStatus = statuses[state]||'unknown';
- if(compInfo && state!=='printing'){
+ if(isShutdown){
+  computedStatus = 'error';
+ }else if(compInfo && state!=='printing'){
   computedStatus='completed';
  }else if(state==='complete'||(state==='standby'&&sd.progress>=0.98&&ps.filename&&duration>30)){
   computedStatus='completed';
  }
- const isRunout = (filament === false && computedStatus !== 'completed');
+ const isRunout = (filament === false && computedStatus !== 'completed' && !isShutdown);
  if(isRunout && (computedStatus === 'idle' || computedStatus === 'unknown' || computedStatus === 'standby' || computedStatus === 'paused')){
   computedStatus = 'runout';
  }
@@ -163,7 +175,10 @@ function normalize(p,body,meta,compInfo){
   ...p,
   connected:true,
   status:computedStatus,
-  rawState:state,
+  rawState:isShutdown ? 'shutdown' : state,
+  isShutdown:Boolean(isShutdown),
+  shutdownReason:isShutdown ? activeShutdownReason : null,
+  error:isShutdown ? activeShutdownReason : null,
   file:finalFile,
   progress:finalProgress,
   duration:finalDuration,
@@ -195,18 +210,36 @@ async function scan(p){
   if(!discovery.ok)throw Error('Discovery HTTP '+discovery.status);
   const obj=await discovery.json();if(obj.error)throw Error(obj.error.message||'Moonraker discovery error');
   const names=(obj.result?.objects||[]).filter(x=>x.startsWith('filament_switch_sensor ')||x.startsWith('filament_motion_sensor ')||x.startsWith('filament_sensor')||x.includes('filament'));
-  const query=['print_stats','virtual_sdcard','extruder','heater_bed','gcode_move',...names].map(encodeURIComponent).join('&');
+  const query=['print_stats','virtual_sdcard','extruder','heater_bed','gcode_move','webhooks',...names].map(encodeURIComponent).join('&');
   
-  const [response, gcodeRes, histRes] = await Promise.all([
+  const [response, gcodeRes, histRes, infoRes] = await Promise.all([
    fetch(endpoint+'/printer/objects/query?'+query,{signal:AbortSignal.timeout(4500)}),
    fetch(endpoint+'/server/gcode_store?count=30',{signal:AbortSignal.timeout(3500)}).catch(()=>null),
-   fetch(endpoint+'/server/history/list?limit=1',{signal:AbortSignal.timeout(3500)}).catch(()=>null)
+   fetch(endpoint+'/server/history/list?limit=1',{signal:AbortSignal.timeout(3500)}).catch(()=>null),
+   fetch(endpoint+'/printer/info',{signal:AbortSignal.timeout(3500)}).catch(()=>null)
   ]);
   if(!response.ok)throw Error('Status HTTP '+response.status);
   const body=await response.json();if(body.error)throw Error(body.error.message||'Moonraker status error');
   
   const gcodeData=gcodeRes&&gcodeRes.ok?await gcodeRes.json().catch(()=>null):null;
   const histData=histRes&&histRes.ok?await histRes.json().catch(()=>null):null;
+  const infoData=infoRes&&infoRes.ok?await infoRes.json().catch(()=>null):null;
+  const wh=body?.result?.status?.webhooks||{};
+  const info=infoData?.result||{};
+  const whState=wh.state||info.state||'';
+  const whMsg=(wh.state_message||info.state_message||'').trim();
+  
+  const isKlippyShutdown=Boolean(
+   whState==='shutdown' ||
+   whState==='error' ||
+   body?.result?.status?.print_stats?.state==='error' ||
+   whMsg.includes('shutdown') ||
+   whMsg.includes('Printer is shutdown') ||
+   whMsg.includes('not heating at expected rate') ||
+   whMsg.includes('verify_heater') ||
+   whMsg.includes('FIRMWARE_RESTART')
+  );
+  const shutdownReason=isKlippyShutdown?(whMsg||'Printer is shutdown'):null;
   const gcodeLogs=(gcodeData?.result?.gcode_store||[]).map(x=>x.message||'');
   const hasCompletionLog=gcodeLogs.some(m=>
    m.includes('Done printing file')||
@@ -223,7 +256,9 @@ async function scan(p){
   const duration=Math.round(body?.result?.status?.print_stats?.print_duration||0);
   const progressRatio=body?.result?.status?.virtual_sdcard?.progress||0;
 
-  if(rawState==='printing'){
+  if(isKlippyShutdown){
+   completedState.delete(p.id);
+  }else if(rawState==='printing'){
    completedState.delete(p.id);
    if(latestJob?.job_id&&clearedPrints[p.id]?.jobId!==latestJob.job_id){
     clearedPrints[p.id]={jobId:latestJob.job_id,startedAt:new Date().toISOString()};
@@ -259,7 +294,7 @@ async function scan(p){
   const compInfo=completedState.get(p.id)||null;
   const filename=compInfo?.file||body?.result?.status?.print_stats?.filename;
   const meta=filename?await fetchMetadata(endpoint,filename):null;
-  const next=normalize(p,body,meta,compInfo);
+  const next=normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason);
   current.set(p.id,next);last.set(p.id,next);
 
   if(prev?.connected&&prev.status!==next.status){
@@ -310,9 +345,35 @@ async function scan(p){
    if(prev.filamentDetected!==false&&next.filamentDetected===false)record(p.id,'runout',p.name+': filament runout detected');
   }
  }catch(e){
-  const previous=last.get(p.id),next={...p,connected:false,status:'offline',error:e.message,updatedAt:previous?.updatedAt||null,progress:previous?.progress||0,file:previous?.file||''};
+  const previous=last.get(p.id);
+  const errMsg=e.message||'Unknown error';
+  let isShutdown=errMsg.includes('shutdown')||errMsg.includes('Printer is shutdown')||errMsg.includes('not heating at expected rate');
+  let shutdownReason=null;
+  try{
+   const infoCheck=await fetch('http://'+p.host+':'+p.port+'/printer/info',{signal:AbortSignal.timeout(2000)});
+   if(infoCheck.ok){
+    const infoBody=await infoCheck.json();
+    if(infoBody.result?.state==='shutdown'||infoBody.result?.state==='error'||(typeof infoBody.result?.state_message==='string'&&infoBody.result.state_message.includes('shutdown'))){
+     isShutdown=true;
+     shutdownReason=(infoBody.result?.state_message||'Printer is shutdown').trim();
+    }
+   }
+  }catch{}
+
+  const next={
+   ...p,
+   connected:!isShutdown,
+   status:'error',
+   rawState:isShutdown?'shutdown':'offline',
+   isShutdown,
+   shutdownReason:shutdownReason||(isShutdown?errMsg:null),
+   error:shutdownReason||errMsg,
+   updatedAt:previous?.updatedAt||null,
+   progress:previous?.progress||0,
+   file:previous?.file||''
+  };
   current.set(p.id,next);last.set(p.id,next);
-  if(previous?.connected)record(p.id,'offline',p.name+': offline ('+e.message+')');
+  if(previous?.connected)record(p.id,'error',p.name+': '+(isShutdown?'SHUTDOWN':'OFFLINE')+' ('+(shutdownReason||errMsg)+')');
  }
 }
 
