@@ -1493,6 +1493,8 @@ function SettingsPage({list,reload,systemInfo}){
   }
  }
 
+ const [tgDetecting, setTgDetecting] = useState(false);
+
  async function testTelegram(){
   if(!hostConfig) return;
   setTgTesting(true);setTgMsg('');setTgErr('');
@@ -1510,6 +1512,27 @@ function SettingsPage({list,reload,systemInfo}){
    setTgErr(e.message);
   }finally{
    setTgTesting(false);
+  }
+ }
+
+ async function detectTelegramChat(){
+  if(!hostConfig?.telegramToken){
+   setTgErr('Please enter the Telegram Bot Token first');
+   return;
+  }
+  setTgDetecting(true);setTgMsg('');setTgErr('');
+  try{
+   const r = await api('/host-settings/detect-telegram-chat',{
+    method:'POST',
+    body:JSON.stringify({token:hostConfig.telegramToken})
+   });
+   setHostConfig(c=>({...c,telegramChatId:r.chatId}));
+   setTgMsg(r.message || `Detected Chat ID: ${r.chatId}`);
+   setTimeout(()=>setTgMsg(''), 6000);
+  }catch(e){
+   setTgErr(e.message);
+  }finally{
+   setTgDetecting(false);
   }
  }
 
@@ -1787,12 +1810,27 @@ function SettingsPage({list,reload,systemInfo}){
 
        <div className="hostFormGroup">
         <label className="hostFieldLabel">Telegram Chat ID</label>
-        <input 
-         className="hostInput mono" 
-         value={hostConfig?.telegramChatId||''} 
-         onChange={e=>setHostConfig(c=>({...c,telegramChatId:e.target.value}))} 
-         placeholder="e.g. 987654321 or -100xxxxxxxx"
-        />
+        <div style={{display:'flex',gap:'8px'}}>
+         <input 
+          className="hostInput mono" 
+          value={hostConfig?.telegramChatId||''} 
+          onChange={e=>setHostConfig(c=>({...c,telegramChatId:e.target.value}))} 
+          placeholder="e.g. 987654321 or -100xxxxxxxx"
+         />
+         <button 
+          className="outline" 
+          type="button" 
+          onClick={detectTelegramChat} 
+          disabled={tgDetecting}
+          title="Detect chat ID automatically from recent messages sent to your bot"
+          style={{whiteSpace:'nowrap',fontSize:'11.5px',padding:'6px 12px',flexShrink:0}}
+         >
+          {tgDetecting ? 'Detecting...' : 'Auto-Detect Chat ID'}
+         </button>
+        </div>
+        <small style={{color:'#64748b',fontSize:'11.5px',marginTop:'5px',display:'block',lineHeight:'1.5'}}>
+         Telegram par <a href="https://t.me/vijaydreamcast_bot" target="_blank" rel="noreferrer" style={{color:'#38bdf8',textDecoration:'underline',fontWeight:600}}>@vijaydreamcast_bot</a> open karein, <b>START</b> dabayein (ya "hi" likhein), aur yahan <b>Auto-Detect Chat ID</b> par click karein.
+        </small>
        </div>
 
        <div className="hostFormGroup">

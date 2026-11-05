@@ -766,6 +766,38 @@ app.post('/api/host-settings/test-telegram', auth, async (req, res) => {
  }
 });
 
+app.post('/api/host-settings/detect-telegram-chat', auth, async (req, res) => {
+ const token = req.body?.token || hostSettings.telegramToken || process.env.TELEGRAM_BOT_TOKEN;
+ if (!token) return res.status(400).json({ error: 'Telegram Bot Token is required' });
+ try {
+  const r = await fetch('https://api.telegram.org/bot' + token + '/getUpdates', { signal: AbortSignal.timeout(9000) });
+  const data = await r.json();
+  if (!r.ok) return res.status(400).json({ error: data.description || 'Failed to query Telegram' });
+  const updates = data.result || [];
+  if (!updates.length) {
+   return res.status(404).json({
+    error: 'No messages found yet! Please open t.me/vijaydreamcast_bot in Telegram, press START (or send "hi"), then click Auto-Detect again.'
+   });
+  }
+  const lastUpdate = updates[updates.length - 1];
+  const msg = lastUpdate.message || lastUpdate.channel_post || lastUpdate.my_chat_member;
+  const chat = msg?.chat;
+  if (!chat?.id) return res.status(404).json({ error: 'Could not extract Chat ID from recent updates' });
+  const detectedId = String(chat.id);
+  const name = chat.first_name || chat.title || chat.username || 'User';
+  hostSettings.telegramChatId = detectedId;
+  save(hostSettingsFile, hostSettings);
+  res.json({
+   ok: true,
+   chatId: detectedId,
+   name,
+   message: 'Successfully detected Chat ID: ' + detectedId + ' (' + name + ') and saved!'
+  });
+ } catch(e) {
+  res.status(500).json({ error: 'Failed to reach Telegram API: ' + e.message });
+ }
+});
+
 app.post('/api/test-telegram',auth,(_req,res)=>{void telegram('Test notification from Neptune Print Farm');res.json({ok:true,note:'Delivery attempted; check your Telegram bot chat'})});
 const dist=path.join(root,'dist');
 if(fs.existsSync(dist)){
