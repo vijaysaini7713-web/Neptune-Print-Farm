@@ -1435,10 +1435,20 @@ function App(){
  async function syncHistory(){await api('/completed-prints/sync',{method:'POST'});await refresh()}
  async function handleClearBed(printer){
   try{
-   await api(`/printers/${printer.id}/clear-completed`,{method:'POST'});
+   await api('/printers/' + printer.id + '/clear-completed', { method: 'POST' });
    await refresh();
   }catch(err){
-   alert('Failed to clear bed: '+(err.message||err));
+   alert('Failed to clear bed: ' + (err.message || err));
+  }
+ }
+
+ async function handleFirmwareRestart(printer){
+  if(!confirm('Send FIRMWARE_RESTART to ' + (printer.name || 'printer') + '? This will reset the Klipper firmware.')) return;
+  try{
+   await api('/printers/' + printer.id + '/control', { method: 'POST', body: JSON.stringify({ action: 'firmware_restart' }) });
+   await refresh();
+  }catch(err){
+   alert('Failed to restart firmware: ' + (err.message || err));
   }
  }
 
@@ -1632,4 +1642,43 @@ function App(){
  </div>;
 }
 
-createRoot(document.getElementById('root')).render(<App/>);
+class ErrorBoundary extends React.Component {
+ constructor(props) {
+  super(props);
+  this.state = { hasError: false, error: null };
+ }
+ static getDerivedStateFromError(error) {
+  return { hasError: true, error };
+ }
+ componentDidCatch(error, info) {
+  console.error('UI Crash caught by ErrorBoundary:', error, info);
+ }
+ render() {
+  if (this.state.hasError) {
+   return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0b101b',color:'#f8fafc',fontFamily:'system-ui,sans-serif',padding:'20px'}}>
+     <div style={{maxWidth:'480px',width:'100%',background:'#141d2e',border:'1px solid #dc2626',borderRadius:'14px',padding:'24px',textAlign:'center',boxShadow:'0 20px 40px rgba(0,0,0,0.5)'}}>
+      <div style={{fontSize:'32px',marginBottom:'12px'}}>⚠️</div>
+      <h2 style={{fontSize:'18px',fontWeight:700,color:'#f87171',marginBottom:'8px'}}>Something went wrong</h2>
+      <p style={{fontSize:'13px',color:'#94a3b8',marginBottom:'20px'}}>
+       {this.state.error?.message || 'An unexpected error occurred while rendering the dashboard.'}
+      </p>
+      <button 
+       onClick={()=>window.location.reload()} 
+       style={{background:'#2563eb',color:'#fff',border:'none',padding:'10px 20px',borderRadius:'8px',fontWeight:600,cursor:'pointer',fontSize:'13px'}}
+      >
+       Refresh Dashboard
+      </button>
+     </div>
+    </div>
+   );
+  }
+  return this.props.children;
+ }
+}
+
+createRoot(document.getElementById('root')).render(
+ <ErrorBoundary>
+  <App/>
+ </ErrorBoundary>
+);
