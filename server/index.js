@@ -13,20 +13,43 @@ import rateLimit from 'express-rate-limit';
 const app=express(),port=Number(process.env.PORT||3080),root=process.cwd();
 const dataDir=path.join(root,'data'),configDir=path.join(root,'config');
 fs.mkdirSync(dataDir,{recursive:true});
-const configFile=path.join(configDir,'printers.json'),exampleFile=path.join(configDir,'printers.example.json'),historyFile=path.join(dataDir,'events.json'),completedFile=path.join(dataDir,'completed_prints.json'),jobsFile=path.join(dataDir,'print_jobs.json'),clearedFile=path.join(dataDir,'cleared_prints.json');
+const configFile=path.join(configDir,'printers.json'),exampleFile=path.join(configDir,'printers.example.json'),historyFile=path.join(dataDir,'events.json'),completedFile=path.join(dataDir,'completed_prints.json'),jobsFile=path.join(dataDir,'print_jobs.json'),clearedFile=path.join(dataDir,'cleared_prints.json'),hostSettingsFile=path.join(dataDir,'host_settings.json');
+const defaultHostSettings = {
+ farmName: 'Neptune Print Farm',
+ primaryIp: '',
+ port: Number(process.env.PORT||3080),
+ pollMs: Number(process.env.POLL_MS||5000),
+ telegramToken: process.env.TELEGRAM_BOT_TOKEN||'',
+ telegramChatId: process.env.TELEGRAM_CHAT_ID||'',
+ telegramEnabled: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
+ telegramEvents: ['completed', 'runout', 'error', 'paused'],
+ publicTunnelUrl: 'https://exciting-cooking-tap-developments.trycloudflare.com'
+};
 const read=(file,fallback)=>{try{return JSON.parse(fs.readFileSync(file,'utf8'))}catch{return fallback}};
+let hostSettings = { ...defaultHostSettings, ...read(hostSettingsFile, {}) };
 let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{});
 const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map();
 const secret=process.env.JWT_SECRET,password=process.env.ADMIN_PASSWORD;
 if(!secret||secret.length<32||!password||password.startsWith('replace-with')||password.startsWith('change-this')){console.error('Set ADMIN_PASSWORD and a 32+ character JWT_SECRET in .env');process.exit(1)}
 const passwordHash=bcrypt.hashSync(password,11);
+let currentPasswordHash=hostSettings.passwordHash||passwordHash;
 const save=(file,value)=>fs.writeFileSync(file,JSON.stringify(value,null,2),{mode:0o600});
 
-async function telegram(message){
- const token=process.env.TELEGRAM_BOT_TOKEN,chat=process.env.TELEGRAM_CHAT_ID;
- if(!token||!chat)return;
- try{const r=await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chat_id:chat,text:'🖨 Neptune Print Farm\n'+message}),signal:AbortSignal.timeout(9000)});if(!r.ok)console.warn('Telegram HTTP',r.status)}
- catch(e){console.warn('Telegram:',e.message)}
+async function telegram(message, type){
+ const token = hostSettings.telegramToken || process.env.TELEGRAM_BOT_TOKEN;
+ const chat = hostSettings.telegramChatId || process.env.TELEGRAM_CHAT_ID;
+ const enabled = hostSettings.telegramEnabled !== false;
+ if(!token || !chat || !enabled) return;
+ if(type && Array.isArray(hostSettings.telegramEvents) && !hostSettings.telegramEvents.includes(type)) return;
+ try{
+  const r=await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{
+   method:'POST',
+   headers:{'content-type':'application/json'},
+   body:JSON.stringify({chat_id:chat,text:'🖨 '+(hostSettings.farmName||'Neptune Print Farm')+'\n'+message}),
+   signal:AbortSignal.timeout(9000)
+  });
+  if(!r.ok)console.warn('Telegram HTTP',r.status);
+ } catch(e){console.warn('Telegram:',e.message)}
 }
 
 function record(printerId,type,message){
@@ -435,7 +458,7 @@ app.use(express.json({limit:'40kb'}));app.use(cookieParser());
 const limitLogin=rateLimit({windowMs:900000,limit:12,standardHeaders:'draft-7',legacyHeaders:false});
 
 app.post('/api/login',limitLogin,async(req,res)=>{
- if(typeof req.body?.password!=='string'||!(await bcrypt.compare(req.body.password,passwordHash)))return res.status(401).json({error:'Invalid password'});
+ if(typeof req.body?.password!=='string'||!(await bcrypt.compare(req.body.password,currentPasswordHash)))return res.status(401).json({error:'Invalid password'});
  const token=jwt.sign({role:'admin'},secret,{expiresIn:'12h'});
  res.cookie('farm_session',token,{httpOnly:true,sameSite:'strict',secure:process.env.COOKIE_SECURE==='true',maxAge:43200000});
  res.json({ok:true});
@@ -454,7 +477,7 @@ function getNetworkInfo(req){
    }
   }
  }
- const primaryIp=localIps[0]?.address||'127.0.0.1';
+ const primaryIp=(hostSettings.primaryIp&&hostSettings.primaryIp.trim())||localIps[0]?.address||'127.0.0.1';
  const forwarded=req?.headers['x-forwarded-for'];
  const clientIp=(typeof forwarded==='string'?forwarded.split(',')[0].trim():'')||req?.socket?.remoteAddress||'';
  const isLocalClient=(
@@ -642,6 +665,105 @@ app.put('/api/config',auth,(req,res)=>{
  for(const p of incoming){if(!p||typeof p.id!=='string'||!/^[-_a-z0-9]{1,48}$/i.test(p.id)||ids.has(p.id)||typeof p.name!=='string'||!p.name.trim()||p.name.length>80||!validHost(p.host)||!Number.isInteger(p.port)||p.port<1||p.port>65535||typeof p.enabled!=='boolean')return res.status(400).json({error:'Invalid printer configuration'});ids.add(p.id)}
  printers=incoming.map(({id,name,host,port,enabled})=>({id,name,host,port,enabled}));
  save(configFile,printers);current.clear();last.clear();metadataCache.clear();void poll();void syncAllHistory();res.json({ok:true});
+});
+
+app.get('/api/host-settings', auth, (req, res) => {
+ const net = getNetworkInfo(req);
+ const memory = process.memoryUsage();
+ const totalMem = os.totalmem();
+ const freeMem = os.freemem();
+ res.json({
+  farmName: hostSettings.farmName || 'Neptune Print Farm',
+  primaryIp: hostSettings.primaryIp || net.primaryIp,
+  port: hostSettings.port || port,
+  pollMs: hostSettings.pollMs || 5000,
+  telegramToken: hostSettings.telegramToken || '',
+  telegramChatId: hostSettings.telegramChatId || '',
+  telegramEnabled: hostSettings.telegramEnabled !== false,
+  telegramEvents: hostSettings.telegramEvents || ['completed', 'runout', 'error', 'paused'],
+  publicTunnelUrl: hostSettings.publicTunnelUrl || 'https://exciting-cooking-tap-developments.trycloudflare.com',
+  system: {
+   hostname: os.hostname(),
+   platform: os.platform(),
+   release: os.release(),
+   arch: os.arch(),
+   cpus: os.cpus().length,
+   nodeVersion: process.version,
+   uptimeSec: Math.round(process.uptime()),
+   systemUptimeSec: Math.round(os.uptime()),
+   totalMemBytes: totalMem,
+   freeMemBytes: freeMem,
+   usedMemBytes: totalMem - freeMem,
+   processMemRss: memory.rss,
+   localIps: net.localIps,
+   clientIp: net.clientIp,
+   isLocalClient: net.isLocalClient
+  }
+ });
+});
+
+app.put('/api/host-settings', auth, (req, res) => {
+ const incoming = req.body || {};
+ if (typeof incoming.farmName === 'string') {
+  hostSettings.farmName = incoming.farmName.trim().slice(0, 60) || 'Neptune Print Farm';
+ }
+ if (typeof incoming.primaryIp === 'string') {
+  hostSettings.primaryIp = incoming.primaryIp.trim().slice(0, 45);
+ }
+ if (Number.isInteger(incoming.pollMs) && incoming.pollMs >= 2000 && incoming.pollMs <= 60000) {
+  hostSettings.pollMs = incoming.pollMs;
+ }
+ if (typeof incoming.telegramToken === 'string') {
+  hostSettings.telegramToken = incoming.telegramToken.trim();
+ }
+ if (typeof incoming.telegramChatId === 'string') {
+  hostSettings.telegramChatId = incoming.telegramChatId.trim();
+ }
+ if (typeof incoming.telegramEnabled === 'boolean') {
+  hostSettings.telegramEnabled = incoming.telegramEnabled;
+ }
+ if (Array.isArray(incoming.telegramEvents)) {
+  hostSettings.telegramEvents = incoming.telegramEvents.filter(x => ['completed', 'runout', 'error', 'paused'].includes(x));
+ }
+ if (typeof incoming.publicTunnelUrl === 'string') {
+  hostSettings.publicTunnelUrl = incoming.publicTunnelUrl.trim();
+ }
+ save(hostSettingsFile, hostSettings);
+ res.json({ ok: true, message: 'Host settings updated successfully' });
+});
+
+app.post('/api/host-settings/password', auth, async (req, res) => {
+ const { currentPassword, newPassword } = req.body || {};
+ if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Current and new password are required' });
+ if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
+ const valid = await bcrypt.compare(currentPassword, currentPasswordHash);
+ if (!valid) return res.status(400).json({ error: 'Current password is incorrect' });
+ currentPasswordHash = bcrypt.hashSync(newPassword, 11);
+ hostSettings.passwordHash = currentPasswordHash;
+ save(hostSettingsFile, hostSettings);
+ res.json({ ok: true, message: 'Admin password updated successfully' });
+});
+
+app.post('/api/host-settings/test-telegram', auth, async (req, res) => {
+ const token = req.body?.token || hostSettings.telegramToken || process.env.TELEGRAM_BOT_TOKEN;
+ const chat = req.body?.chatId || hostSettings.telegramChatId || process.env.TELEGRAM_CHAT_ID;
+ if (!token || !chat) return res.status(400).json({ error: 'Telegram Bot Token and Chat ID are required' });
+ try {
+  const r = await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+   method: 'POST',
+   headers: { 'content-type': 'application/json' },
+   body: JSON.stringify({
+    chat_id: chat,
+    text: '🔔 Test alert from ' + (hostSettings.farmName || 'Neptune Print Farm') + ' Host!\nHost bridge telemetry is operational.'
+   }),
+   signal: AbortSignal.timeout(9000)
+  });
+  const data = await r.json();
+  if (!r.ok) return res.status(400).json({ error: data.description || ('Telegram API returned code ' + r.status) });
+  res.json({ ok: true, message: 'Telegram test notification delivered successfully!' });
+ } catch(e) {
+  res.status(500).json({ error: 'Failed to contact Telegram API: ' + e.message });
+ }
 });
 
 app.post('/api/test-telegram',auth,(_req,res)=>{void telegram('Test notification from Neptune Print Farm');res.json({ok:true,note:'Delivery attempted; check your Telegram bot chat'})});

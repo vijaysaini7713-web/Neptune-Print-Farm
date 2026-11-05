@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import{createRoot}from'react-dom/client';
-import{Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap}from'lucide-react';
+import{Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap,Key,Lock,Copy,Check,Cpu,HardDrive}from'lucide-react';
 import './style.css';
 
 const api=async(url,options={})=>{const r=await fetch('/api'+url,{credentials:'same-origin',headers:{'content-type':'application/json'},...options});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data};
@@ -1379,28 +1379,575 @@ function CompletedPage({data,onSync,printers=[]}){
 }
 
 
-function SettingsPage({list,reload,systemInfo}){const[items,setItems]=useState(list),[busy,setBusy]=useState(false),[message,setMessage]=useState('');useEffect(()=>setItems(list),[list]);function edit(i,key,value){setItems(old=>old.map((p,j)=>j===i?{...p,[key]:value}:p))}async function save(){setBusy(true);setMessage('');try{await api('/config',{method:'PUT',body:JSON.stringify(items)});await reload();setMessage('Saved! Printer monitoring will refresh.')}catch(e){setMessage(e.message)}finally{setBusy(false)}}async function telegram(){try{const r=await api('/test-telegram',{method:'POST'});setMessage(r.note)}catch(e){setMessage(e.message)}}return <div className="settings"><div className="titleRow"><div><h1>Printer settings</h1><p>Use each printer's local IP and port (Neptune 4 uses port <b>80</b>; standard Klipper uses 7125).</p></div><button className="outline" onClick={()=>setItems(a=>[...a,{id:'printer-'+Date.now(),name:'New printer',host:'192.168.1.100',port:80,enabled:false}])}><Plus size={16}/> Add printer</button></div><div className="card settingCard">{items.map((p,i)=><div key={p.id} className="settingRow"><div className="settingNum">{String(i+1).padStart(2,'0')}</div><label>Printer name<input value={p.name} onChange={e=>edit(i,'name',e.target.value)}/></label><label>IP / host<input value={p.host} onChange={e=>edit(i,'host',e.target.value)}/></label><label>Moonraker port<input type="number" min="1" max="65535" value={p.port} onChange={e=>edit(i,'port',Number(e.target.value))}/></label><label className="enabled"><input type="checkbox" checked={p.enabled} onChange={e=>edit(i,'enabled',e.target.checked)}/>Enabled</label><button title="Remove printer" className="iconButton" onClick={()=>setItems(a=>a.filter((_,j)=>j!==i))}><Trash2 size={17}/></button></div>)}<div className="settingActions"><button className="primary" onClick={save} disabled={busy}>{busy?'Saving…':'Save changes'}</button><button className="outline" onClick={telegram}><Bell size={16}/> Test Telegram</button>{message&&<span>{message}</span>}</div></div>
+function SettingsPage({list,reload,systemInfo}){
+ const[settingsTab,setSettingsTab]=useState('printers');
+ const[items,setItems]=useState(list),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ useEffect(()=>setItems(list),[list]);
 
-<div className="card settingCard" style={{marginTop:'19px'}}>
- <h2><Server size={18} style={{verticalAlign:'middle',marginRight:'8px',color:'#5ea5ff'}}/> Farm Host & Live Access</h2>
- <p style={{fontSize:'13px',color:'#8ea2bd',marginTop:'4px'}}>
-  This computer ({systemInfo?.hostname||'Farm Host'}) is the live bridge. It connects directly to your 5 printers on local LAN ({systemInfo?.primaryIp||'172.16.20.139'}).
- </p>
- <div className="netGrid">
-  <div className="netBox">
-   <span className="netBoxLabel">Local Wi-Fi / LAN URL</span>
-   <strong className="netBoxVal">http://{systemInfo?.primaryIp||'172.16.20.139'}:{systemInfo?.port||3080}</strong>
-   <small>Open this on any phone or PC connected to the same office Wi-Fi</small>
-  </div>
-  <div className="netBox">
-   <span className="netBoxLabel">Make Live Remotely</span>
-   <strong className="netBoxVal" style={{color:'#6ee7b7'}}>npm run live</strong>
-   <small>Generates a secure public HTTPS link to monitor your farm from outside</small>
-  </div>
- </div>
-</div>
+ // Host settings
+ const[hostConfig,setHostConfig]=useState(null);
+ const[hostBusy,setHostBusy]=useState(false);
+ const[hostMsg,setHostMsg]=useState('');
+ const[hostErr,setHostErr]=useState('');
 
-<div className="card tip"><ShieldCheck size={21}/><div><b>Security & Architecture</b><p>When opened locally on office Wi-Fi, the dashboard connects directly. When opened remotely, this host computer acts as the live telemetry relay so you never have to expose the raw printer IPs publicly.</p></div></div></div>}
+ // Password form
+ const[pwdCurrent,setPwdCurrent]=useState('');
+ const[pwdNew,setPwdNew]=useState('');
+ const[pwdConfirm,setPwdConfirm]=useState('');
+ const[pwdBusy,setPwdBusy]=useState(false);
+ const[pwdMsg,setPwdMsg]=useState('');
+ const[pwdErr,setPwdErr]=useState('');
+
+ // Telegram test
+ const[tgTesting,setTgTesting]=useState(false);
+ const[tgMsg,setTgMsg]=useState('');
+ const[tgErr,setTgErr]=useState('');
+
+ // Copy indicators
+ const[copiedTunnel,setCopiedTunnel]=useState(false);
+ const[copiedLan,setCopiedLan]=useState(false);
+
+ const loadHostConfig = async () => {
+  try {
+   const data = await api('/host-settings');
+   setHostConfig(data);
+  } catch(e) {
+   setHostErr(e.message);
+  }
+ };
+
+ useEffect(() => {
+  loadHostConfig();
+ }, []);
+
+ function edit(i,key,value){
+  setItems(old=>old.map((p,j)=>j===i?{...p,[key]:value}:p));
+ }
+
+ async function savePrinters(){
+  setBusy(true);setMessage('');
+  try{
+   await api('/config',{method:'PUT',body:JSON.stringify(items)});
+   await reload();
+   setMessage('Printer settings saved successfully! Telemetry monitoring refreshed.');
+   setTimeout(()=>setMessage(''), 4000);
+  }catch(e){
+   setMessage('Error saving printers: ' + e.message);
+  }finally{
+   setBusy(false);
+  }
+ }
+
+ async function saveHost(){
+  if(!hostConfig) return;
+  setHostBusy(true);setHostMsg('');setHostErr('');
+  try{
+   await api('/host-settings',{
+    method:'PUT',
+    body:JSON.stringify({
+     farmName: hostConfig.farmName,
+     primaryIp: hostConfig.primaryIp,
+     pollMs: Number(hostConfig.pollMs),
+     telegramToken: hostConfig.telegramToken,
+     telegramChatId: hostConfig.telegramChatId,
+     telegramEnabled: Boolean(hostConfig.telegramEnabled),
+     telegramEvents: hostConfig.telegramEvents,
+     publicTunnelUrl: hostConfig.publicTunnelUrl
+    })
+   });
+   await loadHostConfig();
+   await reload();
+   setHostMsg('Host settings saved successfully!');
+   setTimeout(()=>setHostMsg(''), 4000);
+  }catch(e){
+   setHostErr(e.message);
+  }finally{
+   setHostBusy(false);
+  }
+ }
+
+ async function handlePasswordChange(e){
+  e.preventDefault();
+  setPwdMsg('');setPwdErr('');
+  if(pwdNew !== pwdConfirm){
+   setPwdErr('New passwords do not match');
+   return;
+  }
+  if(pwdNew.length < 6){
+   setPwdErr('New password must be at least 6 characters');
+   return;
+  }
+  setPwdBusy(true);
+  try{
+   await api('/host-settings/password',{
+    method:'POST',
+    body:JSON.stringify({currentPassword:pwdCurrent, newPassword:pwdNew})
+   });
+   setPwdMsg('Admin password updated successfully!');
+   setPwdCurrent('');setPwdNew('');setPwdConfirm('');
+   setTimeout(()=>setPwdMsg(''), 4000);
+  }catch(e){
+   setPwdErr(e.message);
+  }finally{
+   setPwdBusy(false);
+  }
+ }
+
+ async function testTelegram(){
+  if(!hostConfig) return;
+  setTgTesting(true);setTgMsg('');setTgErr('');
+  try{
+   const r = await api('/host-settings/test-telegram',{
+    method:'POST',
+    body:JSON.stringify({
+     token: hostConfig.telegramToken,
+     chatId: hostConfig.telegramChatId
+    })
+   });
+   setTgMsg(r.message || 'Telegram test message sent successfully! Check your phone/app.');
+   setTimeout(()=>setTgMsg(''), 5000);
+  }catch(e){
+   setTgErr(e.message);
+  }finally{
+   setTgTesting(false);
+  }
+ }
+
+ function copyToClipboard(text, isTunnel){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+   navigator.clipboard.writeText(text);
+  }
+  if(isTunnel){
+   setCopiedTunnel(true);
+   setTimeout(()=>setCopiedTunnel(false), 2500);
+  }else{
+   setCopiedLan(true);
+   setTimeout(()=>setCopiedLan(false), 2500);
+  }
+ }
+
+ const sys = hostConfig?.system || {};
+ const localIpList = sys.localIps || [];
+ const activeLanUrl = 'http://' + (hostConfig?.primaryIp || systemInfo?.primaryIp || '172.16.20.139') + ':' + (hostConfig?.port || 3080);
+ const tunnelUrl = hostConfig?.publicTunnelUrl || 'https://exciting-cooking-tap-developments.trycloudflare.com';
+
+ return (
+  <div className="settings">
+   {/* Settings Header & Sub-Tabs */}
+   <div className="settingsHeader">
+    <div className="titleRow" style={{marginBottom:'16px'}}>
+     <div>
+      <span className="fleetCategoryTag">CONFIGURATION & SYSTEM</span>
+      <h1 className="fleetMainTitle" style={{marginTop:'4px'}}>Farm Settings & Host Setup</h1>
+      <p className="fleetSubtitle">Configure your 3D printers, Host network bridge, remote tunnel, and alert integrations.</p>
+     </div>
+    </div>
+
+    {/* Sub Navigation Tabs */}
+    <div className="settingsSubTabs">
+     <button 
+      className={'settingsSubTab ' + (settingsTab==='printers'?'active':'')}
+      onClick={()=>setSettingsTab('printers')}
+     >
+      <Printer size={15}/> <span>Printer Fleet ({items.length})</span>
+     </button>
+     <button 
+      className={'settingsSubTab ' + (settingsTab==='host'?'active':'')}
+      onClick={()=>setSettingsTab('host')}
+     >
+      <Server size={15}/> <span>Farm Host Setup</span>
+      <span className="hostStatusDot active" title="Host bridge online"/>
+     </button>
+    </div>
+   </div>
+
+   {settingsTab==='printers' ? (
+    <>
+     <div className="titleRow" style={{marginTop:'12px',marginBottom:'14px'}}>
+      <div>
+       <h2 style={{fontSize:'16px',fontWeight:700,color:'#f8fafc',margin:0}}>3D Printer Fleet ({items.length} configured)</h2>
+       <p style={{fontSize:'12.5px',color:'#8fa2bc',margin:'3px 0 0'}}>Neptune 4 uses port <b>80</b>; standard Klipper uses <b>7125</b>.</p>
+      </div>
+      <button className="outline" onClick={()=>setItems(a=>[...a,{id:'printer-'+Date.now(),name:'New Neptune 4',host:'172.16.20.xxx',port:80,enabled:true}])}>
+       <Plus size={15}/> Add printer
+      </button>
+     </div>
+
+     <div className="card settingCard">
+      {items.map((p,i)=>(
+       <div key={p.id} className="settingRow">
+        <div className="settingNum">{String(i+1).padStart(2,'0')}</div>
+        <label>
+         Printer name
+         <input value={p.name} onChange={e=>edit(i,'name',e.target.value)} placeholder="e.g. P1 - Neptune 4 Max"/>
+        </label>
+        <label>
+         IP / Host
+         <input value={p.host} onChange={e=>edit(i,'host',e.target.value)} placeholder="e.g. 172.16.20.125"/>
+        </label>
+        <label>
+         Port
+         <input type="number" min="1" max="65535" value={p.port} onChange={e=>edit(i,'port',Number(e.target.value))}/>
+        </label>
+        <label className="enabled">
+         <input type="checkbox" checked={p.enabled} onChange={e=>edit(i,'enabled',e.target.checked)}/>
+         Enabled
+        </label>
+        <button title="Remove printer" className="iconButton deleteBtn" onClick={()=>setItems(a=>a.filter((_,j)=>j!==i))}>
+         <Trash2 size={16}/>
+        </button>
+       </div>
+      ))}
+
+      <div className="settingActions">
+       <button className="primary" onClick={savePrinters} disabled={busy}>
+        {busy ? 'Saving...' : 'Save Printer Changes'}
+       </button>
+       {message && <span className="settingsStatusMsg">{message}</span>}
+      </div>
+     </div>
+    </>
+   ) : (
+    /* HOST SERVER SETUP TAB */
+    <div className="hostSetupWrapper">
+     {hostMsg && <div className="tgFeedback success" style={{marginBottom:'14px'}}>{hostMsg}</div>}
+     {hostErr && <div className="tgFeedback error" style={{marginBottom:'14px'}}>{hostErr}</div>}
+
+     <div className="hostSetupGrid">
+      {/* 1. Host Identity & Network Configuration */}
+      <div className="card settingCard hostCard">
+       <div className="hostCardHead">
+        <div className="hostCardIconBox"><Server size={18}/></div>
+        <div>
+         <h3>Farm Host & Network Bridge</h3>
+         <p>Local IP configuration and telemetry polling rate</p>
+        </div>
+       </div>
+
+       <div className="hostFormGroup">
+        <label className="hostFieldLabel">Farm Display Name</label>
+        <input 
+         className="hostInput" 
+         value={hostConfig?.farmName||''} 
+         onChange={e=>setHostConfig(c=>({...c,farmName:e.target.value}))} 
+         placeholder="Neptune Print Farm"
+        />
+       </div>
+
+       <div className="hostFormGroup">
+        <label className="hostFieldLabel">
+         Primary Host Network Interface / IP
+         <small style={{display:'block',color:'#64748b',fontWeight:400}}>Other devices on Wi-Fi use this address to connect</small>
+        </label>
+        <select 
+         className="hostSelect" 
+         value={hostConfig?.primaryIp||''} 
+         onChange={e=>setHostConfig(c=>({...c,primaryIp:e.target.value}))}
+        >
+         {localIpList.length ? (
+          localIpList.map((net, idx) => (
+           <option key={idx} value={net.address}>
+            {net.address} ({net.interface})
+           </option>
+          ))
+         ) : (
+          <option value="172.16.20.139">172.16.20.139 (Default LAN)</option>
+         )}
+        </select>
+       </div>
+
+       <div className="hostFormRow">
+        <div className="hostFormGroup" style={{flex:1}}>
+         <label className="hostFieldLabel">Server Port</label>
+         <input className="hostInput" value={hostConfig?.port||3080} readOnly disabled style={{opacity:0.8}}/>
+        </div>
+        <div className="hostFormGroup" style={{flex:1.5}}>
+         <label className="hostFieldLabel">Telemetry Polling Rate</label>
+         <select 
+          className="hostSelect" 
+          value={hostConfig?.pollMs||5000} 
+          onChange={e=>setHostConfig(c=>({...c,pollMs:Number(e.target.value)}))}
+         >
+          <option value={3000}>3 seconds (Fastest update)</option>
+          <option value={5000}>5 seconds (Recommended)</option>
+          <option value={10000}>10 seconds (Relaxed)</option>
+         </select>
+        </div>
+       </div>
+
+       <div className="settingActions" style={{marginTop:'18px'}}>
+        <button className="primary" onClick={saveHost} disabled={hostBusy}>
+         {hostBusy ? 'Saving...' : 'Save Host Settings'}
+        </button>
+       </div>
+      </div>
+
+      {/* 2. Remote Access & Cloudflare Tunnel */}
+      <div className="card settingCard hostCard">
+       <div className="hostCardHead">
+        <div className="hostCardIconBox tunnel"><Globe size={18}/></div>
+        <div>
+         <h3>Live Access & Remote Tunnel</h3>
+         <p>Monitor your print farm securely from outside the workshop</p>
+        </div>
+       </div>
+
+       <div className="tunnelStatusBadgeRow">
+        <span className="tunnelLiveBadge">
+         <span className="liveDot green"/> Cloudflare Tunnel Active
+        </span>
+        <span className="tunnelPortBadge">Port {hostConfig?.port||3080}</span>
+       </div>
+
+       <div className="hostFormGroup">
+        <label className="hostFieldLabel">Public HTTPS URL (Outside Workshop)</label>
+        <div className="tunnelUrlRow">
+         <input 
+          className="hostInput mono" 
+          value={tunnelUrl} 
+          onChange={e=>setHostConfig(c=>({...c,publicTunnelUrl:e.target.value}))}
+          placeholder="https://your-tunnel.trycloudflare.com"
+         />
+         <button 
+          className="outline copyBtn" 
+          onClick={()=>copyToClipboard(tunnelUrl, true)}
+          title="Copy Public Link to Clipboard"
+         >
+          {copiedTunnel ? <Check size={14} style={{color:'#10b981'}}/> : <Copy size={14}/>}
+          <span>{copiedTunnel ? 'Copied' : 'Copy'}</span>
+         </button>
+         <a 
+          href={tunnelUrl} 
+          target="_blank" 
+          rel="noreferrer" 
+          className="outline openBtn"
+          title="Open in new window"
+         >
+          <ExternalLink size={14}/>
+         </a>
+        </div>
+        <small style={{color:'#64748b',fontSize:'11px',marginTop:'4px',display:'block'}}>
+         Open this HTTPS link on any phone or remote computer. Protected by your admin password.
+        </small>
+       </div>
+
+       <div className="hostFormGroup" style={{marginTop:'14px'}}>
+        <label className="hostFieldLabel">Local Wi-Fi / LAN URL (Inside Workshop)</label>
+        <div className="tunnelUrlRow">
+         <input className="hostInput mono" value={activeLanUrl} readOnly/>
+         <button 
+          className="outline copyBtn" 
+          onClick={()=>copyToClipboard(activeLanUrl, false)}
+          title="Copy Local LAN Link"
+         >
+          {copiedLan ? <Check size={14} style={{color:'#10b981'}}/> : <Copy size={14}/>}
+          <span>{copiedLan ? 'Copied' : 'Copy'}</span>
+         </button>
+        </div>
+       </div>
+
+       <div className="settingActions" style={{marginTop:'16px'}}>
+        <button className="primary" onClick={saveHost} disabled={hostBusy}>
+         {hostBusy ? 'Saving...' : 'Save Tunnel Link'}
+        </button>
+       </div>
+      </div>
+
+      {/* 3. Telegram Notifications Setup */}
+      <div className="card settingCard hostCard">
+       <div className="hostCardHead">
+        <div className="hostCardIconBox tg"><Bell size={18}/></div>
+        <div>
+         <h3>Telegram Notification Bot</h3>
+         <p>Instant phone alerts when prints complete, material finishes, or heaters fault</p>
+        </div>
+       </div>
+
+       <div className="hostFormGroup">
+        <label className="enabledCheckbox">
+         <input 
+          type="checkbox" 
+          checked={hostConfig?.telegramEnabled!==false} 
+          onChange={e=>setHostConfig(c=>({...c,telegramEnabled:e.target.checked}))}
+         />
+         <strong>Enable Telegram Bot Alerts</strong>
+        </label>
+       </div>
+
+       <div className="hostFormGroup">
+        <label className="hostFieldLabel">Telegram Bot Token</label>
+        <input 
+         className="hostInput mono" 
+         type="password"
+         value={hostConfig?.telegramToken||''} 
+         onChange={e=>setHostConfig(c=>({...c,telegramToken:e.target.value}))} 
+         placeholder="e.g. 1234567890:ABCdefGHIjklMNOpqrSTUvwxyz"
+        />
+       </div>
+
+       <div className="hostFormGroup">
+        <label className="hostFieldLabel">Telegram Chat ID</label>
+        <input 
+         className="hostInput mono" 
+         value={hostConfig?.telegramChatId||''} 
+         onChange={e=>setHostConfig(c=>({...c,telegramChatId:e.target.value}))} 
+         placeholder="e.g. 987654321 or -100xxxxxxxx"
+        />
+       </div>
+
+       <div className="hostFormGroup">
+        <label className="hostFieldLabel" style={{marginBottom:'6px'}}>Alert Triggers</label>
+        <div className="tgEventsGrid">
+         {[
+          {key:'completed',label:'Print Completed'},
+          {key:'runout',label:'Filament Runout'},
+          {key:'error',label:'Shutdown / Heater Error'},
+          {key:'paused',label:'Print Paused'}
+         ].map(ev=>(
+          <label key={ev.key} className="tgEventCheck">
+           <input 
+            type="checkbox" 
+            checked={(hostConfig?.telegramEvents||[]).includes(ev.key)}
+            onChange={e=>{
+             const cur = hostConfig?.telegramEvents||[];
+             const updated = e.target.checked ? [...cur, ev.key] : cur.filter(x=>x!==ev.key);
+             setHostConfig(c=>({...c,telegramEvents:updated}));
+            }}
+           />
+           <span>{ev.label}</span>
+          </label>
+         ))}
+        </div>
+       </div>
+
+       {tgMsg && <div className="tgFeedback success">{tgMsg}</div>}
+       {tgErr && <div className="tgFeedback error">{tgErr}</div>}
+
+       <div className="settingActions" style={{marginTop:'16px'}}>
+        <button className="primary" onClick={saveHost} disabled={hostBusy}>
+         {hostBusy ? 'Saving...' : 'Save Telegram Config'}
+        </button>
+        <button className="outline" onClick={testTelegram} disabled={tgTesting}>
+         <Bell size={14}/> {tgTesting ? 'Sending test...' : 'Send Test Notification'}
+        </button>
+       </div>
+      </div>
+
+      {/* 4. Host Security & Admin Password */}
+      <div className="card settingCard hostCard">
+       <div className="hostCardHead">
+        <div className="hostCardIconBox pwd"><Lock size={18}/></div>
+        <div>
+         <h3>Admin Security & Password</h3>
+         <p>Update the dashboard login password</p>
+        </div>
+       </div>
+
+       <form onSubmit={handlePasswordChange}>
+        <div className="hostFormGroup">
+         <label className="hostFieldLabel">Current Password</label>
+         <input 
+          className="hostInput" 
+          type="password" 
+          value={pwdCurrent} 
+          onChange={e=>setPwdCurrent(e.target.value)} 
+          placeholder="Enter current password" 
+          required
+         />
+        </div>
+
+        <div className="hostFormRow">
+         <div className="hostFormGroup" style={{flex:1}}>
+          <label className="hostFieldLabel">New Password</label>
+          <input 
+           className="hostInput" 
+           type="password" 
+           value={pwdNew} 
+           onChange={e=>setPwdNew(e.target.value)} 
+           placeholder="Min 6 characters" 
+           required
+          />
+         </div>
+         <div className="hostFormGroup" style={{flex:1}}>
+          <label className="hostFieldLabel">Confirm New Password</label>
+          <input 
+           className="hostInput" 
+           type="password" 
+           value={pwdConfirm} 
+           onChange={e=>setPwdConfirm(e.target.value)} 
+           placeholder="Repeat new password" 
+           required
+          />
+         </div>
+        </div>
+
+        {pwdMsg && <div className="tgFeedback success">{pwdMsg}</div>}
+        {pwdErr && <div className="tgFeedback error">{pwdErr}</div>}
+
+        <div className="settingActions" style={{marginTop:'16px'}}>
+         <button className="primary" type="submit" disabled={pwdBusy}>
+          {pwdBusy ? 'Updating...' : 'Update Password'}
+         </button>
+        </div>
+       </form>
+      </div>
+
+      {/* 5. Host Diagnostics & System Stats */}
+      <div className="card settingCard hostCard" style={{gridColumn:'1 / -1'}}>
+       <div className="hostCardHead">
+        <div className="hostCardIconBox diag"><Cpu size={18}/></div>
+        <div>
+         <h3>Host Diagnostics & Hardware Environment</h3>
+         <p>Operating system, uptime, and host machine specs</p>
+        </div>
+       </div>
+
+       <div className="hostDiagGrid">
+        <div className="hostDiagItem">
+         <span className="diagLabel">Computer Hostname</span>
+         <strong className="diagVal">{sys.hostname || 'Farm-Host'}</strong>
+        </div>
+        <div className="hostDiagItem">
+         <span className="diagLabel">Operating System</span>
+         <strong className="diagVal">{sys.platform} ({sys.release})</strong>
+        </div>
+        <div className="hostDiagItem">
+         <span className="diagLabel">CPU Architecture</span>
+         <strong className="diagVal">{sys.arch} ({sys.cpus || 4} logical cores)</strong>
+        </div>
+        <div className="hostDiagItem">
+         <span className="diagLabel">Node.js Runtime</span>
+         <strong className="diagVal">{sys.nodeVersion || 'v22'}</strong>
+        </div>
+        <div className="hostDiagItem">
+         <span className="diagLabel">Server Process Uptime</span>
+         <strong className="diagVal">{fmtDuration(sys.uptimeSec || 0)}</strong>
+        </div>
+        <div className="hostDiagItem">
+         <span className="diagLabel">RAM Memory Consumption</span>
+         <strong className="diagVal">{sys.processMemRss ? Math.round(sys.processMemRss / 1024 / 1024) + ' MB / ' + Math.round((sys.totalMemBytes || 16e9) / 1024 / 1024 / 1024) + ' GB' : '—'}</strong>
+        </div>
+       </div>
+
+       {localIpList.length > 0 && (
+        <div className="hostNetTableWrap">
+         <div className="hostNetTableTitle">Detected Network Adapters on Host:</div>
+         <div className="hostNetTags">
+          {localIpList.map((net, i) => (
+           <span key={i} className="hostNetTag">
+            <b>{net.interface}</b>: {net.address}
+           </span>
+          ))}
+         </div>
+        </div>
+       )}
+      </div>
+     </div>
+    </div>
+   )}
+  </div>
+ );
+}
 
 function App(){
  const[authed,setAuthed]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[systemInfo,setSystemInfo]=useState(null),[controlPrinter,setControlPrinter]=useState(null),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);

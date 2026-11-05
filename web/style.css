@@ -424,13 +424,60 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .full{width:100%;margin-top:16px}
 .boot{display:grid;place-items:center;min-height:100vh;color:#94a3b8}
 
-@media(max-width:800px){
+/* Mobile Nav - Hidden on Desktop */
+.mobileNav{display:none}
+
+@media(max-width:860px){
  aside{display:none}
  .main{padding:0 12px 24px}
  header{height:48px;margin-bottom:12px}
  .mobileLogo{display:flex;align-items:center;gap:6px;font-weight:800;color:#38bdf8}
- .mobileNav{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto}
- .mobileNav button{background:#111b2b;color:#94a3b8;padding:7px 11px;border-radius:6px;font-size:11.5px;white-space:nowrap}
+ .mobileNav{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  background:#09101b;
+  border:1px solid #1a283c;
+  border-radius:12px;
+  padding:5px;
+  margin-bottom:16px;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+ }
+ .mobileNav button{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  background:transparent;
+  border:1px solid transparent;
+  color:#94a3b8;
+  padding:8px 13px;
+  border-radius:8px;
+  font-size:12.5px;
+  font-weight:600;
+  white-space:nowrap;
+  cursor:pointer;
+  transition:all .15s ease;
+ }
+ .mobileNav button:hover{
+  color:#f1f5f9;
+  background:#111d2e;
+ }
+ .mobileNav button.active{
+  background:#0284c7;
+  border-color:#38bdf8;
+  color:#ffffff;
+  box-shadow:0 0 14px rgba(2,132,199,.4);
+ }
+ .mobileNavBadge{
+  background:#ef4444;
+  color:#ffffff;
+  font-size:10px;
+  font-weight:700;
+  padding:1px 5px;
+  border-radius:10px;
+  margin-left:2px;
+ }
 }
 
 
@@ -542,6 +589,299 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 /* ==========================================================================
    LIGHT THEME MODE (data-theme="light" or .theme-light)
    ========================================================================== */
+
+
+/* ==========================================================
+   FARM HOST SETUP & SETTINGS TABS
+   ========================================================== */
+.settingsHeader{margin-bottom:18px}
+.settingsSubTabs{
+ display:inline-flex;
+ align-items:center;
+ gap:6px;
+ background:#09101b;
+ border:1px solid #1a283c;
+ border-radius:10px;
+ padding:4px;
+ margin-bottom:16px;
+}
+.settingsSubTab{
+ display:inline-flex;
+ align-items:center;
+ gap:7px;
+ padding:8px 16px;
+ border-radius:7px;
+ font-size:13px;
+ font-weight:600;
+ color:#8fa0b5;
+ background:transparent;
+ border:1px solid transparent;
+ cursor:pointer;
+ transition:all .15s ease;
+}
+.settingsSubTab:hover{
+ color:#f1f5f9;
+ background:#121e30;
+}
+.settingsSubTab.active{
+ background:#1e3450;
+ border-color:#2a4870;
+ color:#38bdf8;
+ box-shadow:0 0 12px rgba(56,189,248,.18);
+}
+.hostStatusDot{
+ width:7px;
+ height:7px;
+ border-radius:50%;
+ background:#10b981;
+ box-shadow:0 0 6px #10b981;
+ margin-left:3px;
+}
+.settingsStatusMsg{
+ font-size:12px;
+ color:#34d399;
+ background:rgba(16,185,129,.1);
+ border:1px solid rgba(16,185,129,.3);
+ padding:6px 12px;
+ border-radius:6px;
+}
+
+.hostSetupWrapper{margin-top:10px}
+.hostSetupGrid{
+ display:grid;
+ grid-template-columns:repeat(auto-fit, minmax(350px, 1fr));
+ gap:16px;
+}
+@media(max-width:768px){
+ .hostSetupGrid{grid-template-columns:1fr}
+}
+.hostCard{
+ padding:18px 20px;
+ display:flex;
+ flex-direction:column;
+}
+.hostCardHead{
+ display:flex;
+ align-items:center;
+ gap:12px;
+ padding-bottom:14px;
+ border-bottom:1px solid #18253a;
+ margin-bottom:16px;
+}
+.hostCardHead h3{
+ margin:0;
+ font-size:15px;
+ font-weight:700;
+ color:#f8fafc;
+}
+.hostCardHead p{
+ margin:3px 0 0;
+ font-size:12px;
+ color:#7f93ad;
+}
+.hostCardIconBox{
+ width:38px;
+ height:38px;
+ border-radius:9px;
+ display:grid;
+ place-items:center;
+ background:rgba(56,189,248,.12);
+ color:#38bdf8;
+ border:1px solid rgba(56,189,248,.25);
+ flex-shrink:0;
+}
+.hostCardIconBox.tunnel{
+ background:rgba(16,185,129,.12);
+ color:#34d399;
+ border-color:rgba(16,185,129,.25);
+}
+.hostCardIconBox.tg{
+ background:rgba(59,130,246,.12);
+ color:#60a5fa;
+ border-color:rgba(59,130,246,.25);
+}
+.hostCardIconBox.pwd{
+ background:rgba(245,158,11,.12);
+ color:#fbbf24;
+ border-color:rgba(245,158,11,.25);
+}
+.hostCardIconBox.diag{
+ background:rgba(168,85,247,.12);
+ color:#c084fc;
+ border-color:rgba(168,85,247,.25);
+}
+.hostFormGroup{margin-bottom:14px}
+.hostFormRow{display:flex;gap:12px}
+.hostFieldLabel{
+ display:block;
+ font-size:12px;
+ font-weight:600;
+ color:#94a3b8;
+ margin-bottom:6px;
+}
+.hostInput, .hostSelect{
+ width:100%;
+ background:#070d17;
+ color:#f8fafc;
+ border:1px solid #1a273b;
+ border-radius:8px;
+ padding:9px 12px;
+ font-size:13px;
+ outline:none;
+ transition:border-color .15s ease;
+ box-sizing:border-box;
+}
+.hostInput:focus, .hostSelect:focus{
+ border-color:#38bdf8;
+ box-shadow:0 0 0 2px rgba(56,189,248,.15);
+}
+.hostInput.mono{
+ font-family:monospace;
+ font-size:12px;
+ color:#38bdf8;
+}
+.tunnelStatusBadgeRow{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ margin-bottom:14px;
+}
+.tunnelLiveBadge{
+ display:inline-flex;
+ align-items:center;
+ gap:7px;
+ padding:5px 10px;
+ border-radius:6px;
+ font-size:11.5px;
+ font-weight:600;
+ background:rgba(16,185,129,.12);
+ color:#34d399;
+ border:1px solid rgba(16,185,129,.3);
+}
+.tunnelPortBadge{
+ font-size:11px;
+ font-family:monospace;
+ color:#94a3b8;
+ background:#09101b;
+ padding:4px 8px;
+ border-radius:5px;
+ border:1px solid #1a283c;
+}
+.tunnelUrlRow{
+ display:flex;
+ gap:8px;
+ align-items:center;
+}
+.copyBtn, .openBtn{
+ padding:8px 12px;
+ font-size:12px;
+ cursor:pointer;
+ flex-shrink:0;
+ text-decoration:none;
+ display:inline-flex;
+ align-items:center;
+ gap:5px;
+}
+.copyBtn:hover, .openBtn:hover{
+ border-color:#38bdf8;
+ color:#38bdf8;
+}
+.enabledCheckbox{
+ display:inline-flex;
+ align-items:center;
+ gap:8px;
+ font-size:13px;
+ color:#f1f5f9;
+ cursor:pointer;
+}
+.tgEventsGrid{
+ display:grid;
+ grid-template-columns:repeat(2,1fr);
+ gap:8px;
+ background:#070d17;
+ border:1px solid #1a273b;
+ border-radius:8px;
+ padding:10px 12px;
+}
+.tgEventCheck{
+ display:flex;
+ align-items:center;
+ gap:7px;
+ font-size:12px;
+ color:#cbd5e1;
+ cursor:pointer;
+}
+.tgFeedback{
+ padding:9px 12px;
+ border-radius:7px;
+ font-size:12px;
+ margin-top:10px;
+}
+.tgFeedback.success{
+ background:rgba(16,185,129,.15);
+ border:1px solid rgba(16,185,129,.4);
+ color:#34d399;
+}
+.tgFeedback.error{
+ background:rgba(239,68,68,.15);
+ border:1px solid rgba(239,68,68,.4);
+ color:#f87171;
+}
+.hostDiagGrid{
+ display:grid;
+ grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+ gap:12px;
+ margin-bottom:14px;
+}
+.hostDiagItem{
+ background:#070d17;
+ border:1px solid #1a273b;
+ border-radius:8px;
+ padding:10px 14px;
+ display:flex;
+ flex-direction:column;
+ gap:3px;
+}
+.diagLabel{
+ font-size:10.5px;
+ font-weight:700;
+ color:#64748b;
+ text-transform:uppercase;
+ letter-spacing:.4px;
+}
+.diagVal{
+ font-size:13px;
+ font-family:monospace;
+ color:#f1f5f9;
+}
+.hostNetTableWrap{
+ background:#070d17;
+ border:1px solid #1a273b;
+ border-radius:8px;
+ padding:10px 14px;
+}
+.hostNetTableTitle{
+ font-size:11px;
+ font-weight:700;
+ color:#7f93ad;
+ margin-bottom:8px;
+}
+.hostNetTags{
+ display:flex;
+ flex-wrap:wrap;
+ gap:8px;
+}
+.hostNetTag{
+ background:#111b2b;
+ border:1px solid #1e2e46;
+ padding:4px 10px;
+ border-radius:6px;
+ font-size:11.5px;
+ font-family:monospace;
+ color:#38bdf8;
+}
+.hostNetTag b{color:#e2e8f0}
+
 html[data-theme="light"],
 [data-theme="light"] body,
 .theme-light{
@@ -1094,3 +1434,20 @@ html[data-theme="light"],
 [data-theme="light"] .liveProdEmpty strong{color:#0f172a}
 [data-theme="light"] .totalTargetBadge{background:#f1f5f9;color:#0f172a;border-color:#cbd5e1}
 [data-theme="light"] .statusFilterRow{border-bottom-color:#e2e8f0}
+
+/* Light Theme Overrides for Host Setup & Mobile Nav */
+[data-theme="light"] .mobileNav{background:#ffffff;border-color:#cbd5e1;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+[data-theme="light"] .mobileNav button{color:#64748b}
+[data-theme="light"] .mobileNav button:hover{background:#f1f5f9;color:#0f172a}
+[data-theme="light"] .mobileNav button.active{background:#0284c7;color:#ffffff;border-color:#0284c7}
+[data-theme="light"] .settingsSubTabs{background:#f1f5f9;border-color:#cbd5e1}
+[data-theme="light"] .settingsSubTab{color:#475569}
+[data-theme="light"] .settingsSubTab:hover{background:#e2e8f0;color:#0f172a}
+[data-theme="light"] .settingsSubTab.active{background:#ffffff;border-color:#cbd5e1;color:#0284c7;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+[data-theme="light"] .hostInput, [data-theme="light"] .hostSelect{background:#ffffff;color:#0f172a;border-color:#cbd5e1}
+[data-theme="light"] .hostInput:focus, [data-theme="light"] .hostSelect:focus{border-color:#0284c7}
+[data-theme="light"] .hostDiagItem, [data-theme="light"] .hostNetTableWrap, [data-theme="light"] .tgEventsGrid{background:#f8fafc;border-color:#e2e8f0}
+[data-theme="light"] .diagVal{color:#0f172a}
+[data-theme="light"] .hostNetTag{background:#ffffff;border-color:#cbd5e1;color:#0284c7}
+[data-theme="light"] .hostNetTag b{color:#334155}
+[data-theme="light"] .tunnelPortBadge{background:#f1f5f9;border-color:#cbd5e1;color:#475569}
