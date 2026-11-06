@@ -14,7 +14,7 @@ import rateLimit from 'express-rate-limit';
 const app=express(),port=Number(process.env.PORT||3080),root=process.cwd();
 const dataDir=path.join(root,'data'),configDir=path.join(root,'config');
 fs.mkdirSync(dataDir,{recursive:true});
-const configFile=path.join(configDir,'printers.json'),exampleFile=path.join(configDir,'printers.example.json'),historyFile=path.join(dataDir,'events.json'),completedFile=path.join(dataDir,'completed_prints.json'),jobsFile=path.join(dataDir,'print_jobs.json'),clearedFile=path.join(dataDir,'cleared_prints.json'),hostSettingsFile=path.join(dataDir,'host_settings.json');
+const configFile=path.join(configDir,'printers.json'),exampleFile=path.join(configDir,'printers.example.json'),historyFile=path.join(dataDir,'events.json'),completedFile=path.join(dataDir,'completed_prints.json'),jobsFile=path.join(dataDir,'print_jobs.json'),clearedFile=path.join(dataDir,'cleared_prints.json'),hostSettingsFile=path.join(dataDir,'host_settings.json'),runoutFile=path.join(dataDir,'runout_state.json');
 const defaultHostSettings = {
  farmName: 'Neptune Print Farm',
  primaryIp: '',
@@ -23,7 +23,7 @@ const defaultHostSettings = {
  telegramToken: process.env.TELEGRAM_BOT_TOKEN||'',
  telegramChatId: process.env.TELEGRAM_CHAT_ID||'',
  telegramEnabled: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
- telegramEvents: ['completed', 'runout', 'error', 'paused'],
+ telegramEvents: ['completed', 'runout', 'resumed', 'error', 'paused', 'offline'],
  publicTunnelUrl: 'https://exciting-cooking-tap-developments.trycloudflare.com'
 };
 const read=(file,fallback)=>{try{return JSON.parse(fs.readFileSync(file,'utf8'))}catch{return fallback}};
@@ -68,7 +68,7 @@ async function sendPushToAll({ title, body, tag, url }) {
   save(pushSubsFile, pushSubscriptions);
  }
 }
-let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{});
+let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{}),runoutState=read(runoutFile,{});
 const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map();
 const offlineSince=new Map(),offlineAlertSent=new Map();
 const secret=process.env.JWT_SECRET,password=process.env.ADMIN_PASSWORD;
@@ -93,15 +93,26 @@ async function telegram(message, type){
  } catch(e){console.warn('Telegram:',e.message)}
 }
 
+function formatHoldDuration(seconds) {
+ const s = Math.max(0, Math.round(seconds || 0));
+ const h = Math.floor(s / 3600);
+ const m = Math.floor((s % 3600) / 60);
+ const remS = s % 60;
+ if (h > 0) return `${h}h ${m}m ${remS}s`;
+ if (m > 0) return `${m}m ${remS}s`;
+ return `${remS}s`;
+}
+
 function record(printerId,type,message){
  events.unshift({id:crypto.randomUUID(),printerId,type,message,time:new Date().toISOString()});
  events=events.slice(0,2000);save(historyFile,events);
- if(['completed','paused','error','runout','offline'].includes(type)){
-  const tgType = (type === 'offline' && !hostSettings.telegramEvents?.includes('offline')) ? 'error' : type;
+ if(['completed','paused','error','runout','offline','resumed'].includes(type)){
+  const tgType = (type === 'offline' && !hostSettings.telegramEvents?.includes('offline')) ? 'error' : ((type === 'resumed' && !hostSettings.telegramEvents?.includes('resumed')) ? 'runout' : type);
   void telegram(message, tgType);
   let title = '🖨 Neptune Farm Alert';
   if (type === 'completed') title = '🎉 Print Finished!';
   else if (type === 'runout') title = '⚠️ Filament Runout Detected!';
+  else if (type === 'resumed') title = '▶️ Filament Reloaded & Resumed';
   else if (type === 'error') title = '🚨 Printer Error / Shutdown!';
   else if (type === 'paused') title = '⏸️ Print Paused';
   else if (type === 'offline') title = '⚠️ Printer Offline (>5 min)';
@@ -325,6 +336,8 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason){
   filamentDetected:filament,
   filamentRunout:isRunout,
   filamentSensors:sensed.map(([name])=>name),
+  runoutHoldSec: runoutState[p.id] ? Math.max(0, Math.round((Date.now() - (runoutState[p.id].startTime || new Date(runoutState[p.id].startedAt).getTime())) / 1000)) : null,
+  runoutStartedAt: runoutState[p.id]?.startedAt || null,
   completedAt:compInfo?.completedAt||null,
   updatedAt:new Date().toISOString()
  };
@@ -436,8 +449,39 @@ async function scan(p){
    }
   }
 
+  // 1. Filament Runout tracking & notification
+  const isNowRunout = Boolean(next.filamentRunout || next.filamentDetected === false || next.status === 'runout');
+  if (isNowRunout && !isKlippyShutdown) {
+   if (!runoutState[p.id]) {
+    runoutState[p.id] = {
+     startedAt: new Date().toISOString(),
+     startTime: Date.now(),
+     file: next.file || prev?.file || ''
+    };
+    save(runoutFile, runoutState);
+    record(p.id, 'runout', `${p.name}: Filament runout detected! Print paused waiting for reload`);
+   }
+  }
+
+  // 2. Filament Reloaded & Print Resumed notification with exact hold duration
+  if (runoutState[p.id]) {
+   const isResumed = (next.status === 'printing' || next.rawState === 'printing') && next.filamentDetected !== false;
+   if (isResumed) {
+    const startMs = runoutState[p.id].startTime || (runoutState[p.id].startedAt ? new Date(runoutState[p.id].startedAt).getTime() : Date.now());
+    const holdSec = Math.max(0, Math.round((Date.now() - startMs) / 1000));
+    const holdStr = formatHoldDuration(holdSec);
+    const resumeMsg = `${p.name}: Filament reloaded & print resumed! Printer hold time: ${holdStr}`;
+    record(p.id, 'resumed', resumeMsg);
+    delete runoutState[p.id];
+    save(runoutFile, runoutState);
+   } else if (next.status === 'cancelled' || next.status === 'completed' || (next.status === 'idle' && !next.file)) {
+    delete runoutState[p.id];
+    save(runoutFile, runoutState);
+   }
+  }
+
   if(prev?.connected&&prev.status!==next.status){
-   if(['completed','paused','error'].includes(next.status)){
+   if(['completed','error'].includes(next.status) || (next.status==='paused' && !isNowRunout)){
     record(p.id,next.status,p.name+': '+next.status.toUpperCase()+' — '+(next.file||'No filename'));
    }
    if(next.status==='completed'&&next.file){
@@ -481,7 +525,6 @@ async function scan(p){
     save(jobsFile,allJobs);
     void syncPrinterHistory(p);
    }
-   if(prev.filamentDetected!==false&&next.filamentDetected===false)record(p.id,'runout',p.name+': filament runout detected');
   }
  }catch(e){
   const previous=last.get(p.id);
@@ -770,7 +813,7 @@ app.get('/api/host-settings', auth, (req, res) => {
   telegramToken: hostSettings.telegramToken || '',
   telegramChatId: hostSettings.telegramChatId || '',
   telegramEnabled: hostSettings.telegramEnabled !== false,
-  telegramEvents: hostSettings.telegramEvents || ['completed', 'runout', 'error', 'paused'],
+  telegramEvents: hostSettings.telegramEvents || ['completed', 'runout', 'resumed', 'error', 'paused', 'offline'],
   publicTunnelUrl: hostSettings.publicTunnelUrl || 'https://exciting-cooking-tap-developments.trycloudflare.com',
   system: {
    hostname: os.hostname(),
@@ -813,7 +856,7 @@ app.put('/api/host-settings', auth, (req, res) => {
   hostSettings.telegramEnabled = incoming.telegramEnabled;
  }
  if (Array.isArray(incoming.telegramEvents)) {
-  hostSettings.telegramEvents = incoming.telegramEvents.filter(x => ['completed', 'runout', 'error', 'paused'].includes(x));
+  hostSettings.telegramEvents = incoming.telegramEvents.filter(x => ['completed', 'runout', 'resumed', 'error', 'paused', 'offline'].includes(x));
  }
  if (typeof incoming.publicTunnelUrl === 'string') {
   hostSettings.publicTunnelUrl = incoming.publicTunnelUrl.trim();

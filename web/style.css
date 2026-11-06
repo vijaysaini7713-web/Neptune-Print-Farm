@@ -394,7 +394,9 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 
 .errorText{color:#f87171;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:4px 0}
 .dot{width:8px;height:8px;flex-shrink:0;background:#f59e0b;border-radius:50%}
-.dot.teal{background:#10b981}
+.dot.teal,.dot.green{background:#10b981}
+.dot.orange{background:#f97316}
+.dot.red{background:#ef4444}
 .empty{padding:24px;text-align:center;color:#64748b;font-size:12px}
 .textButton{background:transparent;color:#38bdf8;font-size:11.5px;font-weight:600}
 .textButton:hover{text-decoration:underline}

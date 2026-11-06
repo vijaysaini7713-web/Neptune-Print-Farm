@@ -40,7 +40,7 @@ async function subscribeToWebPush(sendTest = true) {
 }
 
 const api=async(url,options={})=>{const r=await fetch('/api'+url,{credentials:'same-origin',headers:{'content-type':'application/json'},...options});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data};
-const fmtDuration=n=>n==null?'—':Math.floor(n/3600)+'h '+Math.floor(n%3600/60)+'m';
+const fmtDuration=n=>{if(n==null)return'—';const s=Math.max(0,Math.round(n)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),remS=s%60;if(h>0)return `${h}h ${m}m`;if(m>0)return `${m}m ${remS}s`;return `${remS}s`;};
 const temp=n=>typeof n==='number'?n.toFixed(1)+'°C':'—';
 const color=s=>({printing:'green',completed:'purple',idle:'blue',paused:'amber',offline:'red',error:'red',disabled:'gray',connecting:'gray',cancelled:'gray',runout:'orange',filament_runout:'orange'})[s]||'gray';
 
@@ -206,7 +206,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
         <span className="fleetTimeBadge runout" title="Filament sensor triggered">
          <AlertTriangle size={13} className="timeIcon"/>
          <span className="timeLabel">Filament khatam ho gaya:</span>
-         <strong className="timeValue">Replace with new filament</strong>
+         <strong className="timeValue">{p.runoutHoldSec ? `On hold for ${fmtDuration(p.runoutHoldSec)} · Load new spool` : 'Replace with new filament'}</strong>
         </span>
         {p.remainingTime != null && (
          <span className="fleetTimeBadge remaining" title="Estimated time left once resumed">
@@ -341,7 +341,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
       </button>
      )}
      {hasRunout&&(
-      <span className="fleetRunoutBadge orange" title="Filament runout detected! Please replace spool">REPLACE FILAMENT</span>
+      <span className="fleetRunoutBadge orange" title={`Filament runout detected! ${p.runoutHoldSec ? `On hold for ${fmtDuration(p.runoutHoldSec)}` : ''}`}>{p.runoutHoldSec ? `HOLD ${fmtDuration(p.runoutHoldSec)} · LOAD SPOOL` : 'REPLACE FILAMENT'}</span>
      )}
      {p.enabled&&(
       <button 
@@ -1875,6 +1875,7 @@ function SettingsPage({list,reload,systemInfo}){
          {[
           {key:'completed',label:'Print Completed'},
           {key:'runout',label:'Filament Runout'},
+          {key:'resumed',label:'Filament Reloaded & Resumed'},
           {key:'error',label:'Shutdown / Heater Error'},
           {key:'paused',label:'Print Paused'},
           {key:'offline',label:'Offline (>5 min)'}
@@ -2325,7 +2326,7 @@ function App(){
     <>
      <div className="titleRow"><div><h1>Alerts and event history</h1><p>Changes observed while this monitor was running.</p></div></div>
      <div className="card activity">
-      {events.length?events.map(e=><div className="event" key={e.id}><span className={'dot '+(e.type==='completed'?'purple':'amber')}/><div>{e.message}<small>{new Date(e.time).toLocaleString()} · {e.type}</small></div></div>):<div className="empty"><WifiOff size={22}/> No events recorded yet.</div>}
+      {events.length?events.map(e=><div className="event" key={e.id}><span className={'dot '+(e.type==='completed'?'purple':(e.type==='resumed'?'green':(e.type==='error'||e.type==='offline'?'red':(e.type==='runout'?'orange':'amber'))))}/><div>{e.message}<small>{new Date(e.time).toLocaleString()} · {e.type}</small></div></div>):<div className="empty"><WifiOff size={22}/> No events recorded yet.</div>}
      </div>
     </>
    )}
