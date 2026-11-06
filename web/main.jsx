@@ -1588,7 +1588,7 @@ function SettingsPage({list,reload,systemInfo}){
  const sys = hostConfig?.system || {};
  const localIpList = sys.localIps || [];
  const activeLanUrl = 'http://' + (hostConfig?.primaryIp || systemInfo?.primaryIp || '172.16.20.139') + ':' + (hostConfig?.port || 3080);
- const tunnelUrl = hostConfig?.publicTunnelUrl || 'https://charter-specialized-spoke-pair.trycloudflare.com';
+ const tunnelUrl = hostConfig?.publicTunnelUrl || 'https://neptunemonitor.com';
 
  return (
   <div className="settings">
@@ -1765,7 +1765,7 @@ function SettingsPage({list,reload,systemInfo}){
           className="hostInput mono" 
           value={tunnelUrl} 
           onChange={e=>setHostConfig(c=>({...c,publicTunnelUrl:e.target.value}))}
-          placeholder="https://your-tunnel.trycloudflare.com"
+          placeholder="https://neptunemonitor.com"
          />
          <button 
           className="outline copyBtn" 

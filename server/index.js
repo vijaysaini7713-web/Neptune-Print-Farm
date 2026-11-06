@@ -24,7 +24,7 @@ const defaultHostSettings = {
  telegramChatId: process.env.TELEGRAM_CHAT_ID||'',
  telegramEnabled: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
  telegramEvents: ['completed', 'runout', 'resumed', 'error', 'paused', 'offline'],
- publicTunnelUrl: 'https://charter-specialized-spoke-pair.trycloudflare.com'
+ publicTunnelUrl: 'https://neptunemonitor.com'
 };
 const read=(file,fallback)=>{try{return JSON.parse(fs.readFileSync(file,'utf8'))}catch{return fallback}};
 const save=(file,value)=>fs.writeFileSync(file,JSON.stringify(value,null,2),{mode:0o600});

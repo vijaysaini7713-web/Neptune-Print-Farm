@@ -16,7 +16,7 @@ if (-not $running) {
 $cfProc = Get-Process -Name cloudflared -ErrorAction SilentlyContinue
 if (-not $cfProc) {
     if (Test-Path $logFile) { Remove-Item $logFile -Force -ErrorAction SilentlyContinue }
-    Start-Process -FilePath $cfPath -ArgumentList "tunnel --url http://localhost:3080 --logfile `"$logFile`"" -WorkingDirectory $farmDir -WindowStyle Hidden
+    Start-Process -FilePath $cfPath -ArgumentList "tunnel run neptune-farm --logfile `"$logFile`"" -WorkingDirectory $farmDir -WindowStyle Hidden
     Start-Sleep -Seconds 5
 }
 
@@ -25,3 +25,4 @@ $portOk = Get-NetTCPConnection -LocalPort 3080 -State Listen -ErrorAction Silent
 $cfOk = Get-Process -Name cloudflared -ErrorAction SilentlyContinue
 Write-Host "Port 3080 Listening: $([bool]$portOk)"
 Write-Host "Cloudflared Process: $([bool]$cfOk)"
+
