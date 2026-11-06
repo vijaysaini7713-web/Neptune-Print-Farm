@@ -1588,7 +1588,7 @@ function SettingsPage({list,reload,systemInfo}){
  const sys = hostConfig?.system || {};
  const localIpList = sys.localIps || [];
  const activeLanUrl = 'http://' + (hostConfig?.primaryIp || systemInfo?.primaryIp || '172.16.20.139') + ':' + (hostConfig?.port || 3080);
- const tunnelUrl = hostConfig?.publicTunnelUrl || 'https://exciting-cooking-tap-developments.trycloudflare.com';
+ const tunnelUrl = hostConfig?.publicTunnelUrl || 'https://charter-specialized-spoke-pair.trycloudflare.com';
 
  return (
   <div className="settings">
