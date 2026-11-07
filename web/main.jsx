@@ -2263,7 +2263,7 @@ function App(){
    </div>
    <div className="asideLabel">FARM</div>
    <button className={'nav '+(page==='overview'?'active':'')} onClick={()=>setPage('overview')}>
-    <Activity size={17}/> <span>Fleet overview</span>
+    <Activity size={17}/> <span>Printer status</span>
    </button>
    <button className={'nav '+(page==='completed'?'active':'')} onClick={()=>setPage('completed')}>
     <CheckCheck size={17}/> <span>Production</span>
@@ -2326,7 +2326,7 @@ function App(){
    </header>
 
    <div className="mobileNav">
-    <button onClick={()=>setPage('overview')}>Fleet overview</button>
+    <button onClick={()=>setPage('overview')}>Printer status</button>
     <button onClick={()=>setPage('completed')}>Production</button>
     <button onClick={()=>setPage('alerts')}>Alerts</button>
     <button onClick={()=>setPage('settings')}>Settings</button>
@@ -2340,8 +2340,8 @@ function App(){
      <div className="fleetPageHeader">
       <div className="fleetTitleWrap">
        <span className="fleetCategoryTag">PRINTER FLEET</span>
-       <h1 className="fleetMainTitle">Fleet Overview</h1>
-       <p className="fleetSubtitle">Monitor your printers, jobs, and connection health.</p>
+       <h1 className="fleetMainTitle">Printer Status</h1>
+       <p className="fleetSubtitle">Monitor real-time printer status, jobs, and connection health.</p>
       </div>
       <div className="fleetHeaderActions">
        <button className="fleetAddBtn" onClick={()=>setPage('settings')}>
