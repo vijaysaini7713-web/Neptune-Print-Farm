@@ -1082,7 +1082,9 @@ const dist=path.join(root,'dist');
 if(fs.existsSync(dist)){
  app.use(express.static(dist,{
   setHeaders:(res,filePath)=>{
-   if(filePath.endsWith('.html'))res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
+   if(filePath.endsWith('.html') || filePath.endsWith('sw.js') || filePath.endsWith('manifest.json')){
+    res.setHeader('Cache-Control','no-store, no-cache, must-revalidate, proxy-revalidate');
+   }
   }
  }));
  app.get('*',(_req,res)=>{
