@@ -49,18 +49,20 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .fleetRefreshBtn{display:inline-flex;align-items:center;gap:6px;background:#0e1726;color:#cbd5e1;font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;border:1px solid #1e2f47;cursor:pointer;transition:all .15s}
 .fleetRefreshBtn:hover{background:#152238;color:#fff;border-color:#38bdf8}
 
-/* 4 FLEET STAT CARDS */
-.fleetStatsGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
-@media(max-width:1100px){.fleetStatsGrid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){.fleetStatsGrid{grid-template-columns:1fr}}
-.fleetStatCard{background:#0d1524;border:1px solid #18253a;border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
-.fleetStatIconBox{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;flex-shrink:0}
+/* 6 FLEET STAT CARDS */
+.fleetStatsGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
+@media(max-width:1200px){.fleetStatsGrid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:768px){.fleetStatsGrid{grid-template-columns:repeat(2,1fr);gap:10px}}
+.fleetStatCard{background:#0d1524;border:1px solid #18253a;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,.25);transition:border-color .15s ease}
+.fleetStatIconBox{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;flex-shrink:0}
 .fleetStatIconBox.total{background:rgba(56,189,248,.12);color:#38bdf8}
 .fleetStatIconBox.online{background:rgba(16,185,129,.12);color:#34d399}
+.fleetStatIconBox.printing{background:rgba(14,165,233,.12);color:#38bdf8}
+.fleetStatIconBox.completed{background:rgba(168,85,247,.12);color:#c084fc}
 .fleetStatIconBox.attention{background:rgba(245,158,11,.12);color:#fbbf24}
 .fleetStatIconBox.offline{background:rgba(239,68,68,.12);color:#f87171}
-.fleetStatLabel{font-size:11.5px;color:#76879d;display:block;margin-bottom:2px;font-weight:600}
-.fleetStatVal{font-size:22px;font-weight:800;color:#f8fafc;font-variant-numeric:tabular-nums}
+.fleetStatLabel{font-size:11px;color:#76879d;display:block;margin-bottom:2px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fleetStatVal{font-size:20px;font-weight:800;color:#f8fafc;font-variant-numeric:tabular-nums}
 
 /* FLEET STATUS SUB-BAR */
 .fleetStatusSubBar{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:12px;padding:0 4px}

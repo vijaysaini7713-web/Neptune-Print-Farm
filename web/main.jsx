@@ -2238,7 +2238,21 @@ function App(){
   systemInfo?.isLocalClient === true
  );
 
- const total=printers.length,printing=printers.filter(p=>p.status==='printing').length,paused=printers.filter(p=>p.status==='paused').length,online=printers.filter(p=>p.connected).length,issues=printers.filter(p=>p.status==='offline'||p.status==='error'||p.filamentDetected===false).length;
+ const total=printers.length;
+ const online=printers.filter(p=>p.connected).length;
+ const printing=printers.filter(p=>p.connected&&(p.status==='printing'||p.rawState==='printing')&&p.filamentDetected!==false&&!p.isShutdown).length;
+ const completedPrinters=printers.filter(p=>p.status==='completed'||p.isDone).length;
+ const issues=printers.filter(p=>(
+  p.filamentDetected===false||
+  p.filamentRunout===true||
+  p.status==='runout'||
+  p.status==='paused'||
+  p.status==='error'||
+  p.isShutdown||
+  p.shutdownReason||
+  (p.connected&&p.error&&!p.error.toLowerCase().includes('timeout')&&!p.error.toLowerCase().includes('offline'))
+ )&&p.status!=='completed').length;
+ const offline=Math.max(0,total-online);
  const sortedPrinters=[...printers].sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{numeric:true,sensitivity:'base'}));
 
  return <div className={`layout theme-${theme}`}>
@@ -2339,9 +2353,9 @@ function App(){
       </div>
      </div>
 
-     {/* 4 Fleet Stat Cards */}
+     {/* 6 Fleet Stat Cards */}
      <section className="fleetStatsGrid">
-      <div className="fleetStatCard total">
+      <div className="fleetStatCard total" title="Total registered 3D printers in farm">
        <div className="fleetStatIconBox total"><Printer size={18}/></div>
        <div className="fleetStatInfo">
         <span className="fleetStatLabel">Total printers</span>
@@ -2349,7 +2363,7 @@ function App(){
        </div>
       </div>
 
-      <div className="fleetStatCard online">
+      <div className="fleetStatCard online" title="Printers currently connected to LAN">
        <div className="fleetStatIconBox online"><CheckCircle2 size={18}/></div>
        <div className="fleetStatInfo">
         <span className="fleetStatLabel">Online</span>
@@ -2357,19 +2371,35 @@ function App(){
        </div>
       </div>
 
-      <div className="fleetStatCard attention">
-       <div className="fleetStatIconBox attention"><AlertTriangle size={18}/></div>
+      <div className="fleetStatCard printing" title="Printers actively running print jobs">
+       <div className="fleetStatIconBox printing"><Play size={18}/></div>
        <div className="fleetStatInfo">
-        <span className="fleetStatLabel">Needs attention</span>
-        <strong className="fleetStatVal">{issues + paused}</strong>
+        <span className="fleetStatLabel">Printing</span>
+        <strong className="fleetStatVal">{printing}</strong>
        </div>
       </div>
 
-      <div className="fleetStatCard offline">
+      <div className="fleetStatCard completed" title="Printers with completed print jobs (ready to clear bed)">
+       <div className="fleetStatIconBox completed"><CheckCheck size={18}/></div>
+       <div className="fleetStatInfo">
+        <span className="fleetStatLabel">Complete</span>
+        <strong className="fleetStatVal">{completedPrinters}</strong>
+       </div>
+      </div>
+
+      <div className="fleetStatCard attention" title="Printers with filament runout, pause, shutdown or errors">
+       <div className="fleetStatIconBox attention"><AlertTriangle size={18}/></div>
+       <div className="fleetStatInfo">
+        <span className="fleetStatLabel">Issue with printer</span>
+        <strong className="fleetStatVal">{issues}</strong>
+       </div>
+      </div>
+
+      <div className="fleetStatCard offline" title="Printers currently offline or disconnected">
        <div className="fleetStatIconBox offline"><WifiOff size={18}/></div>
        <div className="fleetStatInfo">
         <span className="fleetStatLabel">Offline / errors</span>
-        <strong className="fleetStatVal">{Math.max(0, total - online)}</strong>
+        <strong className="fleetStatVal">{offline}</strong>
        </div>
       </div>
      </section>
