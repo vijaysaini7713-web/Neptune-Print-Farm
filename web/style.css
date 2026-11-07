@@ -829,6 +829,64 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
  border:1px solid rgba(239,68,68,.4);
  color:#f87171;
 }
+.tgChatsContainer{
+ background:#070d17;
+ border:1px solid #1a273b;
+ border-radius:8px;
+ padding:12px;
+ margin-top:8px;
+}
+.tgChatList{
+ display:flex;
+ flex-wrap:wrap;
+ gap:8px;
+ margin-bottom:10px;
+}
+.tgChatChip{
+ display:inline-flex;
+ align-items:center;
+ gap:8px;
+ background:#0e1726;
+ border:1px solid #1e293b;
+ border-radius:6px;
+ padding:6px 10px;
+ font-size:12px;
+ color:#e2e8f0;
+ transition:border-color 0.15s ease;
+}
+.tgChatChip:hover{
+ border-color:#38bdf8;
+}
+.tgChatChip .chipName{
+ font-weight:600;
+ color:#38bdf8;
+}
+.tgChatChip .chipId{
+ font-family:monospace;
+ font-size:11px;
+ color:#94a3b8;
+}
+.tgChatChip .chipRemove{
+ background:transparent;
+ border:none;
+ color:#94a3b8;
+ cursor:pointer;
+ font-size:15px;
+ line-height:1;
+ padding:0 2px;
+ display:flex;
+ align-items:center;
+ transition:color 0.15s ease;
+}
+.tgChatChip .chipRemove:hover{
+ color:#ef4444;
+}
+.tgEmptyChats{
+ font-size:12px;
+ color:#64748b;
+ font-style:italic;
+ margin-bottom:8px;
+}
 .hostDiagGrid{
  display:grid;
  grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));

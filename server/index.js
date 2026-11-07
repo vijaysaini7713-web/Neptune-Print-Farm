@@ -22,6 +22,7 @@ const defaultHostSettings = {
  pollMs: Number(process.env.POLL_MS||5000),
  telegramToken: process.env.TELEGRAM_BOT_TOKEN||'',
  telegramChatId: process.env.TELEGRAM_CHAT_ID||'',
+ telegramChats: [],
  telegramEnabled: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
  telegramEvents: ['completed', 'runout', 'resumed', 'error', 'paused', 'offline'],
  publicTunnelUrl: 'https://neptunemonitor.com'
@@ -29,6 +30,12 @@ const defaultHostSettings = {
 const read=(file,fallback)=>{try{return JSON.parse(fs.readFileSync(file,'utf8'))}catch{return fallback}};
 const save=(file,value)=>fs.writeFileSync(file,JSON.stringify(value,null,2),{mode:0o600});
 let hostSettings = { ...defaultHostSettings, ...read(hostSettingsFile, {}) };
+if (!Array.isArray(hostSettings.telegramChats) || !hostSettings.telegramChats.length) {
+ const ids = parseTelegramChatIds(hostSettings.telegramChatId);
+ if (ids.length) {
+  hostSettings.telegramChats = ids.map(id => ({ id, name: 'Chat ' + id }));
+ }
+}
 const vapidFile = path.join(dataDir, 'vapid.json');
 const pushSubsFile = path.join(dataDir, 'push_subscriptions.json');
 let vapidKeys = read(vapidFile, null);
@@ -76,21 +83,54 @@ if(!secret||secret.length<32||!password||password.startsWith('replace-with')||pa
 const passwordHash=bcrypt.hashSync(password,11);
 let currentPasswordHash=hostSettings.passwordHash||passwordHash;
 
+function parseTelegramChatIds(input, chatsList = []) {
+ const ids = [];
+ if (Array.isArray(chatsList)) {
+  for (const c of chatsList) {
+   const id = (typeof c === 'object' && c) ? c.id : c;
+   if (id) ids.push(String(id).trim());
+  }
+ }
+ if (Array.isArray(input)) {
+  for (const item of input) {
+   ids.push(...parseTelegramChatIds(item));
+  }
+ } else if (typeof input === 'string' && input.trim()) {
+  const parts = input.split(/[\s,;\n]+/).map(s => s.trim()).filter(Boolean);
+  ids.push(...parts);
+ } else if (input) {
+  ids.push(String(input).trim());
+ }
+ return [...new Set(ids.filter(Boolean))];
+}
+
 async function telegram(message, type){
  const token = hostSettings.telegramToken || process.env.TELEGRAM_BOT_TOKEN;
- const chat = hostSettings.telegramChatId || process.env.TELEGRAM_CHAT_ID;
  const enabled = hostSettings.telegramEnabled !== false;
- if(!token || !chat || !enabled) return;
+ if(!token || !enabled) return;
  if(type && Array.isArray(hostSettings.telegramEvents) && !hostSettings.telegramEvents.includes(type)) return;
- try{
-  const r=await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{
-   method:'POST',
-   headers:{'content-type':'application/json'},
-   body:JSON.stringify({chat_id:chat,text:'🖨 '+(hostSettings.farmName||'Neptune Print Farm')+'\n'+message}),
-   signal:AbortSignal.timeout(9000)
-  });
-  if(!r.ok)console.warn('Telegram HTTP',r.status);
- } catch(e){console.warn('Telegram:',e.message)}
+
+ const chatIds = parseTelegramChatIds(hostSettings.telegramChatId, hostSettings.telegramChats);
+ if(!chatIds.length) return;
+
+ const text = '🖨 ' + (hostSettings.farmName || 'Neptune Print Farm') + '\n' + message;
+
+ await Promise.allSettled(chatIds.map(async (cid) => {
+  try {
+   const r = await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ chat_id: cid, text }),
+    signal: AbortSignal.timeout(9000)
+   });
+   if(!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    console.warn(`Telegram HTTP ${r.status} for chat ${cid}:`, err.description || '');
+   }
+  } catch(e) {
+   console.warn(`Telegram error for chat ${cid}:`, e.message);
+  }
+ }));
 }
 
 function formatHoldDuration(seconds) {
@@ -812,9 +852,10 @@ app.get('/api/host-settings', auth, (req, res) => {
   pollMs: hostSettings.pollMs || 5000,
   telegramToken: hostSettings.telegramToken || '',
   telegramChatId: hostSettings.telegramChatId || '',
+  telegramChats: hostSettings.telegramChats || [],
   telegramEnabled: hostSettings.telegramEnabled !== false,
   telegramEvents: hostSettings.telegramEvents || ['completed', 'runout', 'resumed', 'error', 'paused', 'offline'],
-  publicTunnelUrl: hostSettings.publicTunnelUrl || 'https://charter-specialized-spoke-pair.trycloudflare.com',
+  publicTunnelUrl: hostSettings.publicTunnelUrl || 'https://neptunemonitor.com',
   system: {
    hostname: os.hostname(),
    platform: os.platform(),
@@ -849,8 +890,24 @@ app.put('/api/host-settings', auth, (req, res) => {
  if (typeof incoming.telegramToken === 'string') {
   hostSettings.telegramToken = incoming.telegramToken.trim();
  }
- if (typeof incoming.telegramChatId === 'string') {
+ if (Array.isArray(incoming.telegramChats)) {
+  const cleanChats = [];
+  const seen = new Set();
+  for (const c of incoming.telegramChats) {
+   const id = String((typeof c === 'object' && c) ? (c.id || '') : (c || '')).trim();
+   const name = String((typeof c === 'object' && c) ? (c.name || '') : '').trim();
+   if (id && !seen.has(id)) {
+    seen.add(id);
+    cleanChats.push({ id, name: name || ('Chat ' + id) });
+   }
+  }
+  hostSettings.telegramChats = cleanChats;
+  hostSettings.telegramChatId = cleanChats.map(c => c.id).join(', ');
+ } else if (typeof incoming.telegramChatId === 'string') {
   hostSettings.telegramChatId = incoming.telegramChatId.trim();
+  const ids = parseTelegramChatIds(hostSettings.telegramChatId);
+  const existingMap = new Map((hostSettings.telegramChats || []).map(c => [c.id, c.name]));
+  hostSettings.telegramChats = ids.map(id => ({ id, name: existingMap.get(id) || ('Chat ' + id) }));
  }
  if (typeof incoming.telegramEnabled === 'boolean') {
   hostSettings.telegramEnabled = incoming.telegramEnabled;
@@ -879,21 +936,41 @@ app.post('/api/host-settings/password', auth, async (req, res) => {
 
 app.post('/api/host-settings/test-telegram', auth, async (req, res) => {
  const token = req.body?.token || hostSettings.telegramToken || process.env.TELEGRAM_BOT_TOKEN;
- const chat = req.body?.chatId || hostSettings.telegramChatId || process.env.TELEGRAM_CHAT_ID;
- if (!token || !chat) return res.status(400).json({ error: 'Telegram Bot Token and Chat ID are required' });
+ const targetChat = req.body?.chatId;
+ const chatIds = targetChat ? parseTelegramChatIds(targetChat, req.body?.chats) : parseTelegramChatIds(hostSettings.telegramChatId, hostSettings.telegramChats);
+ if (!token || !chatIds.length) return res.status(400).json({ error: 'Telegram Bot Token and at least one Chat ID are required' });
  try {
-  const r = await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
-   method: 'POST',
-   headers: { 'content-type': 'application/json' },
-   body: JSON.stringify({
-    chat_id: chat,
-    text: '🔔 Test alert from ' + (hostSettings.farmName || 'Neptune Print Farm') + ' Host!\nHost bridge telemetry is operational.'
-   }),
-   signal: AbortSignal.timeout(9000)
-  });
-  const data = await r.json();
-  if (!r.ok) return res.status(400).json({ error: data.description || ('Telegram API returned code ' + r.status) });
-  res.json({ ok: true, message: 'Telegram test notification delivered successfully!' });
+  const text = '🔔 Test alert from ' + (hostSettings.farmName || 'Neptune Print Farm') + ' Host!\nHost bridge telemetry is operational on multiple chat IDs.';
+  const successful = [];
+  const failures = [];
+  await Promise.all(chatIds.map(async (cid) => {
+   try {
+    const r = await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+     method: 'POST',
+     headers: { 'content-type': 'application/json' },
+     body: JSON.stringify({ chat_id: cid, text }),
+     signal: AbortSignal.timeout(9000)
+    });
+    const data = await r.json().catch(() => ({}));
+    if (r.ok) {
+     successful.push(cid);
+    } else {
+     failures.push(`${cid} (${data.description || ('HTTP ' + r.status)})`);
+    }
+   } catch(e) {
+    failures.push(`${cid} (${e.message})`);
+   }
+  }));
+
+  if (!successful.length) {
+   return res.status(400).json({ error: 'Failed to deliver to any chat: ' + failures.join(', ') });
+  }
+
+  let msg = `Delivered to ${successful.length} chat(s) [${successful.join(', ')}]!`;
+  if (failures.length) {
+   msg += ` Failed for: ${failures.join(', ')}`;
+  }
+  res.json({ ok: true, message: msg, delivered: successful, failed: failures });
  } catch(e) {
   res.status(500).json({ error: 'Failed to contact Telegram API: ' + e.message });
  }
@@ -955,22 +1032,45 @@ app.post('/api/host-settings/detect-telegram-chat', auth, async (req, res) => {
   const updates = data.result || [];
   if (!updates.length) {
    return res.status(404).json({
-    error: 'No messages found yet! Please open t.me/vijaydreamcast_bot in Telegram, press START (or send "hi"), then click Auto-Detect again.'
+    error: 'No messages found yet! Please ask each user/group to open @vijaydreamcast_bot in Telegram, press START (or send "hi"), then click Auto-Detect again.'
    });
   }
-  const lastUpdate = updates[updates.length - 1];
-  const msg = lastUpdate.message || lastUpdate.channel_post || lastUpdate.my_chat_member;
-  const chat = msg?.chat;
-  if (!chat?.id) return res.status(404).json({ error: 'Could not extract Chat ID from recent updates' });
-  const detectedId = String(chat.id);
-  const name = chat.first_name || chat.title || chat.username || 'User';
-  hostSettings.telegramChatId = detectedId;
+
+  const detectedMap = new Map();
+  for (const u of updates) {
+   const msg = u.message || u.channel_post || u.my_chat_member || u.callback_query?.message;
+   const chat = msg?.chat;
+   if (chat?.id) {
+    const idStr = String(chat.id);
+    const name = chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' ') || chat.username || ('Chat ' + idStr);
+    detectedMap.set(idStr, { id: idStr, name, type: chat.type || 'private' });
+   }
+  }
+  const detectedList = Array.from(detectedMap.values());
+  if (!detectedList.length) {
+   return res.status(404).json({ error: 'Could not extract any Chat IDs from recent updates' });
+  }
+
+  const existingList = Array.isArray(hostSettings.telegramChats) ? hostSettings.telegramChats : [];
+  const mergedMap = new Map();
+  for (const c of existingList) {
+   if (c?.id) mergedMap.set(String(c.id), c);
+  }
+  for (const c of detectedList) {
+   mergedMap.set(c.id, c);
+  }
+
+  const allMerged = Array.from(mergedMap.values());
+  hostSettings.telegramChats = allMerged;
+  hostSettings.telegramChatId = allMerged.map(c => c.id).join(', ');
   save(hostSettingsFile, hostSettings);
+
   res.json({
    ok: true,
-   chatId: detectedId,
-   name,
-   message: 'Successfully detected Chat ID: ' + detectedId + ' (' + name + ') and saved!'
+   chats: detectedList,
+   allChats: allMerged,
+   chatId: hostSettings.telegramChatId,
+   message: `Successfully connected ${allMerged.length} Telegram chat(s): ${allMerged.map(c => `${c.name} (${c.id})`).join(', ')}`
   });
  } catch(e) {
   res.status(500).json({ error: 'Failed to reach Telegram API: ' + e.message });

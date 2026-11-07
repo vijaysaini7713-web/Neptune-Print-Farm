@@ -1486,6 +1486,7 @@ function SettingsPage({list,reload,systemInfo}){
      pollMs: Number(hostConfig.pollMs),
      telegramToken: hostConfig.telegramToken,
      telegramChatId: hostConfig.telegramChatId,
+     telegramChats: hostConfig.telegramChats,
      telegramEnabled: Boolean(hostConfig.telegramEnabled),
      telegramEvents: hostConfig.telegramEvents,
      publicTunnelUrl: hostConfig.publicTunnelUrl
@@ -1530,6 +1531,42 @@ function SettingsPage({list,reload,systemInfo}){
  }
 
  const [tgDetecting, setTgDetecting] = useState(false);
+ const [newChatInput, setNewChatInput] = useState('');
+
+ function addTelegramChat(raw) {
+  const val = String(raw || newChatInput || '').trim();
+  if (!val) return;
+  const ids = val.split(/[\s,;\n]+/).map(s => s.trim()).filter(Boolean);
+  if (!ids.length) return;
+  const cur = hostConfig?.telegramChats || [];
+  const seen = new Set(cur.map(c => String(c.id)));
+  const toAdd = [];
+  for (const id of ids) {
+   if (!seen.has(id)) {
+    seen.add(id);
+    toAdd.push({ id, name: 'Chat ' + id });
+   }
+  }
+  if (toAdd.length > 0) {
+   const updated = [...cur, ...toAdd];
+   setHostConfig(c => ({
+    ...c,
+    telegramChats: updated,
+    telegramChatId: updated.map(x => x.id).join(', ')
+   }));
+  }
+  setNewChatInput('');
+ }
+
+ function removeTelegramChat(idToRemove) {
+  const cur = hostConfig?.telegramChats || [];
+  const updated = cur.filter(c => String(c.id) !== String(idToRemove));
+  setHostConfig(c => ({
+   ...c,
+   telegramChats: updated,
+   telegramChatId: updated.map(x => x.id).join(', ')
+  }));
+ }
 
  async function testTelegram(){
   if(!hostConfig) return;
@@ -1539,11 +1576,12 @@ function SettingsPage({list,reload,systemInfo}){
     method:'POST',
     body:JSON.stringify({
      token: hostConfig.telegramToken,
-     chatId: hostConfig.telegramChatId
+     chatId: hostConfig.telegramChatId,
+     chats: hostConfig.telegramChats
     })
    });
-   setTgMsg(r.message || 'Telegram test message sent successfully! Check your phone/app.');
-   setTimeout(()=>setTgMsg(''), 5000);
+   setTgMsg(r.message || 'Telegram test message sent successfully! Check all connected Telegram chats.');
+   setTimeout(()=>setTgMsg(''), 6000);
   }catch(e){
    setTgErr(e.message);
   }finally{
@@ -1562,8 +1600,12 @@ function SettingsPage({list,reload,systemInfo}){
     method:'POST',
     body:JSON.stringify({token:hostConfig.telegramToken})
    });
-   setHostConfig(c=>({...c,telegramChatId:r.chatId}));
-   setTgMsg(r.message || `Detected Chat ID: ${r.chatId}`);
+   setHostConfig(c=>({
+    ...c,
+    telegramChatId: r.chatId,
+    telegramChats: r.allChats || r.chats
+   }));
+   setTgMsg(r.message || `Detected chats successfully!`);
    setTimeout(()=>setTgMsg(''), 6000);
   }catch(e){
    setTgErr(e.message);
@@ -1845,27 +1887,68 @@ function SettingsPage({list,reload,systemInfo}){
        </div>
 
        <div className="hostFormGroup">
-        <label className="hostFieldLabel">Telegram Chat ID</label>
-        <div style={{display:'flex',gap:'8px'}}>
-         <input 
-          className="hostInput mono" 
-          value={hostConfig?.telegramChatId||''} 
-          onChange={e=>setHostConfig(c=>({...c,telegramChatId:e.target.value}))} 
-          placeholder="e.g. 987654321 or -100xxxxxxxx"
-         />
-         <button 
-          className="outline" 
-          type="button" 
-          onClick={detectTelegramChat} 
-          disabled={tgDetecting}
-          title="Detect chat ID automatically from recent messages sent to your bot"
-          style={{whiteSpace:'nowrap',fontSize:'11.5px',padding:'6px 12px',flexShrink:0}}
-         >
-          {tgDetecting ? 'Detecting...' : 'Auto-Detect Chat ID'}
-         </button>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
+         <label className="hostFieldLabel" style={{margin:0}}>
+          Connected Telegram Chats ({hostConfig?.telegramChats?.length || (hostConfig?.telegramChatId ? hostConfig.telegramChatId.split(',').filter(Boolean).length : 0)})
+         </label>
+         <span style={{fontSize:'11px',color:'#38bdf8',fontWeight:500}}>All connected chats receive alerts</span>
         </div>
-        <small style={{color:'#64748b',fontSize:'11.5px',marginTop:'5px',display:'block',lineHeight:'1.5'}}>
-         Telegram par <a href="https://t.me/vijaydreamcast_bot" target="_blank" rel="noreferrer" style={{color:'#38bdf8',textDecoration:'underline',fontWeight:600}}>@vijaydreamcast_bot</a> open karein, <b>START</b> dabayein (ya "hi" likhein), aur yahan <b>Auto-Detect Chat ID</b> par click karein.
+
+        <div className="tgChatsContainer">
+         {hostConfig?.telegramChats && hostConfig.telegramChats.length > 0 ? (
+          <div className="tgChatList">
+           {hostConfig.telegramChats.map((chat) => (
+            <div key={chat.id} className="tgChatChip" title={`Chat ID: ${chat.id}`}>
+             <span className="chipName">{chat.name || 'User'}</span>
+             <span className="chipId">{chat.id}</span>
+             <button
+              type="button"
+              className="chipRemove"
+              onClick={() => removeTelegramChat(chat.id)}
+              title="Remove this chat"
+             >
+              ×
+             </button>
+            </div>
+           ))}
+          </div>
+         ) : (
+          <div className="tgEmptyChats">No chats connected yet. Auto-detect or paste one below.</div>
+         )}
+
+         <div style={{display:'flex',gap:'8px',marginTop:'4px'}}>
+          <input
+           className="hostInput mono"
+           value={newChatInput}
+           onChange={e => setNewChatInput(e.target.value)}
+           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTelegramChat(); } }}
+           placeholder="Add Chat ID (e.g. 987654321, 1151934467)"
+           style={{fontSize:'12px'}}
+          />
+          <button
+           className="outline"
+           type="button"
+           onClick={() => addTelegramChat()}
+           disabled={!newChatInput.trim()}
+           style={{whiteSpace:'nowrap',fontSize:'11.5px',padding:'6px 12px',flexShrink:0}}
+          >
+           + Add Chat
+          </button>
+          <button
+           className="outline"
+           type="button"
+           onClick={detectTelegramChat}
+           disabled={tgDetecting}
+           title="Detect all new chats who recently pressed START in @vijaydreamcast_bot"
+           style={{whiteSpace:'nowrap',fontSize:'11.5px',padding:'6px 12px',flexShrink:0,borderColor:'rgba(56,189,248,0.5)',color:'#38bdf8'}}
+          >
+           {tgDetecting ? 'Detecting...' : '⚡ Auto-Detect All Chats'}
+          </button>
+         </div>
+        </div>
+
+        <small style={{color:'#64748b',fontSize:'11.5px',marginTop:'7px',display:'block',lineHeight:'1.5'}}>
+         💡 <b>Multiple Users/Groups Connect Karne Ke Liye:</b> Har person apne phone me <a href="https://t.me/vijaydreamcast_bot" target="_blank" rel="noreferrer" style={{color:'#38bdf8',textDecoration:'underline',fontWeight:600}}>@vijaydreamcast_bot</a> open kare aur <b>START</b> dabaye (ya group me bot add karke "hi" likhe), fir yahan <b>Auto-Detect All Chats</b> par click karein.
         </small>
        </div>
 
@@ -1904,7 +1987,7 @@ function SettingsPage({list,reload,systemInfo}){
          {hostBusy ? 'Saving...' : 'Save Telegram Config'}
         </button>
         <button className="outline" onClick={testTelegram} disabled={tgTesting}>
-         <Bell size={14}/> {tgTesting ? 'Sending test...' : 'Send Test Notification'}
+         <Bell size={14}/> {tgTesting ? 'Sending test...' : 'Send Test Notification to All Chats'}
         </button>
        </div>
       </div>
