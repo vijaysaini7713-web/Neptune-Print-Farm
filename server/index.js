@@ -11,7 +11,14 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 
+process.on('uncaughtException', (err) => {
+ console.error('Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason) => {
+ console.error('Unhandled Rejection:', reason);
+});
 const app=express(),port=Number(process.env.PORT||3080),root=process.cwd();
+app.set('trust proxy', 1);
 const dataDir=path.join(root,'data'),configDir=path.join(root,'config');
 fs.mkdirSync(dataDir,{recursive:true});
 const configFile=path.join(configDir,'printers.json'),exampleFile=path.join(configDir,'printers.example.json'),historyFile=path.join(dataDir,'events.json'),completedFile=path.join(dataDir,'completed_prints.json'),jobsFile=path.join(dataDir,'print_jobs.json'),clearedFile=path.join(dataDir,'cleared_prints.json'),hostSettingsFile=path.join(dataDir,'host_settings.json'),runoutFile=path.join(dataDir,'runout_state.json');
@@ -628,7 +635,7 @@ async function poll(){if(running)return;running=true;try{await Promise.all(print
 app.disable('x-powered-by');
 app.use(helmet({contentSecurityPolicy:false}));
 app.use(express.json({limit:'40kb'}));app.use(cookieParser());
-const limitLogin=rateLimit({windowMs:900000,limit:12,standardHeaders:'draft-7',legacyHeaders:false});
+const limitLogin=rateLimit({windowMs:900000,limit:30,standardHeaders:'draft-7',legacyHeaders:false,validate:{xForwardedForHeader:false}});
 
 app.post('/api/login',limitLogin,async(req,res)=>{
  if(typeof req.body?.password!=='string'||!(await bcrypt.compare(req.body.password,currentPasswordHash)))return res.status(401).json({error:'Invalid password'});
