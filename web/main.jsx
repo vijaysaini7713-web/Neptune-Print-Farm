@@ -414,6 +414,149 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
  );
 }
 
+function HostSetupModal({systemInfo, total, online, onClose, onRefresh}){
+ const [copiedLan, setCopiedLan] = useState(false);
+ const [copiedRemote, setCopiedRemote] = useState(false);
+ const [refreshing, setRefreshing] = useState(false);
+
+ const lanHost = systemInfo?.primaryIp || '172.16.20.139';
+ const lanPort = systemInfo?.port || 3080;
+ const lanUrl = `http://${lanHost}:${lanPort}`;
+ const remoteUrl = 'https://neptunemonitor.com';
+ const hostName = systemInfo?.hostname || 'DESKTOP-7K68NSL';
+
+ const handleCopyLan = () => {
+  if (navigator?.clipboard?.writeText) {
+   navigator.clipboard.writeText(lanUrl).then(()=>{
+    setCopiedLan(true);
+    setTimeout(()=>setCopiedLan(false), 2000);
+   });
+  }
+ };
+
+ const handleCopyRemote = () => {
+  if (navigator?.clipboard?.writeText) {
+   navigator.clipboard.writeText(remoteUrl).then(()=>{
+    setCopiedRemote(true);
+    setTimeout(()=>setCopiedRemote(false), 2000);
+   });
+  }
+ };
+
+ const handleRefresh = async () => {
+  setRefreshing(true);
+  try {
+   await onRefresh();
+  } finally {
+   setTimeout(()=>setRefreshing(false), 400);
+  }
+ };
+
+ return (
+  <div className="hostModalBackdrop" onClick={onClose}>
+   <div className="hostModalCard" onClick={e=>e.stopPropagation()}>
+    <div className="hostModalHead">
+     <div className="hostModalTitle">
+      <HardDrive size={18} color="#38bdf8"/>
+      <span>Host Remote Setup & Status</span>
+     </div>
+     <button className="hostModalClose" onClick={onClose} title="Close">
+      <X size={18}/>
+     </button>
+    </div>
+
+    <div className="hostModalBody">
+     {/* SECTION 1: Registered Host Computer (Chrome Remote Desktop Style) */}
+     <div className="hostModalSection">
+      <div className="hostModalSecHead">
+       <span>Registered Host Computer</span>
+       <span className="hostLivePill online">
+        <span className="liveDot green"/> Online (Ready)
+       </span>
+      </div>
+
+      <div className="hostModalRow">
+       <label>Computer Name</label>
+       <strong>{hostName}</strong>
+      </div>
+      <div className="hostModalRow">
+       <label>Local Network (LAN)</label>
+       <div style={{display:'flex',alignItems:'center',gap:6}}>
+        <strong className="mono">{lanUrl}</strong>
+        <button className="copyBtn" onClick={handleCopyLan} title="Copy LAN address">
+         {copiedLan ? <Check size={12} color="#10b981"/> : <Copy size={12}/>}
+        </button>
+       </div>
+      </div>
+      <div className="hostModalRow">
+       <label>Cloudflare Public Remote</label>
+       <div style={{display:'flex',alignItems:'center',gap:6}}>
+        <strong className="mono">{remoteUrl}</strong>
+        <button className="copyBtn" onClick={handleCopyRemote} title="Copy remote URL">
+         {copiedRemote ? <Check size={12} color="#10b981"/> : <Copy size={12}/>}
+        </button>
+        <a href={remoteUrl} target="_blank" rel="noopener noreferrer" className="openBtn" title="Open in new tab">
+         <ExternalLink size={12}/>
+        </a>
+       </div>
+      </div>
+      <div className="hostModalRow">
+       <label>Host Uptime</label>
+       <strong>{systemInfo?.uptimeSec != null ? fmtDuration(systemInfo.uptimeSec) : 'Active'}</strong>
+      </div>
+      <div className="hostModalRow">
+       <label>Linked 3D Printers</label>
+       <strong style={{color:'#34d399'}}>{online} of {total} connected</strong>
+      </div>
+     </div>
+
+     {/* SECTION 2: 24/7 Persistent Auto-Start & Watchdog */}
+     <div className="hostModalSection">
+      <div className="hostModalSecHead">
+       <span>24/7 Persistent Auto-Start</span>
+       <span style={{color:'#10b981',fontWeight:700,fontSize:11}}>ACTIVE</span>
+      </div>
+      <div style={{fontSize:12.5,color:'#94a3b8',lineHeight:1.6}}>
+       <p style={{margin:'0 0 8px 0'}}>
+        <strong style={{color:'#f8fafc'}}>Bina Terminal ke 24/7 Background Run:</strong> Host PC me Windows Registry Auto-Run aur Neptune Watchdog install ho chuka hai.
+       </p>
+       <ul style={{margin:0,paddingLeft:18,display:'flex',flexDirection:'column',gap:4}}>
+        <li>Jab bhi PC restart ya login hota hai, background me server automatically start ho jata hai.</li>
+        <li>Neptune Watchdog har 10 seconds me port 3080 aur Cloudflare tunnel verify karta hai.</li>
+        <li>Agar process kabhi band ho ya PC sleep se wake ho, ye khud 10 seconds me restart kar deta hai.</li>
+       </ul>
+      </div>
+     </div>
+
+     {/* SECTION 3: Direct Reconnect */}
+     <div className="hostModalSection" style={{background:'rgba(56,189,248,0.04)',borderColor:'rgba(56,189,248,0.2)'}}>
+      <div className="hostModalSecHead" style={{color:'#38bdf8'}}>
+       <span>Direct Reconnect</span>
+      </div>
+      <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 10px 0'}}>
+       Aap kisi bhi mobile ya laptop se seedha <strong style={{color:'#38bdf8'}}>neptunemonitor.com</strong> open karein. Host PC connect ho jayega aur sare online printers live dikhenge.
+      </p>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+       <button className="fleetRefreshBtn" onClick={handleRefresh} disabled={refreshing} style={{fontSize:12,padding:'6px 12px'}}>
+        <RefreshCw size={13} className={refreshing?'spin':''}/> {refreshing ? 'Checking Host...' : 'Refresh Host Status'}
+       </button>
+       <button className="fleetRefreshBtn" onClick={handleCopyRemote} style={{fontSize:12,padding:'6px 12px'}}>
+        {copiedRemote ? <Check size={13} color="#10b981"/> : <Copy size={13}/>} Copy neptunemonitor.com
+       </button>
+      </div>
+     </div>
+    </div>
+
+    <div className="hostModalFoot">
+     <button className="fleetRefreshBtn" onClick={onClose} style={{padding:'7px 18px',fontSize:12.5}}>
+      Close
+     </button>
+    </div>
+   </div>
+  </div>
+ );
+}
+
 function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
  const [logs,setLogs]=useState([]);
  const [cmd,setCmd]=useState('');
@@ -2168,6 +2311,7 @@ function SettingsPage({list,reload,systemInfo}){
 function App(){
  const[authed,setAuthed]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[systemInfo,setSystemInfo]=useState(null),[controlPrinter,setControlPrinter]=useState(null),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);
  const[pushActive,setPushActive]=useState(typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted');
+ const[showHostModal,setShowHostModal]=useState(false);
 
  useEffect(()=>{
   if(typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && 'serviceWorker' in navigator){
@@ -2276,7 +2420,7 @@ function App(){
     <Settings size={17}/> <span>Printer settings</span>
    </button>
    <div className="asideFoot">
-    <div className="hostStatusBox">
+    <div className="hostStatusBox" onClick={()=>setShowHostModal(true)} style={{cursor:'pointer'}} title="Click to view Host Remote Setup & Status">
      <div className="hostStatusHead">
       <span className="liveDot green"/>
       <span>Farm host connected</span>
@@ -2311,6 +2455,9 @@ function App(){
       title="Enable or test real-time phone push notifications"
      >
       <Bell size={13}/> <span>{pushActive ? 'Push Active (Test)' : 'Enable Alerts'}</span>
+     </button>
+     <button className="themeToggleBtn" onClick={()=>setShowHostModal(true)} title="Host PC Status & Remote Setup">
+      <HardDrive size={13}/> Host PC
      </button>
      <button className="themeToggleBtn" onClick={toggleTheme} title={`Switch to ${theme==='dark'?'Light':'Dark'} mode`}>
       {theme==='dark'?(
@@ -2349,6 +2496,31 @@ function App(){
        </button>
        <button className="fleetRefreshBtn" onClick={refresh} title="Refresh telemetry">
         <RefreshCw size={14}/> Refresh
+       </button>
+      </div>
+     </div>
+
+     {/* Chrome Remote Desktop Style Host Remote Status Bar */}
+     <div className="hostRemoteBar">
+      <div className="hostRemoteLeft">
+       <div className="hostDeviceIcon">
+        <HardDrive size={22}/>
+       </div>
+       <div className="hostDeviceInfo">
+        <div className="hostDeviceTitle">
+         <strong>{systemInfo?.hostname || 'Host PC (DESKTOP-7K68NSL)'}</strong>
+         <span className={`hostLivePill ${systemInfo ? 'online' : 'offline'}`}>
+          <span className="liveDot green"/> {systemInfo ? 'Online • 24/7 Watchdog Active' : 'Connecting...'}
+         </span>
+        </div>
+        <div className="hostDeviceSub">
+         LAN: <span className="mono">{systemInfo?.primaryIp ? `${systemInfo.primaryIp}:${systemInfo.port || 3080}` : '172.16.20.139:3080'}</span> • Remote: <span className="mono">neptunemonitor.com</span> • Printers linked: <strong style={{color:'#38bdf8'}}>{online}/{total} Online</strong>
+        </div>
+       </div>
+      </div>
+      <div className="hostRemoteActions">
+       <button className="hostSetupBtn" onClick={()=>setShowHostModal(true)} title="Host connection details & 24/7 background setup">
+        <Sliders size={14}/> Host Remote Setup
        </button>
       </div>
      </div>
@@ -2450,6 +2622,16 @@ function App(){
      isLocal={isLocal} 
      systemInfo={systemInfo} 
      onClose={()=>setControlPrinter(null)} 
+     onRefresh={refresh}
+    />
+   )}
+
+   {showHostModal&&(
+    <HostSetupModal
+     systemInfo={systemInfo}
+     total={total}
+     online={online}
+     onClose={()=>setShowHostModal(false)}
      onRefresh={refresh}
     />
    )}

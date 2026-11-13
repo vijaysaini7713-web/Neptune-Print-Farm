@@ -49,6 +49,240 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .fleetRefreshBtn{display:inline-flex;align-items:center;gap:6px;background:#0e1726;color:#cbd5e1;font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;border:1px solid #1e2f47;cursor:pointer;transition:all .15s}
 .fleetRefreshBtn:hover{background:#152238;color:#fff;border-color:#38bdf8}
 
+/* CHROME REMOTE DESKTOP STYLE HOST REMOTE BAR */
+.hostRemoteBar{
+  background:linear-gradient(135deg, rgba(14,23,38,0.95), rgba(15,31,54,0.95));
+  border:1px solid rgba(56,189,248,0.25);
+  border-radius:12px;
+  padding:12px 18px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+  margin-bottom:18px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.3);
+  position:relative;
+  overflow:hidden;
+}
+.hostRemoteBar::before{
+  content:'';
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:4px;
+  background:linear-gradient(180deg, #10b981, #38bdf8);
+}
+.hostRemoteLeft{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+}
+.hostDeviceIcon{
+  width:42px;
+  height:42px;
+  border-radius:10px;
+  background:rgba(56,189,248,0.12);
+  color:#38bdf8;
+  display:grid;
+  place-items:center;
+  flex-shrink:0;
+  border:1px solid rgba(56,189,248,0.2);
+}
+.hostDeviceInfo{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  min-width:0;
+}
+.hostDeviceTitle{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.hostDeviceTitle strong{
+  font-size:14px;
+  color:#f8fafc;
+  font-weight:700;
+}
+.hostLivePill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:2px 9px;
+  border-radius:12px;
+  font-size:11px;
+  font-weight:600;
+}
+.hostLivePill.online{
+  background:rgba(16,185,129,0.15);
+  color:#34d399;
+  border:1px solid rgba(16,185,129,0.35);
+}
+.hostLivePill.offline{
+  background:rgba(239,68,68,0.15);
+  color:#f87171;
+  border:1px solid rgba(239,68,68,0.35);
+}
+.hostDeviceSub{
+  font-size:12px;
+  color:#7e93ab;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.hostDeviceSub .mono{
+  font-family:monospace;
+  color:#cbd5e1;
+}
+.hostRemoteActions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-shrink:0;
+}
+.hostSetupBtn{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  background:#0f2139;
+  color:#38bdf8;
+  border:1px solid rgba(56,189,248,0.35);
+  font-size:12.5px;
+  font-weight:600;
+  padding:7px 14px;
+  border-radius:8px;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+.hostSetupBtn:hover{
+  background:#17345b;
+  border-color:#38bdf8;
+  color:#fff;
+}
+@media(max-width:768px){
+  .hostRemoteBar{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:12px;
+    padding:12px 14px;
+  }
+  .hostRemoteActions{
+    width:100%;
+    justify-content:flex-start;
+  }
+  .hostSetupBtn{
+    width:100%;
+    justify-content:center;
+  }
+}
+
+/* HOST REMOTE SETUP MODAL */
+.hostModalBackdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(3,7,18,0.78);
+  backdrop-filter:blur(6px);
+  z-index:9999;
+  display:grid;
+  place-items:center;
+  padding:16px;
+  overflow-y:auto;
+}
+.hostModalCard{
+  background:#0d1524;
+  border:1px solid #1e2f47;
+  border-radius:16px;
+  width:100%;
+  max-width:560px;
+  box-shadow:0 24px 60px rgba(0,0,0,0.6);
+  overflow:hidden;
+  animation:modalFadeIn 0.2s ease-out;
+}
+.hostModalHead{
+  padding:18px 22px;
+  border-bottom:1px solid #18253a;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  background:#080e1a;
+}
+.hostModalTitle{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:16px;
+  font-weight:700;
+  color:#f8fafc;
+}
+.hostModalClose{
+  background:transparent;
+  border:none;
+  color:#7e93ab;
+  cursor:pointer;
+  padding:4px;
+  border-radius:6px;
+  display:grid;
+  place-items:center;
+}
+.hostModalClose:hover{color:#fff;background:#18253a}
+.hostModalBody{
+  padding:20px 22px;
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+.hostModalSection{
+  background:#080e1a;
+  border:1px solid #18253a;
+  border-radius:10px;
+  padding:14px 16px;
+}
+.hostModalSecHead{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+  font-size:12px;
+  font-weight:700;
+  color:#94a3b8;
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+}
+.hostModalRow{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:6px 0;
+  font-size:13px;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.hostModalRow:last-child{border-bottom:none}
+.hostModalRow label{color:#7e93ab}
+.hostModalRow strong{color:#f1f5f9;font-weight:600}
+.hostModalFoot{
+  padding:14px 22px;
+  border-top:1px solid #18253a;
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  background:#080e1a;
+}
+@keyframes modalFadeIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
+
+/* Light theme overrides */
+[data-theme="light"] .hostRemoteBar{
+  background:#ffffff;
+  border-color:#cbd5e1;
+  box-shadow:0 2px 10px rgba(0,0,0,0.04);
+}
+[data-theme="light"] .hostDeviceTitle strong{color:#0f172a}
+[data-theme="light"] .hostModalCard{background:#ffffff;border-color:#cbd5e1}
+[data-theme="light"] .hostModalHead, [data-theme="light"] .hostModalFoot, [data-theme="light"] .hostModalSection{background:#f8fafc;border-color:#e2e8f0}
+[data-theme="light"] .hostModalTitle, [data-theme="light"] .hostModalRow strong{color:#0f172a}
+
 /* 6 FLEET STAT CARDS */
 .fleetStatsGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
 @media(max-width:1200px){.fleetStatsGrid{grid-template-columns:repeat(3,1fr)}}
