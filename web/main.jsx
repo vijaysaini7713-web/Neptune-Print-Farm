@@ -436,7 +436,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
  );
 }
 
-function HostSetupModal({systemInfo, total, online, onClose, onRefresh}){
+function HostStatusModal({systemInfo, total, online, onClose, onOpenGuide, onRefresh}){
  const [copiedLan, setCopiedLan] = useState(false);
  const [copiedRemote, setCopiedRemote] = useState(false);
  const [refreshing, setRefreshing] = useState(false);
@@ -476,11 +476,11 @@ function HostSetupModal({systemInfo, total, online, onClose, onRefresh}){
 
  return (
   <div className="hostModalBackdrop" onClick={onClose}>
-   <div className="hostModalCard" onClick={e=>e.stopPropagation()}>
+   <div className="hostModalCard hostStatusCard" onClick={e=>e.stopPropagation()}>
     <div className="hostModalHead">
      <div className="hostModalTitle">
       <HardDrive size={18} color="#38bdf8"/>
-      <span>Host Remote Setup & Status</span>
+      <span>Host System Status</span>
      </div>
      <button className="hostModalClose" onClick={onClose} title="Close">
       <X size={18}/>
@@ -488,10 +488,10 @@ function HostSetupModal({systemInfo, total, online, onClose, onRefresh}){
     </div>
 
     <div className="hostModalBody">
-     {/* SECTION 1: Registered Host Computer (Chrome Remote Desktop Style) */}
+     {/* SECTION 1: Registered Host Computer */}
      <div className="hostModalSection">
       <div className="hostModalSecHead">
-       <span>Registered Host Computer</span>
+       <span>Host Computer Telemetry</span>
        <span className="hostLivePill online">
         <span className="liveDot green"/> Online (Ready)
        </span>
@@ -502,7 +502,7 @@ function HostSetupModal({systemInfo, total, online, onClose, onRefresh}){
        <strong>{hostName}</strong>
       </div>
       <div className="hostModalRow">
-       <label>Local Network (LAN)</label>
+       <label>Farm LAN IP</label>
        <div style={{display:'flex',alignItems:'center',gap:6}}>
         <strong className="mono">{lanUrl}</strong>
         <button className="copyBtn" onClick={handleCopyLan} title="Copy LAN address">
@@ -511,7 +511,7 @@ function HostSetupModal({systemInfo, total, online, onClose, onRefresh}){
        </div>
       </div>
       <div className="hostModalRow">
-       <label>Cloudflare Public Remote</label>
+       <label>Cloudflare Public URL</label>
        <div style={{display:'flex',alignItems:'center',gap:6}}>
         <strong className="mono">{remoteUrl}</strong>
         <button className="copyBtn" onClick={handleCopyRemote} title="Copy remote URL">
@@ -532,69 +532,208 @@ function HostSetupModal({systemInfo, total, online, onClose, onRefresh}){
       </div>
      </div>
 
-     {/* SECTION 2: 24/7 Persistent Background Watchdog */}
+     {/* SECTION 2: 24/7 Background Watchdog */}
      <div className="hostModalSection">
       <div className="hostModalSecHead">
-       <span>24/7 Persistent Auto-Start & Watchdog</span>
+       <span>24/7 Persistent Watchdog</span>
        <span style={{color:'#10b981',fontWeight:700,fontSize:11}}>ACTIVE</span>
       </div>
-      <div style={{fontSize:12.5,color:'#94a3b8',lineHeight:1.6}}>
-       <p style={{margin:'0 0 8px 0'}}>
-        <strong style={{color:'#f8fafc'}}>Continuous Background Execution:</strong> Neptune Print Farm runs continuously as a silent Windows service without requiring an open terminal window.
-       </p>
-       <ul style={{margin:0,paddingLeft:18,display:'flex',flexDirection:'column',gap:4}}>
-        <li>Configured in Windows Registry Auto-Run & Startup folder: Launches automatically when your PC boots or logs in.</li>
-        <li>Neptune Watchdog checks port 3080 and the Cloudflare tunnel health every 10 seconds.</li>
-        <li>If any process terminates or the PC wakes from sleep mode, it automatically recovers within 10 seconds.</li>
-       </ul>
+      <div style={{fontSize:12.5,color:'#94a3b8',lineHeight:1.55}}>
+       <div className="hostModalRow" style={{padding:'4px 0'}}>
+        <label>Service Type</label>
+        <strong style={{color:'#38bdf8'}}>Windows WMI Background Service</strong>
+       </div>
+       <div className="hostModalRow" style={{padding:'4px 0'}}>
+        <label>IDE Decoupling</label>
+        <strong style={{color:'#10b981'}}>Independent of Antigravity</strong>
+       </div>
+       <div className="hostModalRow" style={{padding:'4px 0'}}>
+        <label>Auto-Recovery</label>
+        <strong>Monitors port 3080 & tunnel every 10s</strong>
+       </div>
+       <div className="hostModalRow" style={{padding:'4px 0'}}>
+        <label>Boot Auto-Start</label>
+        <strong>Windows Registry Run & Startup Folder</strong>
+       </div>
       </div>
-     </div>
-
-     {/* SECTION 3: How to Setup & Connect Remote Access */}
-     <div className="hostModalSection" style={{background:'rgba(56,189,248,0.04)',borderColor:'rgba(56,189,248,0.2)'}}>
-      <div className="hostModalSecHead" style={{color:'#38bdf8'}}>
-       <span>How to Setup & Connect</span>
-      </div>
-      <div style={{fontSize:12.5,color:'#94a3b8',lineHeight:1.6}}>
-       <p style={{margin:'0 0 8px 0'}}>
-        Connect to your print farm from any smartphone, tablet, or external laptop:
-       </p>
-       <ol style={{margin:'0 0 10px 0',paddingLeft:18,display:'flex',flexDirection:'column',gap:4}}>
-        <li>Open <strong style={{color:'#38bdf8'}}>https://neptunemonitor.com</strong> in your browser.</li>
-        <li>Telemetry is encrypted and tunneled securely directly to your Host PC.</li>
-        <li>All 3D printers on your local farm Wi-Fi will automatically appear online.</li>
-       </ol>
-      </div>
-      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-       <button className="fleetRefreshBtn" onClick={handleRefresh} disabled={refreshing} style={{fontSize:12,padding:'6px 12px'}}>
-        <RefreshCw size={13} className={refreshing?'spin':''}/> {refreshing ? 'Checking Host...' : 'Refresh Host Status'}
-       </button>
-       <button className="fleetRefreshBtn" onClick={handleCopyRemote} style={{fontSize:12,padding:'6px 12px'}}>
-        {copiedRemote ? <Check size={13} color="#10b981"/> : <Copy size={13}/>} Copy neptunemonitor.com
-       </button>
-       <button className="fleetRefreshBtn" onClick={handleCopyLan} style={{fontSize:12,padding:'6px 12px'}}>
-        {copiedLan ? <Check size={13} color="#10b981"/> : <Copy size={13}/>} Copy LAN Address
-       </button>
-      </div>
-     </div>
-
-     {/* SECTION 4: How to Setup & Add 3D Printers */}
-     <div className="hostModalSection">
-      <div className="hostModalSecHead">
-       <span>How to Setup & Add 3D Printers</span>
-      </div>
-      <ol style={{margin:0,paddingLeft:18,fontSize:12.5,color:'#cbd5e1',lineHeight:1.65,display:'flex',flexDirection:'column',gap:4}}>
-       <li>Connect your Elegoo Neptune printer to your local Wi-Fi or router network.</li>
-       <li>Check the printer touch screen to find its assigned LAN IP address (e.g. <code style={{color:'#38bdf8'}}>172.16.20.xxx</code>).</li>
-       <li>Navigate to <b>Printer settings</b> tab in the sidebar and click <b>+ Add printer</b>.</li>
-       <li>Enter printer name, IP address, and default Moonraker port <code style={{color:'#38bdf8'}}>7125</code> (or <code style={{color:'#38bdf8'}}>80</code>).</li>
-       <li>Click <b>Save printer list</b> — Neptune Farm connects immediately and displays real-time telemetry!</li>
-      </ol>
      </div>
     </div>
 
-    <div className="hostModalFoot">
-     <button className="fleetRefreshBtn" onClick={onClose} style={{padding:'7px 18px',fontSize:12.5}}>
+    <div className="hostModalFoot" style={{justifyContent:'space-between'}}>
+     <button 
+      className="fleetRefreshBtn" 
+      onClick={()=>{onClose();onOpenGuide();}} 
+      style={{fontSize:12,padding:'6px 12px',gap:6}}
+     >
+      <Sparkles size={13} color="#38bdf8"/> How to Setup...
+     </button>
+     <div style={{display:'flex',gap:8}}>
+      <button 
+       className="fleetRefreshBtn" 
+       onClick={handleRefresh} 
+       disabled={refreshing} 
+       style={{fontSize:12,padding:'6px 12px'}}
+      >
+       <RefreshCw size={13} className={refreshing?'spin':''}/> {refreshing ? 'Checking...' : 'Refresh'}
+      </button>
+      <button 
+       className="fleetRefreshBtn" 
+       onClick={onClose} 
+       style={{padding:'6px 16px',fontSize:12.5}}
+      >
+       Close
+      </button>
+     </div>
+    </div>
+   </div>
+  </div>
+ );
+}
+
+function HostSetupGuideModal({onClose, onOpenStatus}){
+ const [guideTab, setGuideTab] = useState('remote'); // 'remote' | 'printers' | 'watchdog'
+ const [copiedRemote, setCopiedRemote] = useState(false);
+ const remoteUrl = 'https://neptunemonitor.com';
+
+ const handleCopyRemote = () => {
+  if (navigator?.clipboard?.writeText) {
+   navigator.clipboard.writeText(remoteUrl).then(()=>{
+    setCopiedRemote(true);
+    setTimeout(()=>setCopiedRemote(false), 2000);
+   });
+  }
+ };
+
+ return (
+  <div className="hostModalBackdrop" onClick={onClose}>
+   <div className="hostModalCard hostGuideCard" onClick={e=>e.stopPropagation()}>
+    <div className="hostModalHead">
+     <div className="hostModalTitle">
+      <Sparkles size={18} color="#38bdf8"/>
+      <span>How to Setup Neptune Farm</span>
+     </div>
+     <button className="hostModalClose" onClick={onClose} title="Close">
+      <X size={18}/>
+     </button>
+    </div>
+
+    {/* Guide Tabs */}
+    <div className="hostGuideTabsBar">
+     <button 
+      className={'hostGuideTabBtn '+(guideTab==='remote'?'active':'')} 
+      onClick={()=>setGuideTab('remote')}
+     >
+      <Globe size={13}/> Remote Access
+     </button>
+     <button 
+      className={'hostGuideTabBtn '+(guideTab==='printers'?'active':'')} 
+      onClick={()=>setGuideTab('printers')}
+     >
+      <Printer size={13}/> Add 3D Printers
+     </button>
+     <button 
+      className={'hostGuideTabBtn '+(guideTab==='watchdog'?'active':'')} 
+      onClick={()=>setGuideTab('watchdog')}
+     >
+      <ShieldCheck size={13}/> 24/7 Always-On
+     </button>
+    </div>
+
+    <div className="hostModalBody" style={{padding:'16px 20px'}}>
+     {guideTab === 'remote' && (
+      <div className="hostModalSection">
+       <div className="hostModalSecHead">
+        <span>🌐 Remote Access Setup</span>
+        <span style={{color:'#38bdf8',fontSize:11,fontWeight:700}}>Cloudflare Argo</span>
+       </div>
+       <ol style={{margin:'0 0 14px 0',paddingLeft:18,fontSize:12.5,color:'#cbd5e1',lineHeight:1.65,display:'flex',flexDirection:'column',gap:6}}>
+        <li>
+         Open <strong style={{color:'#38bdf8'}}>https://neptunemonitor.com</strong> from any smartphone, laptop, or remote network.
+        </li>
+        <li>
+         All traffic is encrypted and securely relayed to your Host PC via Cloudflare Tunnel.
+        </li>
+        <li>
+         No port forwarding, static IP, or firewall exceptions are needed on your router.
+        </li>
+        <li>
+         Printers on your farm LAN are immediately discovered and monitored in real time.
+        </li>
+       </ol>
+       <div style={{display:'flex',gap:8,paddingTop:8,borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+        <button className="fleetRefreshBtn" onClick={handleCopyRemote} style={{fontSize:12,padding:'6px 12px'}}>
+         {copiedRemote ? <Check size={13} color="#10b981"/> : <Copy size={13}/>} Copy neptunemonitor.com
+        </button>
+        <a href={remoteUrl} target="_blank" rel="noopener noreferrer" className="fleetRefreshBtn" style={{fontSize:12,padding:'6px 12px',textDecoration:'none',display:'inline-flex',alignItems:'center',gap:6}}>
+         <ExternalLink size={13}/> Open neptunemonitor.com
+        </a>
+       </div>
+      </div>
+     )}
+
+     {guideTab === 'printers' && (
+      <div className="hostModalSection">
+       <div className="hostModalSecHead">
+        <span>🖨️ How to Add 3D Printers</span>
+        <span style={{color:'#34d399',fontSize:11,fontWeight:700}}>Moonraker / Fluidd</span>
+       </div>
+       <ol style={{margin:0,paddingLeft:18,fontSize:12.5,color:'#cbd5e1',lineHeight:1.65,display:'flex',flexDirection:'column',gap:6}}>
+        <li>
+         Connect your Elegoo Neptune printer to your farm Wi-Fi or router network.
+        </li>
+        <li>
+         Find the printer's assigned IP on the touch screen (e.g. <code style={{color:'#38bdf8'}}>172.16.20.xxx</code>).
+        </li>
+        <li>
+         Navigate to <b>Printer settings</b> tab in the sidebar and click <b>+ Add printer</b>.
+        </li>
+        <li>
+         Enter printer name, IP address, and default Moonraker port <code style={{color:'#38bdf8'}}>7125</code> (or <code style={{color:'#38bdf8'}}>80</code>).
+        </li>
+        <li>
+         Click <b>Save printer list</b> — Neptune Farm immediately establishes real-time telemetry!
+        </li>
+       </ol>
+      </div>
+     )}
+
+     {guideTab === 'watchdog' && (
+      <div className="hostModalSection">
+       <div className="hostModalSecHead">
+        <span>🛡️ 24/7 Always-On Service</span>
+        <span style={{color:'#10b981',fontSize:11,fontWeight:700}}>Zero Maintenance</span>
+       </div>
+       <ul style={{margin:0,paddingLeft:18,fontSize:12.5,color:'#cbd5e1',lineHeight:1.65,display:'flex',flexDirection:'column',gap:6}}>
+        <li>
+         <b>Decoupled from Antigravity:</b> Runs under Windows OS service (`WmiPrvSE.exe`). Closing the IDE will not terminate your farm host.
+        </li>
+        <li>
+         <b>Automatic Startup:</b> Starts automatically when Windows boots or logs in via Registry Auto-Run & Startup folder.
+        </li>
+        <li>
+         <b>Auto-Recovery:</b> The watchdog verifies port 3080 and the Cloudflare tunnel every 10 seconds. If any process dies or PC wakes from sleep, it revives it in seconds.
+        </li>
+        <li>
+         <b>Desktop Launcher:</b> A backup 1-click launcher is placed on your Desktop: <code style={{color:'#38bdf8'}}>START-NEPTUNE-FARM.bat</code>.
+        </li>
+       </ul>
+      </div>
+     )}
+    </div>
+
+    <div className="hostModalFoot" style={{justifyContent:'space-between'}}>
+     <button 
+      className="fleetRefreshBtn" 
+      onClick={()=>{onClose();onOpenStatus();}} 
+      style={{fontSize:12,padding:'6px 12px',gap:6}}
+     >
+      <HardDrive size={13} color="#38bdf8"/> View Host Status...
+     </button>
+     <button 
+      className="fleetRefreshBtn" 
+      onClick={onClose} 
+      style={{padding:'6px 18px',fontSize:12.5}}
+     >
       Close
      </button>
     </div>
@@ -2449,7 +2588,8 @@ function SettingsPage({list,reload,systemInfo}){
 function App(){
  const[authed,setAuthed]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[systemInfo,setSystemInfo]=useState(null),[controlPrinter,setControlPrinter]=useState(null),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);
  const[pushActive,setPushActive]=useState(typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted');
- const[showHostModal,setShowHostModal]=useState(false);
+ const[showHostStatusModal,setShowHostStatusModal]=useState(false);
+ const[showSetupGuideModal,setShowSetupGuideModal]=useState(false);
 
  useEffect(()=>{
   if(typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && 'serviceWorker' in navigator){
@@ -2558,7 +2698,7 @@ function App(){
     <Settings size={17}/> <span>Printer settings</span>
    </button>
    <div className="asideFoot">
-    <div className="hostStatusBox" onClick={()=>setShowHostModal(true)} style={{cursor:'pointer'}} title="Click to view Host Remote Setup & Status">
+    <div className="hostStatusBox" onClick={()=>setShowHostStatusModal(true)} style={{cursor:'pointer'}} title="Click to view Host System Status">
      <div className="hostStatusHead">
       <span className="liveDot green"/>
       <span>Farm host connected</span>
@@ -2594,8 +2734,11 @@ function App(){
      >
       <Bell size={13}/> <span>{pushActive ? 'Push Active (Test)' : 'Enable Alerts'}</span>
      </button>
-     <button className="themeToggleBtn" onClick={()=>setShowHostModal(true)} title="Host PC Status & Remote Setup">
-      <HardDrive size={13}/> Host PC
+     <button className="themeToggleBtn" onClick={()=>setShowHostStatusModal(true)} title="Host PC Status">
+      <HardDrive size={13}/> Host Status
+     </button>
+     <button className="themeToggleBtn" onClick={()=>setShowSetupGuideModal(true)} title="How to Setup Neptune Farm">
+      <Sparkles size={13}/> How to Setup
      </button>
      <button className="themeToggleBtn" onClick={toggleTheme} title={`Switch to ${theme==='dark'?'Light':'Dark'} mode`}>
       {theme==='dark'?(
@@ -2657,8 +2800,11 @@ function App(){
        </div>
       </div>
       <div className="hostRemoteActions">
-       <button className="hostSetupBtn" onClick={()=>setShowHostModal(true)} title="Host connection details & 24/7 background setup">
-        <Sliders size={14}/> Host Remote Setup
+       <button className="hostSetupBtn" onClick={()=>setShowHostStatusModal(true)} title="View Host machine IP, cloud domain, and 24/7 background status">
+        <HardDrive size={13}/> Host Status
+       </button>
+       <button className="hostGuideBtn" onClick={()=>setShowSetupGuideModal(true)} title="Step-by-step setup guide for remote access & adding printers">
+        <Sparkles size={13}/> How to Setup
        </button>
       </div>
      </div>
@@ -2764,13 +2910,21 @@ function App(){
     />
    )}
 
-   {showHostModal&&(
-    <HostSetupModal
+   {showHostStatusModal&&(
+    <HostStatusModal
      systemInfo={systemInfo}
      total={total}
      online={online}
-     onClose={()=>setShowHostModal(false)}
+     onClose={()=>setShowHostStatusModal(false)}
+     onOpenGuide={()=>{setShowHostStatusModal(false);setShowSetupGuideModal(true);}}
      onRefresh={refresh}
+    />
+   )}
+
+   {showSetupGuideModal&&(
+    <HostSetupGuideModal
+     onClose={()=>setShowSetupGuideModal(false)}
+     onOpenStatus={()=>{setShowSetupGuideModal(false);setShowHostStatusModal(true);}}
     />
    )}
   </main>
