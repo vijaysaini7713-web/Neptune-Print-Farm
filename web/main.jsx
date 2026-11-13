@@ -203,10 +203,10 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
      <div className="fleetJobFoot">
       {hasRunout ? (
        <div className="fleetTimeRow">
-        <span className="fleetTimeBadge runout" title="Filament sensor triggered">
+        <span className="fleetTimeBadge runout" title="Filament sensor triggered — spool is empty">
          <AlertTriangle size={13} className="timeIcon"/>
-         <span className="timeLabel">Filament khatam ho gaya:</span>
-         <strong className="timeValue">{p.runoutHoldSec ? `On hold for ${fmtDuration(p.runoutHoldSec)} · Load new spool` : 'Replace with new filament'}</strong>
+         <span className="timeLabel">Filament Runout:</span>
+         <strong className="timeValue">{p.runoutHoldSec ? `On hold for ${fmtDuration(p.runoutHoldSec)} · Load new spool` : 'Replace with new spool'}</strong>
         </span>
         {p.remainingTime != null && (
          <span className="fleetTimeBadge remaining" title="Estimated time left once resumed">
@@ -368,6 +368,28 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
     </div>
    </div>
 
+   {/* Filament Runout Banner with Step-by-Step Instructions */}
+   {hasRunout&&(
+    <div className="fleetFilamentBanner">
+     <AlertTriangle size={16} className="fleetFilamentIcon"/>
+     <div className="fleetFilamentContent" style={{flex:1}}>
+      <strong>⚠️ Filament Runout Detected — Print Paused</strong>
+      <span>
+       {p.runoutHoldSec ? `Printer has been on hold for ${fmtDuration(p.runoutHoldSec)}. ` : ''}
+       Spool is empty. To replace: load fresh filament into sensor, purge nozzle, and resume print.
+      </span>
+     </div>
+     <button 
+      className="fleetRunoutGuideBtn"
+      onClick={(e)=>{e.stopPropagation();onOpenControl(p)}}
+      title="Open Extruder controls and replacement guide"
+     >
+      <Sliders size={13}/>
+      <span>Filament Guide</span>
+     </button>
+    </div>
+   )}
+
    {/* Print Completed Banner */}
    {isDone&&(
     <div className="fleetCompletedBanner">
@@ -510,32 +532,39 @@ function HostSetupModal({systemInfo, total, online, onClose, onRefresh}){
       </div>
      </div>
 
-     {/* SECTION 2: 24/7 Persistent Auto-Start & Watchdog */}
+     {/* SECTION 2: 24/7 Persistent Background Watchdog */}
      <div className="hostModalSection">
       <div className="hostModalSecHead">
-       <span>24/7 Persistent Auto-Start</span>
+       <span>24/7 Persistent Auto-Start & Watchdog</span>
        <span style={{color:'#10b981',fontWeight:700,fontSize:11}}>ACTIVE</span>
       </div>
       <div style={{fontSize:12.5,color:'#94a3b8',lineHeight:1.6}}>
        <p style={{margin:'0 0 8px 0'}}>
-        <strong style={{color:'#f8fafc'}}>Bina Terminal ke 24/7 Background Run:</strong> Host PC me Windows Registry Auto-Run aur Neptune Watchdog install ho chuka hai.
+        <strong style={{color:'#f8fafc'}}>Continuous Background Execution:</strong> Neptune Print Farm runs continuously as a silent Windows service without requiring an open terminal window.
        </p>
        <ul style={{margin:0,paddingLeft:18,display:'flex',flexDirection:'column',gap:4}}>
-        <li>Jab bhi PC restart ya login hota hai, background me server automatically start ho jata hai.</li>
-        <li>Neptune Watchdog har 10 seconds me port 3080 aur Cloudflare tunnel verify karta hai.</li>
-        <li>Agar process kabhi band ho ya PC sleep se wake ho, ye khud 10 seconds me restart kar deta hai.</li>
+        <li>Configured in Windows Registry Auto-Run & Startup folder: Launches automatically when your PC boots or logs in.</li>
+        <li>Neptune Watchdog checks port 3080 and the Cloudflare tunnel health every 10 seconds.</li>
+        <li>If any process terminates or the PC wakes from sleep mode, it automatically recovers within 10 seconds.</li>
        </ul>
       </div>
      </div>
 
-     {/* SECTION 3: Direct Reconnect */}
+     {/* SECTION 3: How to Setup & Connect Remote Access */}
      <div className="hostModalSection" style={{background:'rgba(56,189,248,0.04)',borderColor:'rgba(56,189,248,0.2)'}}>
       <div className="hostModalSecHead" style={{color:'#38bdf8'}}>
-       <span>Direct Reconnect</span>
+       <span>How to Setup & Connect</span>
       </div>
-      <p style={{fontSize:12,color:'#94a3b8',margin:'0 0 10px 0'}}>
-       Aap kisi bhi mobile ya laptop se seedha <strong style={{color:'#38bdf8'}}>neptunemonitor.com</strong> open karein. Host PC connect ho jayega aur sare online printers live dikhenge.
-      </p>
+      <div style={{fontSize:12.5,color:'#94a3b8',lineHeight:1.6}}>
+       <p style={{margin:'0 0 8px 0'}}>
+        Connect to your print farm from any smartphone, tablet, or external laptop:
+       </p>
+       <ol style={{margin:'0 0 10px 0',paddingLeft:18,display:'flex',flexDirection:'column',gap:4}}>
+        <li>Open <strong style={{color:'#38bdf8'}}>https://neptunemonitor.com</strong> in your browser.</li>
+        <li>Telemetry is encrypted and tunneled securely directly to your Host PC.</li>
+        <li>All 3D printers on your local farm Wi-Fi will automatically appear online.</li>
+       </ol>
+      </div>
       <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
        <button className="fleetRefreshBtn" onClick={handleRefresh} disabled={refreshing} style={{fontSize:12,padding:'6px 12px'}}>
         <RefreshCw size={13} className={refreshing?'spin':''}/> {refreshing ? 'Checking Host...' : 'Refresh Host Status'}
@@ -543,7 +572,24 @@ function HostSetupModal({systemInfo, total, online, onClose, onRefresh}){
        <button className="fleetRefreshBtn" onClick={handleCopyRemote} style={{fontSize:12,padding:'6px 12px'}}>
         {copiedRemote ? <Check size={13} color="#10b981"/> : <Copy size={13}/>} Copy neptunemonitor.com
        </button>
+       <button className="fleetRefreshBtn" onClick={handleCopyLan} style={{fontSize:12,padding:'6px 12px'}}>
+        {copiedLan ? <Check size={13} color="#10b981"/> : <Copy size={13}/>} Copy LAN Address
+       </button>
       </div>
+     </div>
+
+     {/* SECTION 4: How to Setup & Add 3D Printers */}
+     <div className="hostModalSection">
+      <div className="hostModalSecHead">
+       <span>How to Setup & Add 3D Printers</span>
+      </div>
+      <ol style={{margin:0,paddingLeft:18,fontSize:12.5,color:'#cbd5e1',lineHeight:1.65,display:'flex',flexDirection:'column',gap:4}}>
+       <li>Connect your Elegoo Neptune printer to your local Wi-Fi or router network.</li>
+       <li>Check the printer touch screen to find its assigned LAN IP address (e.g. <code style={{color:'#38bdf8'}}>172.16.20.xxx</code>).</li>
+       <li>Navigate to <b>Printer settings</b> tab in the sidebar and click <b>+ Add printer</b>.</li>
+       <li>Enter printer name, IP address, and default Moonraker port <code style={{color:'#38bdf8'}}>7125</code> (or <code style={{color:'#38bdf8'}}>80</code>).</li>
+       <li>Click <b>Save printer list</b> — Neptune Farm connects immediately and displays real-time telemetry!</li>
+      </ol>
      </div>
     </div>
 
@@ -558,12 +604,13 @@ function HostSetupModal({systemInfo, total, online, onClose, onRefresh}){
 }
 
 function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
+ const hasRunout = Boolean(p.filamentDetected === false || p.filamentRunout === true || p.status === 'runout');
  const [logs,setLogs]=useState([]);
  const [cmd,setCmd]=useState('');
  const [sending,setSending]=useState(false);
  const [feedback,setFeedback]=useState(null);
  const [autoScroll,setAutoScroll]=useState(true);
- const [modalTab,setModalTab]=useState('jog'); // 'jog' | 'temp' | 'fan' | 'terminal'
+ const [modalTab,setModalTab]=useState(()=>hasRunout ? 'fan' : 'jog'); // 'jog' | 'temp' | 'fan' | 'terminal'
  const [jogStep,setJogStep]=useState(10); // 0.1 | 1 | 10 | 50 | 100
  const [customNozzle,setCustomNozzle]=useState(210);
  const [customBed,setCustomBed]=useState(60);
@@ -673,6 +720,39 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
      <div className={'ctrlFeedback '+(feedback.type==='error'?'error':'success')}>
       {feedback.type==='error'?<AlertTriangle size={15}/>:<CheckCircle2 size={15}/>}
       <span>{feedback.text}</span>
+     </div>
+    )}
+
+    {/* Filament Runout Alert Banner inside Control Modal */}
+    {hasRunout&&(
+     <div style={{background:'rgba(245,158,11,0.12)',border:'1px solid rgba(245,158,11,0.35)',borderRadius:'10px',margin:'10px 18px 0',padding:'12px 14px',display:'flex',flexDirection:'column',gap:'8px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'8px'}}>
+       <div style={{display:'flex',alignItems:'center',gap:'8px',color:'#fbbf24',fontWeight:700,fontSize:'13px'}}>
+        <AlertTriangle size={16}/>
+        <span>Filament Runout Active — Print Paused</span>
+       </div>
+       <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
+        <button 
+         className="chipBtn" 
+         disabled={sending} 
+         onClick={()=>sendCommand('gcode','M104 S210')}
+         style={{fontSize:'11px',padding:'4px 10px'}}
+        >
+         <Flame size={12} color="#fbbf24"/> Preheat 210°C
+        </button>
+        <button 
+         className="ctrlBtn resume" 
+         disabled={sending} 
+         onClick={()=>sendCommand('resume')}
+         style={{fontSize:'11px',padding:'4px 12px'}}
+        >
+         <Play size={12}/> Resume Print
+        </button>
+       </div>
+      </div>
+      <p style={{margin:0,fontSize:'11.5px',color:'#cbd5e1',lineHeight:1.5}}>
+       Spool is empty. To replace: preheat nozzle, load fresh filament into sensor, purge nozzle in <b>Extruder & Fan</b> tab, then click Resume Print.
+      </p>
      </div>
     )}
 
@@ -911,6 +991,64 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
        <button className="chipBtn" disabled={sending} onClick={()=>sendCommand('gcode','M220 S100')}>100% Normal</button>
        <button className="chipBtn" disabled={sending} onClick={()=>sendCommand('gcode','M220 S125')}>125% Fast</button>
        <button className="chipBtn" disabled={sending} onClick={()=>sendCommand('gcode','M220 S150')}>150% Turbo</button>
+      </div>
+
+      {/* Step-by-Step Guide: How to Replace Filament */}
+      <div className="filamentGuideBox" style={{marginTop:'18px',background:'#070d18',border:'1px solid #1e2e44',borderRadius:'10px',padding:'14px 16px'}}>
+       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'8px',fontWeight:700,fontSize:'13px',color:'#38bdf8'}}>
+         <Sparkles size={15}/>
+         <span>How to Replace Filament & Reload Spool</span>
+        </div>
+        <span style={{fontSize:'11px',color:'#10b981',fontWeight:700,background:'rgba(16,185,129,0.12)',padding:'2px 8px',borderRadius:'10px',border:'1px solid rgba(16,185,129,0.3)'}}>
+         Step-by-Step Guide
+        </span>
+       </div>
+       
+       <ol style={{margin:'0 0 12px 0',paddingLeft:'18px',fontSize:'12.5px',color:'#cbd5e1',lineHeight:1.65,display:'flex',flexDirection:'column',gap:'6px'}}>
+        <li>
+         <strong style={{color:'#f8fafc'}}>Step 1: Preheat Nozzle</strong> — Ensure nozzle is heated above 180°C (PLA: 205°C–215°C, PETG: 230°C–240°C). Cold extrusion is blocked by firmware safety limits.
+        </li>
+        <li>
+         <strong style={{color:'#f8fafc'}}>Step 2: Unload Old Filament</strong> — Press the extruder release tension lever and gently pull remaining filament strand out of the PTFE tube and runout sensor.
+        </li>
+        <li>
+         <strong style={{color:'#f8fafc'}}>Step 3: Insert New Spool</strong> — Snip the new filament tip cleanly at a 45° angle. Feed through the runout sensor until it engages into the extruder drive gears.
+        </li>
+        <li>
+         <strong style={{color:'#f8fafc'}}>Step 4: Purge Old Color</strong> — Click <b>Extrude 25mm</b> once or twice above until new filament flows cleanly from the nozzle tip with consistent solid color.
+        </li>
+        <li>
+         <strong style={{color:'#f8fafc'}}>Step 5: Resume Printing</strong> — Remove any purged plastic from the nozzle tip and click <b>Resume Print</b> to seamlessly continue your print job!
+        </li>
+       </ol>
+
+       <div style={{display:'flex',gap:'8px',flexWrap:'wrap',paddingTop:'8px',borderTop:'1px solid #142033'}}>
+        <button 
+         className="chipBtn" 
+         disabled={sending} 
+         onClick={()=>sendCommand('gcode','M104 S210')}
+         style={{fontSize:'11.5px',display:'inline-flex',alignItems:'center',gap:'5px'}}
+        >
+         <Flame size={12} color="#fbbf24"/> Preheat 210°C
+        </button>
+        <button 
+         className="extrudeBtn in" 
+         disabled={sending} 
+         onClick={()=>sendCommand('gcode','M83\nG1 E25 F300')}
+         style={{fontSize:'11.5px',padding:'6px 12px'}}
+        >
+         <ChevronDown size={14}/> Purge 25mm
+        </button>
+        <button 
+         className="ctrlBtn resume" 
+         disabled={sending} 
+         onClick={()=>sendCommand('resume')}
+         style={{fontSize:'11.5px',padding:'6px 14px'}}
+        >
+         <Play size={12}/> Resume Print
+        </button>
+       </div>
       </div>
      </div>
     )}
@@ -1153,7 +1291,7 @@ function CompletedPage({data,onSync,printers=[]}){
      <span className="fleetCategoryTag">PRODUCTION & AUDIT</span>
      <h1 className="fleetMainTitle">Production & Completed Prints</h1>
      <p className="fleetSubtitle">
-      Real-time farm output tracking: kitne prints complete hue, kitne abhi chal rahe hain (baaki), aur total piece summary.
+      Real-time farm output tracking: completed jobs, active in-progress prints, and total production unit summary.
      </p>
     </div>
     <div className="fleetHeaderActions">
@@ -1163,12 +1301,12 @@ function CompletedPage({data,onSync,printers=[]}){
     </div>
    </div>
 
-   {/* Top KPI Cards (Complete vs In-Progress/Baaki vs Failed) */}
+   {/* Top KPI Cards (Complete vs In-Progress vs Failed) */}
    <div className="prodKpiGrid">
     <div className="prodKpiCard completed">
      <div className="kpiIconBox completed"><PackageCheck size={22}/></div>
      <div className="kpiContent">
-      <span className="kpiLabel">Completed Pieces (Ban Chuke)</span>
+      <span className="kpiLabel">Completed Pieces</span>
       <strong className="kpiValue">{filteredCompletedCount} pcs</strong>
       <small className="kpiSub">{datePreset==='today'?'Completed Today':datePreset==='yesterday'?'Completed Yesterday':'Selected Period'}</small>
      </div>
@@ -1177,7 +1315,7 @@ function CompletedPage({data,onSync,printers=[]}){
     <div className="prodKpiCard inProgress">
      <div className="kpiIconBox inProgress"><Clock size={22}/></div>
      <div className="kpiContent">
-      <span className="kpiLabel">Currently Printing (Baaki Hain)</span>
+      <span className="kpiLabel">Currently Printing (In Progress)</span>
       <strong className="kpiValue">{activePrints.length} active</strong>
       <small className="kpiSub">{activePrints.length?`${activePrints.length} printers currently running`:'All printers idle'}</small>
      </div>
@@ -1211,13 +1349,13 @@ function CompletedPage({data,onSync,printers=[]}){
     </div>
    </div>
 
-   {/* SECTION 1: LIVE IN-PROGRESS ACTIVE PRINTS (ABHI KITNE BAAKI HAIN) */}
+   {/* SECTION 1: LIVE IN-PROGRESS ACTIVE PRINTS */}
    <div className="liveProdSection">
     <div className="liveProdHeader">
      <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
       <span className="liveDot green"/>
       <h3 style={{margin:0,fontSize:'15px',fontWeight:800,color:'#f8fafc'}}>
-       ⚡ Active In-Progress Farm Prints ({activePrints.length} Baaki Hain)
+       ⚡ Active In-Progress Farm Prints ({activePrints.length} Active)
       </h3>
      </div>
      <span style={{fontSize:'12px',color:'#7f94b0'}}>
@@ -1370,7 +1508,7 @@ function CompletedPage({data,onSync,printers=[]}){
     </div>
    </div>
 
-   {/* TAB 1: QUANTITIES BY FILE (COMPLETE VS BAAKI TRACKER) */}
+   {/* TAB 1: QUANTITIES BY FILE */}
    {tab==='summary'&&(
     <div className="card" style={{overflow:'hidden'}}>
      <div className="tableWrapper">
@@ -1378,8 +1516,8 @@ function CompletedPage({data,onSync,printers=[]}){
        <thead>
         <tr>
          <th>G-Code File Name</th>
-         <th style={{textAlign:'center'}}>Completed Pieces (Ban Chuke)</th>
-         <th style={{textAlign:'center'}}>In Progress (Baaki Hain)</th>
+         <th style={{textAlign:'center'}}>Completed Pieces</th>
+         <th style={{textAlign:'center'}}>In Progress</th>
          <th style={{textAlign:'center'}}>Total Target / Runs</th>
          <th style={{textAlign:'center'}}>Success Rate</th>
          <th>Avg Print Time</th>
@@ -2091,7 +2229,7 @@ function SettingsPage({list,reload,systemInfo}){
         </div>
 
         <small style={{color:'#64748b',fontSize:'11.5px',marginTop:'7px',display:'block',lineHeight:'1.5'}}>
-         💡 <b>Multiple Users/Groups Connect Karne Ke Liye:</b> Har person apne phone me <a href="https://t.me/vijaydreamcast_bot" target="_blank" rel="noreferrer" style={{color:'#38bdf8',textDecoration:'underline',fontWeight:600}}>@vijaydreamcast_bot</a> open kare aur <b>START</b> dabaye (ya group me bot add karke "hi" likhe), fir yahan <b>Auto-Detect All Chats</b> par click karein.
+         💡 <b>To Connect Multiple Users or Groups:</b> Each recipient should open <a href="https://t.me/vijaydreamcast_bot" target="_blank" rel="noreferrer" style={{color:'#38bdf8',textDecoration:'underline',fontWeight:600}}>@vijaydreamcast_bot</a> in Telegram and press <b>START</b> (or add the bot to a group and send a message), then click <b>Auto-Detect All Chats</b> above.
         </small>
        </div>
 
