@@ -21,7 +21,7 @@ const app=express(),port=Number(process.env.PORT||3080),root=process.cwd();
 app.set('trust proxy', 1);
 const dataDir=path.join(root,'data'),configDir=path.join(root,'config');
 fs.mkdirSync(dataDir,{recursive:true});
-const configFile=path.join(configDir,'printers.json'),exampleFile=path.join(configDir,'printers.example.json'),historyFile=path.join(dataDir,'events.json'),completedFile=path.join(dataDir,'completed_prints.json'),jobsFile=path.join(dataDir,'print_jobs.json'),clearedFile=path.join(dataDir,'cleared_prints.json'),hostSettingsFile=path.join(dataDir,'host_settings.json'),runoutFile=path.join(dataDir,'runout_state.json');
+const configFile=path.join(configDir,'printers.json'),exampleFile=path.join(configDir,'printers.example.json'),historyFile=path.join(dataDir,'events.json'),completedFile=path.join(dataDir,'completed_prints.json'),jobsFile=path.join(dataDir,'print_jobs.json'),clearedFile=path.join(dataDir,'cleared_prints.json'),hostSettingsFile=path.join(dataDir,'host_settings.json'),runoutFile=path.join(dataDir,'runout_state.json'),jobHoldFile=path.join(dataDir,'job_holds.json'),jobStartsFile=path.join(dataDir,'job_starts.json');
 const defaultHostSettings = {
  farmName: 'Neptune Print Farm',
  primaryIp: '',
@@ -82,7 +82,7 @@ async function sendPushToAll({ title, body, tag, url }) {
   save(pushSubsFile, pushSubscriptions);
  }
 }
-let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{}),runoutState=read(runoutFile,{});
+let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{}),runoutState=read(runoutFile,{}),jobHoldStats=read(jobHoldFile,{}),jobStartTimes=read(jobStartsFile,{});
 const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map();
 const offlineSince=new Map(),offlineAlertSent=new Map();
 const secret=process.env.JWT_SECRET,password=process.env.ADMIN_PASSWORD;
@@ -357,6 +357,28 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason){
  const finalDuration=computedStatus==='completed'?(compInfo?.duration||duration):duration;
  const finalFilament=computedStatus==='completed'?(compInfo?.filamentUsed||ps.filament_used||0):(ps.filament_used||0);
 
+ let jobHoldSec = null;
+ const curHold = jobHoldStats[p.id];
+ if (curHold && (curHold.file === finalFile || !curHold.file || !finalFile)) {
+  let totalHold = curHold.accumulatedHoldSec || 0;
+  if (curHold.currentHoldStart) {
+   totalHold += Math.max(0, Math.round((Date.now() - curHold.currentHoldStart) / 1000));
+  }
+  if (totalHold > 0) jobHoldSec = totalHold;
+ }
+
+ let jobStartedAt = null;
+ if (jobStartTimes[p.id]?.file === finalFile && jobStartTimes[p.id]?.startedAt) {
+  jobStartedAt = jobStartTimes[p.id].startedAt;
+ } else if (finalFile && (state === 'printing' || state === 'paused')) {
+  const totalDur = (ps.total_duration != null && ps.total_duration > 0) ? ps.total_duration : (ps.print_duration || duration || 0);
+  if (totalDur > 0) {
+   jobStartedAt = new Date(Date.now() - Math.round(totalDur * 1000)).toISOString();
+  }
+ } else if (computedStatus === 'completed' && compInfo?.completedAt && finalDuration) {
+  jobStartedAt = new Date(new Date(compInfo.completedAt).getTime() - Math.round(finalDuration * 1000)).toISOString();
+ }
+
  return {
   ...p,
   connected:true,
@@ -385,6 +407,8 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason){
   filamentSensors:sensed.map(([name])=>name),
   runoutHoldSec: runoutState[p.id] ? Math.max(0, Math.round((Date.now() - (runoutState[p.id].startTime || new Date(runoutState[p.id].startedAt).getTime())) / 1000)) : null,
   runoutStartedAt: runoutState[p.id]?.startedAt || null,
+  jobHoldSec,
+  startedAt: jobStartedAt,
   completedAt:compInfo?.completedAt||null,
   updatedAt:new Date().toISOString()
  };
@@ -496,6 +520,22 @@ async function scan(p){
    }
   }
 
+  // 0. Print start tracking
+  if (next.file && (next.status === 'printing' || next.status === 'paused' || isNowRunout)) {
+   if (!jobStartTimes[p.id] || jobStartTimes[p.id].file !== next.file) {
+    const elapsed = (next.totalDuration != null && next.totalDuration > 0) ? next.totalDuration : (next.duration || 0);
+    jobStartTimes[p.id] = {
+     file: next.file,
+     startedAt: new Date(Date.now() - Math.round(elapsed * 1000)).toISOString()
+    };
+    save(jobStartsFile, jobStartTimes);
+   }
+   if (jobHoldStats[p.id] && jobHoldStats[p.id].file && jobHoldStats[p.id].file !== next.file) {
+    delete jobHoldStats[p.id];
+    save(jobHoldFile, jobHoldStats);
+   }
+  }
+
   // 1. Filament Runout tracking & notification
   const isNowRunout = Boolean(next.filamentRunout || next.filamentDetected === false || next.status === 'runout');
   if (isNowRunout && !isKlippyShutdown) {
@@ -507,6 +547,18 @@ async function scan(p){
     };
     save(runoutFile, runoutState);
     record(p.id, 'runout', `${p.name}: Filament runout detected! Print paused waiting for reload`);
+   }
+   if (!jobHoldStats[p.id]) {
+    jobHoldStats[p.id] = {
+     file: next.file || prev?.file || '',
+     accumulatedHoldSec: 0,
+     currentHoldStart: Date.now()
+    };
+    save(jobHoldFile, jobHoldStats);
+   } else if (!jobHoldStats[p.id].currentHoldStart) {
+    jobHoldStats[p.id].currentHoldStart = Date.now();
+    jobHoldStats[p.id].file = next.file || prev?.file || jobHoldStats[p.id].file || '';
+    save(jobHoldFile, jobHoldStats);
    }
   }
 
@@ -521,9 +573,24 @@ async function scan(p){
     record(p.id, 'resumed', resumeMsg);
     delete runoutState[p.id];
     save(runoutFile, runoutState);
+
+    if (jobHoldStats[p.id]) {
+     if (jobHoldStats[p.id].currentHoldStart) {
+      const diff = Math.max(0, Math.round((Date.now() - jobHoldStats[p.id].currentHoldStart) / 1000));
+      jobHoldStats[p.id].accumulatedHoldSec = (jobHoldStats[p.id].accumulatedHoldSec || 0) + diff;
+      jobHoldStats[p.id].currentHoldStart = null;
+     }
+     save(jobHoldFile, jobHoldStats);
+    }
    } else if (next.status === 'cancelled' || next.status === 'completed' || (next.status === 'idle' && !next.file)) {
     delete runoutState[p.id];
     save(runoutFile, runoutState);
+    if (next.status === 'cancelled' || (next.status === 'idle' && !next.file)) {
+     delete jobHoldStats[p.id];
+     save(jobHoldFile, jobHoldStats);
+     delete jobStartTimes[p.id];
+     save(jobStartsFile, jobStartTimes);
+    }
    }
   }
 
@@ -786,6 +853,10 @@ app.post('/api/printers/:id/clear-completed',auth,async(req,res)=>{
  const jobId=comp?.jobId||'cleared_'+Date.now();
  clearedPrints[p.id]={jobId,clearedAt:new Date().toISOString(),filename:comp?.file||''};
  save(clearedFile,clearedPrints);
+ delete jobHoldStats[p.id];
+ save(jobHoldFile, jobHoldStats);
+ delete jobStartTimes[p.id];
+ save(jobStartsFile, jobStartTimes);
  const cur=current.get(p.id);
  if(cur){
   const updated={...cur,status:cur.rawState==='printing'?'printing':'idle',progress:cur.rawState==='printing'?cur.progress:0};

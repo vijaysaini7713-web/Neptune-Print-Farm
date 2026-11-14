@@ -93,6 +93,20 @@ const formatFinishTime=etaIso=>{
  return `${dt.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})} at ${timeStr}`;
 };
 
+const formatStartTime=iso=>{
+ if(!iso)return'—';
+ const dt=new Date(iso);
+ if(isNaN(dt.getTime()))return'—';
+ const today=getLocalDateStr(new Date());
+ const tm=new Date();tm.setDate(tm.getDate()-1);
+ const yesterday=getLocalDateStr(tm);
+ const dtDate=getLocalDateStr(dt);
+ const timeStr=dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true});
+ if(dtDate===today)return timeStr;
+ if(dtDate===yesterday)return `Yest. ${timeStr}`;
+ return `${dt.toLocaleDateString(undefined,{month:'short',day:'numeric'})} ${timeStr}`;
+};
+
 function Login({done}){
  const[password,setPassword]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(false),[sys,setSys]=useState(null);
  useEffect(()=>{api('/system-info').then(setSys).catch(()=>{})},[]);
@@ -226,6 +240,14 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
        </div>
       ) : isPrinting ? (
        <div className="fleetTimeRow">
+        {p.startedAt && (
+         <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
+          <Play size={12} className="timeIcon"/>
+          <span className="timeLabel">Started:</span>
+          <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
+         </span>
+        )}
+
         <span className="fleetTimeBadge remaining" title="Estimated time left">
          <Clock size={13} className="timeIcon"/>
          <span className="timeLabel">Remaining:</span>
@@ -237,6 +259,14 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
           <CheckCircle2 size={13} className="timeIcon"/>
           <span className="timeLabel">Completed by:</span>
           <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
+         </span>
+        )}
+
+        {p.jobHoldSec > 0 && (
+         <span className="fleetTimeBadge holdTime" title={`Printer held for ${fmtDuration(p.jobHoldSec)} during filament reload`}>
+          <Pause size={13} className="timeIcon"/>
+          <span className="timeLabel">Hold:</span>
+          <strong className="timeValue">{fmtDuration(p.jobHoldSec)}</strong>
          </span>
         )}
 
@@ -255,6 +285,13 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
          <span className="timeLabel">Print Completed ·</span>
          <strong className="timeValue">{p.duration ? fmtDuration(p.duration) + ' total' : 'Finished'}</strong>
         </span>
+        {p.jobHoldSec > 0 && (
+         <span className="fleetTimeBadge holdTime" title={`Filament runout hold duration: ${fmtDuration(p.jobHoldSec)}`}>
+          <Pause size={13} className="timeIcon"/>
+          <span className="timeLabel">Hold:</span>
+          <strong className="timeValue">{fmtDuration(p.jobHoldSec)}</strong>
+         </span>
+        )}
         <button 
          className="fleetClearBedBtn" 
          onClick={(e)=>{e.stopPropagation();onClearBed&&onClearBed(p);}}
@@ -270,15 +307,32 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
        </span>
       ) : isPaused ? (
        <div className="fleetTimeRow">
+        {p.startedAt && (
+         <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
+          <Play size={12} className="timeIcon"/>
+          <span className="timeLabel">Started:</span>
+          <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
+         </span>
+        )}
+
         <span className="fleetTimeBadge paused">
          <Pause size={13} className="timeIcon"/>
          <span className="timeLabel">Paused ·</span>
          <strong className="timeValue">{p.remainingTime != null ? fmtDuration(p.remainingTime) : '—'} left</strong>
         </span>
+
         {p.eta && (
          <span className="fleetTimeBadge completedBy">
           <span className="timeLabel">Completed by:</span>
           <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
+         </span>
+        )}
+
+        {p.jobHoldSec > 0 && (
+         <span className="fleetTimeBadge holdTime" title={`Filament runout hold duration: ${fmtDuration(p.jobHoldSec)}`}>
+          <Pause size={13} className="timeIcon"/>
+          <span className="timeLabel">Hold:</span>
+          <strong className="timeValue">{fmtDuration(p.jobHoldSec)}</strong>
          </span>
         )}
 
@@ -354,16 +408,28 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
       </button>
      )}
      {printerUrl&&(
-      <a 
-       href={printerUrl} 
-       target="_blank" 
-       rel="noreferrer" 
-       className={'fleetBtn webui '+(isLocal?'':'remote')}
-       title={isLocal?`Open ${p.name} Fluidd interface directly`: `Direct LAN IP ${p.host} (requires farm Wi-Fi)`}
-      >
-       <ExternalLink size={13}/>
-       <span>Web UI</span>
-      </a>
+      isLocal ? (
+       <a 
+        href={printerUrl} 
+        target="_blank" 
+        rel="noreferrer" 
+        className="fleetBtn webui"
+        title={`Open ${p.name} Fluidd interface directly (${p.host})`}
+       >
+        <ExternalLink size={13}/>
+        <span>Web UI</span>
+       </a>
+      ) : (
+       <button
+        type="button"
+        className="fleetBtn webui remote"
+        onClick={()=>onOpenControl(p)}
+        title={`Remote Access: Open ${p.name} live elements & controls (Fluidd direct link requires local farm Wi-Fi)`}
+       >
+        <Layers size={13}/>
+        <span>Remote UI</span>
+       </button>
+      )
      )}
     </div>
    </div>
@@ -909,6 +975,9 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
      <button className={'ctrlTabBtn '+(modalTab==='terminal'?'active':'')} onClick={()=>setModalTab('terminal')}>
       <Terminal size={14}/> Console Terminal
      </button>
+     <button className={'ctrlTabBtn '+(modalTab==='elements'?'active':'')} onClick={()=>setModalTab('elements')}>
+      <Layers size={14}/> All Elements & Fluidd
+     </button>
     </div>
 
     {/* TAB 1: JOG & MOTION */}
@@ -1236,6 +1305,95 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
      </div>
     )}
 
+    {/* TAB 5: PRINTER ELEMENTS & FLUIDD REMOTE ACCESS */}
+    {modalTab==='elements'&&(
+     <div className="ctrlTabContent">
+      <div className="sectionSubHead">📊 Comprehensive Klipper Elements & Telemetry</div>
+      <div className="elementsGrid">
+       <div className="elementCard">
+        <span className="elementLabel"><Flame size={13}/> Nozzle Extruder</span>
+        <strong className="elementVal">{temp(p.nozzle)}{p.nozzleTarget?` / ${p.nozzleTarget}°C`:' (Off)'}</strong>
+        <small className="elementSub">{p.nozzleTarget > 0 ? (p.nozzle >= p.nozzleTarget - 2 ? 'At target temperature' : 'Heating up...') : 'Heater is idle'}</small>
+       </div>
+       <div className="elementCard">
+        <span className="elementLabel"><Flame size={13}/> Heated Bed</span>
+        <strong className="elementVal">{temp(p.bed)}{p.bedTarget?` / ${p.bedTarget}°C`:' (Off)'}</strong>
+        <small className="elementSub">{p.bedTarget > 0 ? (p.bed >= p.bedTarget - 2 ? 'At target temperature' : 'Heating up...') : 'Heater is idle'}</small>
+       </div>
+       <div className="elementCard">
+        <span className="elementLabel"><Activity size={13}/> Active Job File</span>
+        <strong className="elementVal" title={p.file||'None'} style={{maxWidth:'100%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'block'}}>
+         {p.file||'No file active'}
+        </strong>
+        <small className="elementSub">{p.status==='printing' ? 'Printing in progress' : p.status==='completed' ? 'Print completed' : 'Ready for next file'}</small>
+       </div>
+       <div className="elementCard">
+        <span className="elementLabel"><Play size={13}/> Job Started At</span>
+        <strong className="elementVal">{p.startedAt ? formatStartTime(p.startedAt) : '—'}</strong>
+        <small className="elementSub">{p.startedAt ? `Started: ${new Date(p.startedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true})}` : 'Not currently printing'}</small>
+       </div>
+       <div className="elementCard">
+        <span className="elementLabel"><CheckCircle2 size={13}/> Estimated Completion</span>
+        <strong className="elementVal">{p.eta ? formatFinishTime(p.eta) : '—'}</strong>
+        <small className="elementSub">{p.remainingTime != null ? `${fmtDuration(p.remainingTime)} remaining` : 'No ETA available'}</small>
+       </div>
+       <div className="elementCard">
+        <span className="elementLabel"><Pause size={13}/> Filament Hold Duration</span>
+        <strong className="elementVal" style={{color: p.jobHoldSec > 0 ? '#fbbf24' : '#94a3b8'}}>
+         {p.jobHoldSec > 0 ? fmtDuration(p.jobHoldSec) : '0s (No hold)'}
+        </strong>
+        <small className="elementSub">{p.jobHoldSec > 0 ? 'Total runout pause time during this print' : 'No filament runouts occurred'}</small>
+       </div>
+       <div className="elementCard">
+        <span className="elementLabel"><Layers size={13}/> Print Layer & Height</span>
+        <strong className="elementVal">{p.layer != null ? `Layer ${p.layer}` : '—'} {p.totalLayers ? `/ ${p.totalLayers}` : ''}</strong>
+        <small className="elementSub">{p.z != null ? `Current Z: ${p.z} mm` : 'Z coordinate unknown'}</small>
+       </div>
+       <div className="elementCard">
+        <span className="elementLabel"><Zap size={13}/> Speed Override Factor</span>
+        <strong className="elementVal">{Math.round((p.speedFactor || 1) * 100)}%</strong>
+        <small className="elementSub">M220 feedrate speed multiplier</small>
+       </div>
+       <div className="elementCard">
+        <span className="elementLabel"><Sparkles size={13}/> Filament Sensor</span>
+        <strong className="elementVal" style={{color: p.filamentDetected !== false ? '#34d399' : '#f97316'}}>
+         {p.filamentDetected !== false ? 'Filament Detected (OK)' : 'Runout Detected (Empty)'}
+        </strong>
+        <small className="elementSub">{p.filamentUsed ? `${Math.round(p.filamentUsed)} mm used` : 'Switch sensor active'}</small>
+       </div>
+       <div className="elementCard">
+        <span className="elementLabel"><Server size={13}/> Network & Host Port</span>
+        <strong className="elementVal">{p.host}:{p.port || 80}</strong>
+        <small className="elementSub">{isLocal ? 'Local Farm Wi-Fi' : 'Relayed securely via Host PC'}</small>
+       </div>
+      </div>
+
+      <div className="fluiddRemoteNoticeBox">
+       <div className="noticeTitle">
+        <Globe size={16} style={{color:'#38bdf8'}}/>
+        <strong>Fluidd Direct Web Interface & Remote Access</strong>
+       </div>
+       <p style={{margin:'4px 0 8px',fontSize:'12px',color:'#94a3b8',lineHeight:1.5}}>
+        The printer native Fluidd interface is hosted directly on the printer hardware at <code style={{color:'#38bdf8'}}>http://{p.host}:{p.port||80}</code>.
+       </p>
+       {isLocal ? (
+        <div style={{display:'flex',alignItems:'center',gap:'10px',marginTop:'8px'}}>
+         <span style={{fontSize:'12px',color:'#34d399',fontWeight:600}}>✓ Connected to local farm Wi-Fi:</span>
+         {printerUrl && (
+          <a href={printerUrl} target="_blank" rel="noreferrer" className="primary" style={{padding:'5px 14px',fontSize:'12px',display:'inline-flex',alignItems:'center',gap:'6px'}}>
+           <ExternalLink size={13}/> Open Native Fluidd Web UI
+          </a>
+         )}
+        </div>
+       ) : (
+        <div style={{fontSize:'12px',color:'#cbd5e1',lineHeight:1.6,marginTop:'6px',background:'rgba(15,23,42,0.6)',padding:'10px 12px',borderRadius:'8px',border:'1px solid #1e293b'}}>
+         <span>🔒 <b>Remote Internet Access:</b> When accessing the farm remotely over <code>https://neptunemonitor.com</code>, all Klipper elements, telemetry, axis controls, temperatures, filament commands, and console terminal logs are relayed live through this dashboard. Native Fluidd direct links require opening your browser on the local farm Wi-Fi network.</span>
+        </div>
+       )}
+      </div>
+     </div>
+    )}
+
     {/* Persistent Print & Safety Action Bar */}
     <div className="modalFooterActions">
      <div className="actionGroupLeft">
@@ -1260,162 +1418,93 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
  );
 }
 
-function CompletedPage({data,onSync,printers=[]}){
- const[search,setSearch]=useState('');
- const[tab,setTab]=useState('summary'); // 'summary' | 'days' | 'jobs'
- const[datePreset,setDatePreset]=useState('all'); // 'all' | 'today' | 'yesterday' | 'last7' | 'custom'
- const[statusFilter,setStatusFilter]=useState('all'); // 'all' | 'completed' | 'failed'
- const[customDate,setCustomDate]=useState('');
- const[syncing,setSyncing]=useState(false);
+function CompletedPage({data, onSync, printers=[]}){
+ const [search, setSearch] = useState('');
+ const [datePreset, setDatePreset] = useState('all'); // 'all' | 'today' | 'yesterday' | 'last7' | 'custom'
+ const [customDate, setCustomDate] = useState('');
+ const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'completed' | 'failed'
+ const [viewTab, setViewTab] = useState('by_file'); // 'by_file' | 'log'
+ const [syncing, setSyncing] = useState(false);
 
- const allJobs=data?.jobs||[];
- const todayStr=getLocalDateStr(new Date());
- const yDate=new Date();yDate.setDate(yDate.getDate()-1);
- const yesterdayStr=getLocalDateStr(yDate);
- const last7Date=new Date();last7Date.setDate(last7Date.getDate()-7);
- const last7Str=getLocalDateStr(last7Date);
+ const allJobs = data?.jobs || [];
+ const todayStr = getLocalDateStr(new Date());
+ const yDate = new Date(); yDate.setDate(yDate.getDate() - 1);
+ const yesterdayStr = getLocalDateStr(yDate);
+ const last7Date = new Date(); last7Date.setDate(last7Date.getDate() - 7);
+ const last7Str = getLocalDateStr(last7Date);
 
- // Find all actively printing / in-progress farm printers right now!
- const activePrints=(printers||[]).filter(p=>(p.status==='printing'||p.status==='paused'||p.status==='runout')&&p.file);
+ // Top Summary Metrics (Unmistakable piece counts!)
+ const todayJobs = allJobs.filter(j => j.isCompleted && getLocalDateStr(j.completedAt) === todayStr);
+ const todayPieces = todayJobs.length;
 
- const todayCount=allJobs.filter(j=>getLocalDateStr(j.completedAt)===todayStr).length;
- const yesterdayCount=allJobs.filter(j=>getLocalDateStr(j.completedAt)===yesterdayStr).length;
- const last7Count=allJobs.filter(j=>getLocalDateStr(j.completedAt)>=last7Str).length;
+ const yesterdayJobs = allJobs.filter(j => j.isCompleted && getLocalDateStr(j.completedAt) === yesterdayStr);
+ const yesterdayPieces = yesterdayJobs.length;
 
- const totalCompletedAll=allJobs.filter(j=>j.isCompleted).length;
- const totalFailedAll=allJobs.filter(j=>j.isFailed).length;
+ const last7Jobs = allJobs.filter(j => j.isCompleted && getLocalDateStr(j.completedAt) >= last7Str);
+ const last7Pieces = last7Jobs.length;
 
- // Filter jobs by date, status, and search
- const filteredJobs=allJobs.filter(j=>{
-  const dStr=getLocalDateStr(j.completedAt);
-  if(datePreset==='today'&&dStr!==todayStr)return false;
-  if(datePreset==='yesterday'&&dStr!==yesterdayStr)return false;
-  if(datePreset==='last7'&&dStr<last7Str)return false;
-  if(datePreset==='custom'&&customDate&&dStr!==customDate)return false;
-  if(statusFilter==='completed'&&!j.isCompleted)return false;
-  if(statusFilter==='failed'&&!j.isFailed)return false;
-  if(search&&!(j.file||'').toLowerCase().includes(search.toLowerCase()))return false;
+ const totalCompletedPieces = allJobs.filter(j => j.isCompleted).length;
+ const totalFailedJobs = allJobs.filter(j => j.isFailed).length;
+ const totalProductionSec = allJobs.filter(j => j.isCompleted).reduce((sum, j) => sum + (j.duration || 0), 0);
+
+ // Filtered Jobs based on user selections
+ const filteredJobs = allJobs.filter(j => {
+  const dStr = getLocalDateStr(j.completedAt);
+  if (datePreset === 'today' && dStr !== todayStr) return false;
+  if (datePreset === 'yesterday' && dStr !== yesterdayStr) return false;
+  if (datePreset === 'last7' && dStr < last7Str) return false;
+  if (datePreset === 'custom' && customDate && dStr !== customDate) return false;
+  if (statusFilter === 'completed' && !j.isCompleted) return false;
+  if (statusFilter === 'failed' && !j.isFailed) return false;
+  if (search && !(j.file || '').toLowerCase().includes(search.toLowerCase())) return false;
   return true;
  });
 
- // File quantities tracker (Completed vs In-Progress/Baaki)
- const fileSummaryMap=new Map();
+ const filteredCompletedCount = filteredJobs.filter(j => j.isCompleted).length;
+ const filteredFailedCount = filteredJobs.filter(j => j.isFailed).length;
 
- // 1. Seed with active prints so in-progress files are immediately tracked
- for(const ap of activePrints){
-  const fn=ap.file||'Unknown';
-  if(!fileSummaryMap.has(fn)){
-   fileSummaryMap.set(fn,{file:fn,quantity:0,failedCount:0,inProgressCount:0,totalJobs:0,totalDuration:0,failedDuration:0,lastCompletedAt:null,lastFailedAt:null,printers:new Set(),activePrinters:new Set(),completionTimes:[],failureTimes:[]});
+ // Group by File: gives exactly "how many pieces of which files completed, and when"
+ const fileSummaryMap = new Map();
+ for (const j of filteredJobs) {
+  const fn = j.file || 'Unknown File';
+  if (!fileSummaryMap.has(fn)) {
+   fileSummaryMap.set(fn, {
+    file: fn,
+    completedPieces: 0,
+    failedPieces: 0,
+    totalDuration: 0,
+    lastCompletedAt: null,
+    printers: new Set(),
+    completionTimestamps: []
+   });
   }
-  const item=fileSummaryMap.get(fn);
-  item.inProgressCount+=1;
-  item.activePrinters.add(ap.name);
-  if(ap.name)item.printers.add(ap.name);
+  const item = fileSummaryMap.get(fn);
+  if (j.isCompleted) {
+   item.completedPieces += 1;
+   item.totalDuration += (j.duration || 0);
+   if (!item.lastCompletedAt || new Date(j.completedAt) > new Date(item.lastCompletedAt)) {
+    item.lastCompletedAt = j.completedAt;
+   }
+   item.completionTimestamps.push(j.completedAt);
+  } else {
+   item.failedPieces += 1;
+  }
+  if (j.printerName) item.printers.add(j.printerName);
  }
 
- // 2. Add completed and failed history
- for(const j of filteredJobs){
-  const fn=j.file||'Unknown';
-  if(!fileSummaryMap.has(fn)){
-   fileSummaryMap.set(fn,{file:fn,quantity:0,failedCount:0,inProgressCount:0,totalJobs:0,totalDuration:0,failedDuration:0,lastCompletedAt:null,lastFailedAt:null,printers:new Set(),activePrinters:new Set(),completionTimes:[],failureTimes:[]});
-  }
-  const item=fileSummaryMap.get(fn);
-  item.totalJobs+=1;
-  if(j.isCompleted){
-   item.quantity+=1;
-   item.totalDuration+=(j.duration||0);
-   if(!item.lastCompletedAt||new Date(j.completedAt)>new Date(item.lastCompletedAt)){item.lastCompletedAt=j.completedAt}
-   item.completionTimes.push(j.completedAt);
-  }else{
-   item.failedCount+=1;
-   item.failedDuration+=(j.duration||0);
-   if(!item.lastFailedAt||new Date(j.completedAt)>new Date(item.lastFailedAt)){item.lastFailedAt=j.completedAt}
-   item.failureTimes.push({time:j.completedAt,status:j.status,duration:j.duration});
-  }
-  if(j.printerName)item.printers.add(j.printerName);
- }
-
- const fileSummary=Array.from(fileSummaryMap.values()).map(x=>({
+ const fileSummaryList = Array.from(fileSummaryMap.values()).map(x => ({
   ...x,
-  totalTarget:x.quantity+x.inProgressCount,
-  printers:Array.from(x.printers),
-  activePrinters:Array.from(x.activePrinters),
-  avgDuration:x.quantity?Math.round(x.totalDuration/x.quantity):0,
-  successRate:x.totalJobs?Math.round((x.quantity/x.totalJobs)*100):100,
-  completionTimes:x.completionTimes.sort((a,b)=>new Date(b)-new Date(a)),
-  failureTimes:x.failureTimes.sort((a,b)=>new Date(b.time)-new Date(a.time))
- })).sort((a,b)=>(b.inProgressCount*1000+b.quantity)-(a.inProgressCount*1000+a.quantity));
-
- const filteredCompletedCount=filteredJobs.filter(j=>j.isCompleted).length;
- const filteredFailedCount=filteredJobs.filter(j=>j.isFailed).length;
- const totalDuration=filteredJobs.filter(j=>j.isCompleted).reduce((a,b)=>a+(b.duration||0),0);
- const wastedDuration=filteredJobs.filter(j=>j.isFailed).reduce((a,b)=>a+(b.duration||0),0);
- const successRate=filteredJobs.length?Math.round((filteredCompletedCount/filteredJobs.length)*100):100;
-
- // Daily breakdown map
- const dailyMap=new Map();
- const dailyBaseJobs=allJobs.filter(j=>{
-  const dStr=getLocalDateStr(j.completedAt);
-  if(datePreset==='last7'&&dStr<last7Str)return false;
-  if(datePreset==='today'&&dStr!==todayStr)return false;
-  if(datePreset==='yesterday'&&dStr!==yesterdayStr)return false;
-  if(datePreset==='custom'&&customDate&&dStr!==customDate)return false;
-  if(search&&!(j.file||'').toLowerCase().includes(search.toLowerCase()))return false;
-  return true;
- });
-
- for(const j of dailyBaseJobs){
-  const dStr=getLocalDateStr(j.completedAt);
-  if(!dailyMap.has(dStr)){
-   dailyMap.set(dStr,{date:dStr,completedCount:0,failedCount:0,totalJobs:0,totalDuration:0,wastedDuration:0,fileMap:new Map(),jobs:[]});
-  }
-  const day=dailyMap.get(dStr);
-  day.totalJobs+=1;
-  day.jobs.push(j);
-  if(j.isCompleted){
-   day.completedCount+=1;
-   day.totalDuration+=(j.duration||0);
-  }else{
-   day.failedCount+=1;
-   day.wastedDuration+=(j.duration||0);
-  }
-  const fn=j.file||'Unknown';
-  if(!day.fileMap.has(fn)){
-   day.fileMap.set(fn,{file:fn,completedCount:0,failedCount:0,printers:new Set(),times:[],failedTimes:[]});
-  }
-  const fm=day.fileMap.get(fn);
-  if(j.isCompleted){
-   fm.completedCount+=1;
-   fm.times.push(j.completedAt);
-  }else{
-   fm.failedCount+=1;
-   fm.failedTimes.push({time:j.completedAt,status:j.status,duration:j.duration});
-  }
-  if(j.printerName)fm.printers.add(j.printerName);
- }
-
- const dailyList=Array.from(dailyMap.values()).map(d=>({
-  ...d,
-  files:Array.from(d.fileMap.values()).map(f=>({
-   ...f,
-   printers:Array.from(f.printers),
-   times:f.times.sort((a,b)=>new Date(b)-new Date(a)),
-   failedTimes:f.failedTimes.sort((a,b)=>new Date(b.time)-new Date(a.time))
-  })).sort((a,b)=>b.completedCount-a.completedCount||b.failedCount-a.failedCount)
- })).sort((a,b)=>b.date.localeCompare(a.date));
+  printers: Array.from(x.printers),
+  avgDuration: x.completedPieces > 0 ? Math.round(x.totalDuration / x.completedPieces) : 0,
+  completionTimestamps: x.completionTimestamps.sort((a,b) => new Date(b) - new Date(a))
+ })).sort((a,b) => b.completedPieces - a.completedPieces || b.totalDuration - a.totalDuration);
 
  async function triggerSync(){
   setSyncing(true);
-  try{await onSync()}finally{setSyncing(false)}
+  try { await onSync(); } finally { setSyncing(false); }
  }
 
- function selectDay(dStr){
-  setDatePreset('custom');
-  setCustomDate(dStr);
-  setTab('summary');
- }
-
- function clearFilter(){
+ function resetFilters(){
   setDatePreset('all');
   setCustomDate('');
   setStatusFilter('all');
@@ -1424,407 +1513,389 @@ function CompletedPage({data,onSync,printers=[]}){
 
  return (
   <div className="completedPage">
-   {/* Title & Actions */}
+   {/* Header */}
    <div className="fleetPageHeader">
     <div className="fleetTitleWrap">
-     <span className="fleetCategoryTag">PRODUCTION & AUDIT</span>
+     <span className="fleetCategoryTag">PRODUCTION MANAGEMENT</span>
      <h1 className="fleetMainTitle">Production & Completed Prints</h1>
      <p className="fleetSubtitle">
-      Real-time farm output tracking: completed jobs, active in-progress prints, and total production unit summary.
+      Track completed pieces, exact completion times, and output quantity by G-code file.
      </p>
     </div>
     <div className="fleetHeaderActions">
      <button className="fleetRefreshBtn" onClick={triggerSync} disabled={syncing} title="Sync printer history from Moonraker">
-      <RefreshCw size={15} className={syncing?'spin':''}/> {syncing?'Syncing…':'Sync Moonraker History'}
+      <RefreshCw size={15} className={syncing ? 'spin' : ''}/> {syncing ? 'Syncing…' : 'Sync History'}
      </button>
     </div>
    </div>
 
-   {/* Top KPI Cards (Complete vs In-Progress vs Failed) */}
-   <div className="prodKpiGrid">
-    <div className="prodKpiCard completed">
-     <div className="kpiIconBox completed"><PackageCheck size={22}/></div>
-     <div className="kpiContent">
-      <span className="kpiLabel">Completed Pieces</span>
-      <strong className="kpiValue">{filteredCompletedCount} pcs</strong>
-      <small className="kpiSub">{datePreset==='today'?'Completed Today':datePreset==='yesterday'?'Completed Yesterday':'Selected Period'}</small>
+   {/* 4 Clean, High-Impact Summary KPI Cards */}
+   <div className="prodSummaryStrip">
+    <div className="prodSummaryCard today">
+     <div className="summaryCardIcon"><PackageCheck size={24}/></div>
+     <div className="summaryCardBody">
+      <span className="summaryCardLabel">TODAY'S OUTPUT</span>
+      <strong className="summaryCardValue">{todayPieces} <span className="unit">pieces</span></strong>
+      <small className="summaryCardSub">Finished today ({formatLocalDate(todayStr)})</small>
      </div>
     </div>
 
-    <div className="prodKpiCard inProgress">
-     <div className="kpiIconBox inProgress"><Clock size={22}/></div>
-     <div className="kpiContent">
-      <span className="kpiLabel">Currently Printing (In Progress)</span>
-      <strong className="kpiValue">{activePrints.length} active</strong>
-      <small className="kpiSub">{activePrints.length?`${activePrints.length} printers currently running`:'All printers idle'}</small>
+    <div className="prodSummaryCard yesterday">
+     <div className="summaryCardIcon"><Calendar size={24}/></div>
+     <div className="summaryCardBody">
+      <span className="summaryCardLabel">YESTERDAY</span>
+      <strong className="summaryCardValue">{yesterdayPieces} <span className="unit">pieces</span></strong>
+      <small className="summaryCardSub">Finished yesterday</small>
      </div>
     </div>
 
-    <div className="prodKpiCard failed">
-     <div className="kpiIconBox failed"><XCircle size={22}/></div>
-     <div className="kpiContent">
-      <span className="kpiLabel">Failed / Cancelled</span>
-      <strong className="kpiValue">{filteredFailedCount} pcs</strong>
-      <small className="kpiSub">{wastedDuration>0?`Wasted: ${fmtDuration(wastedDuration)}`:'No print waste'}</small>
+    <div className="prodSummaryCard total">
+     <div className="summaryCardIcon"><CheckCircle2 size={24}/></div>
+     <div className="summaryCardBody">
+      <span className="summaryCardLabel">TOTAL COMPLETED</span>
+      <strong className="summaryCardValue">{totalCompletedPieces} <span className="unit">pieces</span></strong>
+      <small className="summaryCardSub">{totalFailedJobs > 0 ? `${totalFailedJobs} failed / cancelled` : 'All prints successful'}</small>
      </div>
     </div>
 
-    <div className="prodKpiCard rate">
-     <div className="kpiIconBox rate"><TrendingUp size={22}/></div>
-     <div className="kpiContent">
-      <span className="kpiLabel">Success Rate</span>
-      <strong className="kpiValue">{successRate}%</strong>
-      <small className="kpiSub">{filteredCompletedCount} of {filteredCompletedCount + filteredFailedCount} jobs passed</small>
-     </div>
-    </div>
-
-    <div className="prodKpiCard time">
-     <div className="kpiIconBox time"><Gauge size={22}/></div>
-     <div className="kpiContent">
-      <span className="kpiLabel">Total Machine Time</span>
-      <strong className="kpiValue">{fmtDuration(totalDuration)}</strong>
-      <small className="kpiSub">Successful production time</small>
+    <div className="prodSummaryCard time">
+     <div className="summaryCardIcon"><Gauge size={24}/></div>
+     <div className="summaryCardBody">
+      <span className="summaryCardLabel">TOTAL MACHINE RUNTIME</span>
+      <strong className="summaryCardValue">{fmtDuration(totalProductionSec)}</strong>
+      <small className="summaryCardSub">Active successful print duration</small>
      </div>
     </div>
    </div>
 
-   {/* SECTION 1: LIVE IN-PROGRESS ACTIVE PRINTS */}
-   <div className="liveProdSection">
-    <div className="liveProdHeader">
-     <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-      <span className="liveDot green"/>
-      <h3 style={{margin:0,fontSize:'15px',fontWeight:800,color:'#f8fafc'}}>
-       ⚡ Active In-Progress Farm Prints ({activePrints.length} Active)
-      </h3>
+   {/* Filter & View Mode Controls Bar */}
+   <div className="prodControlCard card">
+    <div className="prodControlRow">
+     {/* View Toggle */}
+     <div className="prodViewToggle">
+      <button 
+       className={'prodViewBtn ' + (viewTab === 'by_file' ? 'active' : '')} 
+       onClick={() => setViewTab('by_file')}
+       title="View total completed pieces summarized by each G-code file"
+      >
+       <Layers size={15}/>
+       <span>Pieces by File ({fileSummaryList.length})</span>
+      </button>
+      <button 
+       className={'prodViewBtn ' + (viewTab === 'log' ? 'active' : '')} 
+       onClick={() => setViewTab('log')}
+       title="Chronological timeline of all completed jobs with exact date and time"
+      >
+       <Clock size={15}/>
+       <span>Completed Log ({filteredJobs.length})</span>
+      </button>
      </div>
-     <span style={{fontSize:'12px',color:'#7f94b0'}}>
-      Live real-time printing status across the farm
-     </span>
+
+     {/* Search Box */}
+     <div className="prodSearchBox">
+      <Search size={15}/>
+      <input 
+       type="text" 
+       placeholder="Search G-code file name…" 
+       value={search} 
+       onChange={e => setSearch(e.target.value)}
+      />
+      {search && (
+       <button className="prodClearInputBtn" onClick={() => setSearch('')} title="Clear search">
+        <X size={13}/>
+       </button>
+      )}
+     </div>
     </div>
 
-    {activePrints.length > 0 ? (
-     <div className="liveProdGrid">
-      {activePrints.map(p=>(
-       <div className="liveProdCard" key={p.id}>
-        <div className="liveProdHead">
-         <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-          <Printer size={15} style={{color:'#60a5fa'}}/>
-          <strong style={{color:'#f8fafc',fontSize:'13.5px'}}>{p.name}</strong>
-         </div>
-         <span className={'fleetPill '+(p.status==='runout'?'orange':color(p.status))} style={{fontSize:'10px',padding:'2px 8px'}}>
-          <i/> {p.status==='runout'?'Runout':p.status}
-         </span>
-        </div>
-
-        <div className="liveProdFile" title={p.file}>
-         <Activity size={13} style={{color:'#38bdf8',flexShrink:0}}/>
-         <span>{p.file}</span>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="liveProdProgressWrap">
-         <div className="liveProdBar">
-          <div className={'liveProdBarFill '+color(p.status)} style={{width:`${p.progress??0}%`}}/>
-         </div>
-         <span className="liveProdPct">{p.progress??0}%</span>
-        </div>
-
-        {/* Remaining & Completion Time */}
-        <div className="liveProdFoot">
-         <span className="timeBadge remaining" style={{fontSize:'11.5px',padding:'3px 8px'}}>
-          <Clock size={12}/> Remaining: <strong>{p.remainingTime!=null?fmtDuration(p.remainingTime):'—'}</strong>
-         </span>
-         {p.eta&&(
-          <span className="timeBadge completedBy" style={{fontSize:'11.5px',padding:'3px 8px'}}>
-           <CheckCircle2 size={12}/> Complete by: <strong>{formatFinishTime(p.eta)}</strong>
-          </span>
-         )}
-         {p.speedFactor && p.speedFactor !== 1 && (
-          <span className="timeBadge speedFactor" style={{fontSize:'11.5px',padding:'3px 8px',background:'rgba(234,179,8,.15)',color:'#fde047',border:'1px solid rgba(234,179,8,.4)'}}>
-           <Zap size={12}/> Speed: <strong>{Math.round(p.speedFactor * 100)}%</strong>
-          </span>
-         )}
-        </div>
-       </div>
-      ))}
-     </div>
-    ) : (
-     <div className="liveProdEmpty">
-      <CheckCircle2 size={20} style={{color:'#10b981'}}/>
-      <div>
-       <strong>All farm printers are currently idle (0 prints in-progress right now).</strong>
-       <span>Ready to slice and start the next production batch!</span>
-      </div>
-     </div>
-    )}
-   </div>
-
-   {/* Filters Bar */}
-   <div className="card prodFilterCard">
-    {/* Status Filters */}
-    <div className="statusFilterRow">
-     <span className="filterTagLabel">STATUS:</span>
-     <button className={'statusFilterBtn '+(statusFilter==='all'?'active all':'')} onClick={()=>setStatusFilter('all')}>
-      All Output ({allJobs.length})
-     </button>
-     <button className={'statusFilterBtn '+(statusFilter==='completed'?'active completed':'')} onClick={()=>setStatusFilter('completed')}>
-      <CheckCircle2 size={14}/> Completed ({totalCompletedAll} pcs)
-     </button>
-     <button className={'statusFilterBtn '+(statusFilter==='failed'?'active failed':'')} onClick={()=>setStatusFilter('failed')}>
-      <XCircle size={14}/> Failed ({totalFailedAll})
-     </button>
-    </div>
-
-    {/* Date Filters */}
-    <div className="dateFilterRow">
-     <span className="filterTagLabel"><Calendar size={13}/> DATE:</span>
-     <button className={'dateBtn '+(datePreset==='all'?'active':'')} onClick={()=>{setDatePreset('all');setCustomDate('')}}>
-      All Dates
-     </button>
-     <button className={'dateBtn '+(datePreset==='today'?'active':'')} onClick={()=>{setDatePreset('today');setCustomDate('')}}>
-      Today ({todayCount})
-     </button>
-     <button className={'dateBtn '+(datePreset==='yesterday'?'active':'')} onClick={()=>{setDatePreset('yesterday');setCustomDate('')}}>
-      Yesterday ({yesterdayCount})
-     </button>
-     <button className={'dateBtn '+(datePreset==='last7'?'active':'')} onClick={()=>{setDatePreset('last7');setCustomDate('')}}>
-      Last 7 Days ({last7Count})
-     </button>
-
-     <div style={{display:'flex',alignItems:'center',gap:'6px',marginLeft:'auto'}}>
+    {/* Date & Status Filter Pills */}
+    <div className="prodFilterPillsRow">
+     <div className="filterGroup">
+      <span className="filterGroupLabel"><Calendar size={13}/> Period:</span>
+      <button 
+       className={'filterPill ' + (datePreset === 'all' && !customDate ? 'active' : '')} 
+       onClick={() => { setDatePreset('all'); setCustomDate(''); }}
+      >
+       All Time ({totalCompletedPieces})
+      </button>
+      <button 
+       className={'filterPill ' + (datePreset === 'today' ? 'active' : '')} 
+       onClick={() => { setDatePreset('today'); setCustomDate(''); }}
+      >
+       Today ({todayPieces})
+      </button>
+      <button 
+       className={'filterPill ' + (datePreset === 'yesterday' ? 'active' : '')} 
+       onClick={() => { setDatePreset('yesterday'); setCustomDate(''); }}
+      >
+       Yesterday ({yesterdayPieces})
+      </button>
+      <button 
+       className={'filterPill ' + (datePreset === 'last7' ? 'active' : '')} 
+       onClick={() => { setDatePreset('last7'); setCustomDate(''); }}
+      >
+       Last 7 Days ({last7Pieces})
+      </button>
       <input
        type="date"
-       className="dateInput"
+       className="prodDateInput"
        value={customDate}
-       onChange={e=>{
+       onChange={e => {
         if(e.target.value){
          setCustomDate(e.target.value);
          setDatePreset('custom');
-        }else{
+        } else {
          setDatePreset('all');
          setCustomDate('');
         }
        }}
+       title="Pick specific date"
       />
-      {(datePreset!=='all'||statusFilter!=='all'||search)&&<button className="clearBtn" onClick={clearFilter}>Reset filters</button>}
+     </div>
+
+     <div className="filterGroup statusGroup">
+      <span className="filterGroupLabel">Status:</span>
+      <button 
+       className={'filterPill ' + (statusFilter === 'all' ? 'active' : '')} 
+       onClick={() => setStatusFilter('all')}
+      >
+       All
+      </button>
+      <button 
+       className={'filterPill success ' + (statusFilter === 'completed' ? 'active' : '')} 
+       onClick={() => setStatusFilter('completed')}
+      >
+       Completed ({allJobs.filter(j=>j.isCompleted).length})
+      </button>
+      {totalFailedJobs > 0 && (
+       <button 
+        className={'filterPill danger ' + (statusFilter === 'failed' ? 'active' : '')} 
+        onClick={() => setStatusFilter('failed')}
+       >
+        Failed ({totalFailedJobs})
+       </button>
+      )}
+      {(datePreset !== 'all' || customDate || statusFilter !== 'all' || search) && (
+       <button className="prodResetBtn" onClick={resetFilters}>
+        <RotateCcw size={12}/> Reset Filters
+       </button>
+      )}
      </div>
     </div>
    </div>
 
-   {/* Active Filter Notice Banner */}
-   {(datePreset!=='all'||statusFilter!=='all'||search)&&(
-    <div className="filterNotice">
+   {/* Active Filter Summary Bar */}
+   {(datePreset !== 'all' || customDate || statusFilter !== 'all' || search) && (
+    <div className="prodActiveNotice">
      <span>
-      Showing: <b>{statusFilter==='completed'?'Completed Only':statusFilter==='failed'?'Failed Only':'All Statuses'}</b>
+      Filtered Output: <b>{filteredCompletedCount} pieces completed</b>
+      {filteredFailedCount > 0 && <span style={{color:'#f87171'}}> · {filteredFailedCount} failed</span>}
       {' '}for <b>
-       {datePreset==='today'?`Today (${formatLocalDate(todayStr)})`:
-        datePreset==='yesterday'?`Yesterday (${formatLocalDate(yesterdayStr)})`:
-        datePreset==='last7'?'Last 7 Days':
-        customDate?formatLocalDate(customDate):'All Dates'}
-      </b> · <strong>{filteredCompletedCount} completed</strong> · <strong style={{color:'#ff8b95'}}>{filteredFailedCount} failed</strong>
+       {datePreset === 'today' ? `Today (${formatLocalDate(todayStr)})` :
+        datePreset === 'yesterday' ? `Yesterday (${formatLocalDate(yesterdayStr)})` :
+        datePreset === 'last7' ? 'Last 7 Days' :
+        customDate ? formatLocalDate(customDate) : 'Selected Criteria'}
+      </b>
      </span>
-     <button className="clearBtn" onClick={clearFilter}>Show All</button>
+     <button className="prodClearLink" onClick={resetFilters}>Show All Time</button>
     </div>
    )}
 
-   {/* Tabs and Search Bar */}
-   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'12px',marginBottom:'16px'}}>
-    <div className="subTabs">
-     <button className={'subTabBtn '+(tab==='summary'?'active':'')} onClick={()=>setTab('summary')}>
-      📊 Quantities by File ({fileSummary.length} G-Codes)
-     </button>
-     <button className={'subTabBtn '+(tab==='days'?'active':'')} onClick={()=>setTab('days')}>
-      📅 Daily Production ({dailyList.length} Days)
-     </button>
-     <button className={'subTabBtn '+(tab==='jobs'?'active':'')} onClick={()=>setTab('jobs')}>
-      📋 Detailed Job Log ({filteredJobs.length} Jobs)
-     </button>
-    </div>
+   {/* VIEW 1: PIECES BY FILE */}
+   {viewTab === 'by_file' && (
+    <div className="card prodTableCard">
+     <div className="prodTableHeader">
+      <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+       <Layers size={17} style={{color:'#38bdf8'}}/>
+       <h3 style={{margin:0,fontSize:'15px',fontWeight:800,color:'#f8fafc'}}>
+        Pieces Completed by File Name
+       </h3>
+      </div>
+      <span style={{fontSize:'12px',color:'#7f94b0'}}>
+       Total distinct G-code models: <b>{fileSummaryList.length}</b> · Completed: <b>{filteredCompletedCount} pcs</b>
+      </span>
+     </div>
 
-    <div className="searchBox">
-     <Search size={16}/>
-     <input type="text" placeholder="Search G-code filename…" value={search} onChange={e=>setSearch(e.target.value)}/>
-    </div>
-   </div>
-
-   {/* TAB 1: QUANTITIES BY FILE */}
-   {tab==='summary'&&(
-    <div className="card" style={{overflow:'hidden'}}>
      <div className="tableWrapper">
-      <table className="prodTable">
+      <table className="prodCleanTable">
        <thead>
         <tr>
-         <th>G-Code File Name</th>
-         <th style={{textAlign:'center'}}>Completed Pieces</th>
-         <th style={{textAlign:'center'}}>In Progress</th>
-         <th style={{textAlign:'center'}}>Total Target / Runs</th>
-         <th style={{textAlign:'center'}}>Success Rate</th>
-         <th>Avg Print Time</th>
-         <th>Completion Timeline</th>
-         <th>Printers Used</th>
+         <th style={{minWidth:'260px'}}>G-Code File Name</th>
+         <th style={{textAlign:'center',width:'140px'}}>Pieces Completed</th>
+         <th style={{minWidth:'170px'}}>When Completed (Last Finished)</th>
+         <th style={{minWidth:'120px'}}>Avg Time / Piece</th>
+         <th style={{minWidth:'130px'}}>Total Machine Time</th>
+         <th style={{minWidth:'160px'}}>Printers Used</th>
+         <th style={{textAlign:'center',width:'100px'}}>Status</th>
         </tr>
        </thead>
        <tbody>
-        {fileSummary.length?fileSummary.map(s=>(
-         <tr key={s.file}>
-          <td style={{maxWidth:'300px'}}>
-           <strong style={{color:'#fff',fontSize:'13.5px',display:'block',wordBreak:'break-all'}}>{s.file}</strong>
-           {s.lastCompletedAt&&<small style={{color:'#7d93ae',display:'block',marginTop:'3px'}}>Last finished: {new Date(s.lastCompletedAt).toLocaleString([],{dateStyle:'medium',timeStyle:'short'})}</small>}
-           {s.lastFailedAt&&<small style={{color:'#dd7883',display:'block',marginTop:'2px'}}>Last failed: {new Date(s.lastFailedAt).toLocaleString([],{dateStyle:'medium',timeStyle:'short'})}</small>}
-          </td>
-
-          {/* Completed Pieces */}
-          <td style={{textAlign:'center'}}>
-           {s.quantity>0?(
-            <span className="qtyBadge" style={{fontSize:'12px',padding:'4px 10px'}}>
-             <CheckCircle2 size={13}/> {s.quantity} pcs
-            </span>
-           ):<span style={{color:'#667b96'}}>0 pcs</span>}
-          </td>
-
-          {/* In-Progress (Baaki Hain) */}
-          <td style={{textAlign:'center'}}>
-           {s.inProgressCount>0?(
-            <span className="inProgressBadge">
-             <Clock size={12}/> {s.inProgressCount} printing
-            </span>
-           ):<span style={{color:'#64748b'}}>—</span>}
-          </td>
-
-          {/* Total Planned / Target */}
-          <td style={{textAlign:'center'}}>
-           <span className="totalTargetBadge">
-            📦 {s.totalTarget} total
-           </span>
-          </td>
-
-          {/* Success Rate */}
-          <td style={{textAlign:'center'}}>
-           <span style={{fontWeight:800,color:s.successRate>=80?'#4eedb8':s.successRate>=50?'#f1a94e':'#ff7d89'}}>
-            {s.totalJobs?`${s.successRate}%`:'100%'}
-           </span>
-          </td>
-
-          {/* Average Duration */}
-          <td className="timePill">{fmtDuration(s.avgDuration)}</td>
-
-          {/* Completion & Failure Timestamps */}
+        {fileSummaryList.length > 0 ? fileSummaryList.map(item => (
+         <tr key={item.file}>
+          {/* File Name */}
           <td>
-           <div style={{display:'flex',flexWrap:'wrap',gap:'4px',maxWidth:'320px'}}>
-            {s.completionTimes.slice(0,5).map((t,idx)=>(
-             <span key={idx} className="timeBadge" title={`Completed at ${new Date(t).toLocaleString()}`}>{formatTime(t)}</span>
-            ))}
-            {s.failureTimes.slice(0,3).map((ft,idx)=>(
-             <span key={'f'+idx} className="timeBadge failed" title={`Failed (${statusLabel(ft.status)}) at ${new Date(ft.time).toLocaleString()}`}>
-              {formatTime(ft.time)}
-             </span>
-            ))}
-            {(s.completionTimes.length>5||s.failureTimes.length>3)&&<small style={{color:'#7e96b3'}}>+more</small>}
+           <div className="prodFileNameWrap">
+            <span className="prodFileIcon">📄</span>
+            <strong className="prodFileName" title={item.file}>{item.file}</strong>
            </div>
           </td>
 
-          {/* Printers */}
-          <td>
-           {s.printers.map(p=>(
-            <span key={p} className={'printerTag '+(s.activePrinters.includes(p)?'activePrinter':'')}>
-             {p} {s.activePrinters.includes(p)?'(Printing now)':''}
+          {/* Pieces Completed */}
+          <td style={{textAlign:'center'}}>
+           {item.completedPieces > 0 ? (
+            <span className="prodPiecePill">
+             <CheckCircle2 size={13}/>
+             <strong>{item.completedPieces} pcs</strong>
             </span>
-           ))}
+           ) : (
+            <span style={{color:'#64748b'}}>0 pcs</span>
+           )}
+          </td>
+
+          {/* When Completed */}
+          <td>
+           {item.lastCompletedAt ? (
+            <div>
+             <span className="prodFinishTime">
+              {new Date(item.lastCompletedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+             </span>
+             {item.completionTimestamps.length > 1 && (
+              <small className="prodFinishSub">
+               ({item.completionTimestamps.length} total batches finished)
+              </small>
+             )}
+            </div>
+           ) : (
+            <span style={{color:'#64748b'}}>—</span>
+           )}
+          </td>
+
+          {/* Avg Duration */}
+          <td>
+           <span className="prodTimeVal">{item.avgDuration > 0 ? fmtDuration(item.avgDuration) : '—'}</span>
+          </td>
+
+          {/* Total Duration */}
+          <td>
+           <span className="prodTimeVal bold">{fmtDuration(item.totalDuration)}</span>
+          </td>
+
+          {/* Printers Used */}
+          <td>
+           <div className="prodPrinterPillsWrap">
+            {item.printers.map(pr => (
+             <span key={pr} className="prodPrinterBadge">{pr}</span>
+            ))}
+           </div>
+          </td>
+
+          {/* Result / Failure */}
+          <td style={{textAlign:'center'}}>
+           {item.failedPieces > 0 ? (
+            <span className="prodFailTag">{item.failedPieces} failed</span>
+           ) : (
+            <span className="prodSuccessTag">100% OK</span>
+           )}
           </td>
          </tr>
-        )):<tr><td colSpan="8" style={{textAlign:'center',padding:'36px',color:'#7f93ad'}}>No production records found matching your filter.</td></tr>}
+        )) : (
+         <tr>
+          <td colSpan="7" className="prodEmptyCell">
+           <PackageCheck size={28} style={{color:'#475569',margin:'0 auto 8px',display:'block'}}/>
+           <strong>No completed prints found matching your filter.</strong>
+           <span>Try selecting "All Time" or resetting the search filter.</span>
+          </td>
+         </tr>
+        )}
        </tbody>
       </table>
      </div>
     </div>
    )}
 
-   {/* TAB 2: DAYS-WISE BREAKDOWN */}
-   {tab==='days'&&(
-    <div className="dailyBreakdown">
-     {dailyList.length?dailyList.map(d=>(
-      <div className="dayCard" key={d.date}>
-       <div className="dayHeader">
-        <div className="dayTitle">
-         <Calendar size={18} style={{color:'#539bf5'}}/>
-         <span>{formatLocalDate(d.date)}</span>
-        </div>
-        <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-         <span style={{color:'#889cb5',fontSize:'12px'}}>Time: <b>{fmtDuration(d.totalDuration)}</b></span>
-         <span className="qtyBadge" style={{fontSize:'12px',padding:'4px 10px'}}>{d.completedCount} pcs</span>
-         {d.failedCount>0&&<span className="failBadge" style={{fontSize:'12px',padding:'4px 10px'}}>{d.failedCount} failed</span>}
-         <button className="outline" style={{padding:'5px 11px',fontSize:'12px',marginLeft:'4px'}} onClick={()=>selectDay(d.date)}>Filter this day</button>
-        </div>
-       </div>
-
-       <div style={{marginTop:'12px'}}>
-        {d.files.map(f=>(
-         <div className="dayRow" key={f.file}>
-          <div style={{minWidth:0,flex:1,paddingRight:'14px'}}>
-           <div style={{color:'#fff',fontWeight:700,fontSize:'13px'}}>{f.file}</div>
-           <div style={{marginTop:'5px',display:'flex',alignItems:'center',flexWrap:'wrap',gap:'4px'}}>
-            {f.times.length>0&&<>
-             <span style={{color:'#7b90aa',fontSize:'11px',marginRight:'2px'}}>Completed:</span>
-             {f.times.map((t,idx)=>(
-              <span key={idx} className="timeBadge">{formatTime(t)}</span>
-             ))}
-            </>}
-            {f.failedTimes.length>0&&<>
-             <span style={{color:'#e37681',fontSize:'11px',marginLeft:'6px',marginRight:'2px'}}>Failed:</span>
-             {f.failedTimes.map((ft,idx)=>(
-              <span key={idx} className="timeBadge failed" title={`${statusLabel(ft.status)} after ${fmtDuration(ft.duration)}`}>
-               {formatTime(ft.time)}
-              </span>
-             ))}
-            </>}
-            {f.printers.map(p=>(
-             <span key={p} className="printerTag">{p}</span>
-            ))}
-           </div>
-          </div>
-          <div style={{display:'flex',alignItems:'center',gap:'6px',flexShrink:0}}>
-           {f.completedCount>0&&<span className="qtyBadge">{f.completedCount} pcs</span>}
-           {f.failedCount>0&&<span className="failBadge">{f.failedCount} failed</span>}
-          </div>
-         </div>
-        ))}
-       </div>
+   {/* VIEW 2: COMPLETED PRINTS TIMELINE LOG */}
+   {viewTab === 'log' && (
+    <div className="card prodTableCard">
+     <div className="prodTableHeader">
+      <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+       <Clock size={17} style={{color:'#34d399'}}/>
+       <h3 style={{margin:0,fontSize:'15px',fontWeight:800,color:'#f8fafc'}}>
+        Completed Prints Chronological Log
+       </h3>
       </div>
-     )):<div className="card empty">No days found matching the selected filter.</div>}
-    </div>
-   )}
+      <span style={{fontSize:'12px',color:'#7f94b0'}}>
+       Showing <b>{filteredJobs.length}</b> print events in chronological order
+      </span>
+     </div>
 
-   {/* TAB 3: DETAILED JOB LOG */}
-   {tab==='jobs'&&(
-    <div className="card" style={{overflow:'hidden'}}>
      <div className="tableWrapper">
-      <table className="prodTable">
+      <table className="prodCleanTable">
        <thead>
         <tr>
-         <th>Status</th>
-         <th>File Name</th>
-         <th>Printer</th>
-         <th>Completed At</th>
-         <th>Duration</th>
-         <th>Filament Used</th>
+         <th style={{minWidth:'170px'}}>Completed Date & Time</th>
+         <th style={{minWidth:'240px'}}>File Name</th>
+         <th style={{minWidth:'150px'}}>Printer</th>
+         <th style={{minWidth:'120px'}}>Duration</th>
+         <th style={{minWidth:'110px'}}>Filament</th>
+         <th style={{textAlign:'center',width:'110px'}}>Result</th>
         </tr>
        </thead>
        <tbody>
-        {filteredJobs.length?filteredJobs.map((j,idx)=>(
-         <tr key={idx}>
+        {filteredJobs.length > 0 ? filteredJobs.map((j, idx) => (
+         <tr key={j.id || idx}>
+          {/* Completed Timestamp */}
           <td>
-           <span className={'statusBadge '+(j.isCompleted?'completed':'failed')}>
-            {j.isCompleted?<CheckCircle2 size={12}/>:<XCircle size={12}/>}
-            {j.isCompleted?'Completed':statusLabel(j.status)}
+           <div className="prodLogTimeWrap">
+            <Calendar size={13} style={{color:'#60a5fa',flexShrink:0}}/>
+            <strong className="prodLogTime">
+             {new Date(j.completedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+            </strong>
+           </div>
+          </td>
+
+          {/* File Name */}
+          <td>
+           <strong className="prodFileName" title={j.file}>{j.file}</strong>
+          </td>
+
+          {/* Printer */}
+          <td>
+           <span className="prodPrinterBadge">{j.printerName || 'Printer'}</span>
+          </td>
+
+          {/* Duration */}
+          <td>
+           <span className="prodTimeVal">{fmtDuration(j.duration)}</span>
+          </td>
+
+          {/* Filament */}
+          <td>
+           <span style={{color:'#94a3b8',fontSize:'12.5px'}}>
+            {j.filamentUsed ? `${Math.round(j.filamentUsed)} mm` : '—'}
            </span>
           </td>
-          <td><strong style={{color:'#f8fafc',fontSize:'13px'}}>{j.file}</strong></td>
-          <td><span className="printerTag">{j.printerName||'Printer'}</span></td>
-          <td className="timePill">{new Date(j.completedAt).toLocaleString([],{dateStyle:'medium',timeStyle:'short'})}</td>
-          <td>{fmtDuration(j.duration)}</td>
-          <td>{j.filamentUsed?Math.round(j.filamentUsed)+' mm':'—'}</td>
+
+          {/* Status */}
+          <td style={{textAlign:'center'}}>
+           {j.isCompleted ? (
+            <span className="prodStatusPill completed">
+             <CheckCircle2 size={12}/> Completed
+            </span>
+           ) : (
+            <span className="prodStatusPill failed">
+             <XCircle size={12}/> {statusLabel(j.status)}
+            </span>
+           )}
+          </td>
          </tr>
-        )):<tr><td colSpan="6" style={{textAlign:'center',padding:'32px',color:'#7f93ad'}}>No individual print jobs found.</td></tr>}
+        )) : (
+         <tr>
+          <td colSpan="6" className="prodEmptyCell">
+           <Clock size={28} style={{color:'#475569',margin:'0 auto 8px',display:'block'}}/>
+           <strong>No log events recorded for this period.</strong>
+          </td>
+         </tr>
+        )}
        </tbody>
       </table>
      </div>
@@ -1833,7 +1904,6 @@ function CompletedPage({data,onSync,printers=[]}){
   </div>
  );
 }
-
 
 function SettingsPage({list,reload,systemInfo}){
  const[settingsTab,setSettingsTab]=useState('printers');
