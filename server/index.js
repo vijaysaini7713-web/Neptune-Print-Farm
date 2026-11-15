@@ -473,8 +473,8 @@ async function scan(p){
    completedState.delete(p.id);
   }else if(rawState==='printing'){
    completedState.delete(p.id);
-   if(latestJob?.job_id&&clearedPrints[p.id]?.jobId!==latestJob.job_id){
-    clearedPrints[p.id]={jobId:latestJob.job_id,startedAt:new Date().toISOString()};
+   if(clearedPrints[p.id]){
+    delete clearedPrints[p.id];
     save(clearedFile,clearedPrints);
    }
   }else{
@@ -493,13 +493,16 @@ async function scan(p){
     const compFilament=latestJob?.filament_used||existingComp?.filamentUsed||prev?.filamentUsed||0;
     const compCompletedAt=existingComp?.completedAt||(latestJob?.end_time?new Date(latestJob.end_time*1000).toISOString():new Date().toISOString());
     const compJobId=latestJob?.job_id||existingComp?.jobId||null;
+    const alreadyLogged=(compJobId&&allJobs.some(x=>x.printerId===p.id&&x.jobId===compJobId))||
+      allJobs.some(x=>x.printerId===p.id&&x.file===compFile&&Math.abs(new Date(x.completedAt)-new Date(compCompletedAt))<120000);
 
     completedState.set(p.id,{
      file:compFile,
      duration:compDuration,
      filamentUsed:compFilament,
      completedAt:compCompletedAt,
-     jobId:compJobId
+     jobId:compJobId,
+     notified:existingComp?.notified||alreadyLogged
     });
    }
   }
@@ -520,6 +523,9 @@ async function scan(p){
    }
   }
 
+  // 1. Filament Runout tracking & notification (MUST be declared before print start tracking)
+  const isNowRunout = Boolean(next.filamentRunout || next.filamentDetected === false || next.status === 'runout');
+
   // 0. Print start tracking
   if (next.file && (next.status === 'printing' || next.status === 'paused' || isNowRunout)) {
    if (!jobStartTimes[p.id] || jobStartTimes[p.id].file !== next.file) {
@@ -536,8 +542,6 @@ async function scan(p){
    }
   }
 
-  // 1. Filament Runout tracking & notification
-  const isNowRunout = Boolean(next.filamentRunout || next.filamentDetected === false || next.status === 'runout');
   if (isNowRunout && !isKlippyShutdown) {
    if (!runoutState[p.id]) {
     runoutState[p.id] = {
@@ -594,53 +598,69 @@ async function scan(p){
    }
   }
 
-  if(prev?.connected&&prev.status!==next.status){
-   if(['completed','error'].includes(next.status) || (next.status==='paused' && !isNowRunout)){
-    record(p.id,next.status,p.name+': '+next.status.toUpperCase()+' — '+(next.file||'No filename'));
+  // 3. Completed notification & history recording (guaranteed to fire and deduplicated)
+  if (next.status === 'completed' && next.file) {
+   if (compInfo && !compInfo.notified) {
+    compInfo.notified = true;
+    completedState.set(p.id, compInfo);
+    record(p.id, 'completed', p.name + ': COMPLETED — ' + next.file);
+   } else if (!compInfo && (!prev || prev.status !== 'completed')) {
+    record(p.id, 'completed', p.name + ': COMPLETED — ' + next.file);
    }
-   if(next.status==='completed'&&next.file){
-    const liveId=p.id+'_live_'+Date.now();
-    const existing=allJobs.find(x=>x.printerId===p.id&&x.file===next.file&&Math.abs(new Date(x.completedAt)-new Date(next.completedAt||Date.now()))<60000);
-    if(!existing){
-     allJobs.unshift({
-      id:liveId,
-      jobId:compInfo?.jobId||null,
-      printerId:p.id,
-      printerName:p.name,
-      file:next.file,
-      status:'completed',
-      isCompleted:true,
-      isFailed:false,
-      completedAt:next.completedAt||new Date().toISOString(),
-      duration:next.duration||0,
-      filamentUsed:next.filamentUsed||0
-     });
-     if(allJobs.length>4000)allJobs=allJobs.slice(0,4000);
-     save(jobsFile,allJobs);
-     save(completedFile,allJobs.filter(x=>x.isCompleted));
-     void syncPrinterHistory(p);
-    }
-   }else if(['error','cancelled'].includes(next.status)&&(next.file||prev.file)){
-    const liveId=p.id+'_live_fail_'+Date.now();
+
+   const liveId = p.id + '_live_' + Date.now();
+   const existing = allJobs.find(x =>
+    x.printerId === p.id &&
+    ((compInfo?.jobId && x.jobId === compInfo.jobId) || (x.file === next.file && Math.abs(new Date(x.completedAt) - new Date(next.completedAt || Date.now())) < 60000))
+   );
+   if (!existing) {
     allJobs.unshift({
-     id:liveId,
-     jobId:null,
-     printerId:p.id,
-     printerName:p.name,
-     file:next.file||prev.file,
-     status:next.status==='error'?'error':'cancelled',
-     isCompleted:false,
-     isFailed:true,
-     completedAt:new Date().toISOString(),
-     duration:next.duration||prev.duration||0,
-     filamentUsed:next.filamentUsed||prev.filamentUsed||0
+     id: liveId,
+     jobId: compInfo?.jobId || null,
+     printerId: p.id,
+     printerName: p.name,
+     file: next.file,
+     status: 'completed',
+     isCompleted: true,
+     isFailed: false,
+     completedAt: next.completedAt || new Date().toISOString(),
+     duration: next.duration || 0,
+     filamentUsed: next.filamentUsed || 0
     });
-    if(allJobs.length>4000)allJobs=allJobs.slice(0,4000);
-    save(jobsFile,allJobs);
+    if (allJobs.length > 4000) allJobs = allJobs.slice(0, 4000);
+    save(jobsFile, allJobs);
+    save(completedFile, allJobs.filter(x => x.isCompleted));
+    void syncPrinterHistory(p);
+   }
+  }
+
+  // 4. Status change tracking for Error, Paused, Cancelled
+  if (prev?.connected && prev.status !== next.status) {
+   if (next.status === 'error' || (next.status === 'paused' && !isNowRunout)) {
+    record(p.id, next.status, p.name + ': ' + next.status.toUpperCase() + ' — ' + (next.file || 'No filename'));
+   }
+   if (['error', 'cancelled'].includes(next.status) && (next.file || prev.file)) {
+    const liveId = p.id + '_live_fail_' + Date.now();
+    allJobs.unshift({
+     id: liveId,
+     jobId: null,
+     printerId: p.id,
+     printerName: p.name,
+     file: next.file || prev.file,
+     status: next.status === 'error' ? 'error' : 'cancelled',
+     isCompleted: false,
+     isFailed: true,
+     completedAt: new Date().toISOString(),
+     duration: next.duration || prev.duration || 0,
+     filamentUsed: next.filamentUsed || prev.filamentUsed || 0
+    });
+    if (allJobs.length > 4000) allJobs = allJobs.slice(0, 4000);
+    save(jobsFile, allJobs);
     void syncPrinterHistory(p);
    }
   }
  }catch(e){
+  console.error(`[Scan Error] ${p.name} (${p.host}):`, e.message || e);
   const previous=last.get(p.id);
   const errMsg=e.message||'Unknown error';
   let isShutdown=errMsg.includes('shutdown')||errMsg.includes('Printer is shutdown')||errMsg.includes('not heating at expected rate')||errMsg.includes('verify_heater')||errMsg.includes('FIRMWARE_RESTART');
