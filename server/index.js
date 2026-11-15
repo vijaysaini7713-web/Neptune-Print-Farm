@@ -273,7 +273,7 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJo
  }
 
  let totalDuration=null,remainingTime=null,eta=null;
- const duration=Math.round(ps.print_duration||0),progressRatio=Math.max(0,Math.min(1,sd.progress||0));
+ const duration=Math.round(ps.total_duration||ps.print_duration||0),progressRatio=Math.max(0,Math.min(1,sd.progress||0));
  const speedFactor=(typeof gm?.speed_factor==='number'&&gm.speed_factor>0.05&&gm.speed_factor<10)
   ?Number(gm.speed_factor.toFixed(2))
   :1.0;
@@ -371,17 +371,7 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJo
   if (totalHold > 0) jobHoldSec = totalHold;
  }
 
- let finalTotalDuration = totalDuration;
- if (computedStatus === 'completed') {
-  finalTotalDuration = compInfo?.duration || finalDuration || duration;
- } else if (finalTotalDuration == null && (state === 'printing' || state === 'paused')) {
-  const slicerEst = (typeof meta?.estimated_time === 'number' && meta.estimated_time > 0) ? meta.estimated_time : null;
-  if (slicerEst) {
-   finalTotalDuration = Math.max(0, Math.round(slicerEst / speedFactor));
-  } else if (progressRatio > 0.01 && duration > 20) {
-   finalTotalDuration = Math.round(duration / progressRatio);
-  }
- }
+ let finalTotalDuration = finalDuration;
 
  let jobStartedAt = null;
  if (compInfo?.startedAt) {
@@ -486,7 +476,7 @@ async function scan(p){
   const isCleared=latestJob&&clearedPrints[p.id]?.jobId===latestJob.job_id;
   const prev=last.get(p.id);
   const rawState=body?.result?.status?.print_stats?.state||'unknown';
-  const duration=Math.round(body?.result?.status?.print_stats?.print_duration||0);
+  const duration=Math.round(body?.result?.status?.print_stats?.total_duration||body?.result?.status?.print_stats?.print_duration||0);
   const progressRatio=body?.result?.status?.virtual_sdcard?.progress||0;
 
   if(isKlippyShutdown){

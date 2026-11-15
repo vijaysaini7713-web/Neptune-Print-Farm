@@ -250,11 +250,11 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
           <strong className="timeValue">{fmtDuration(p.remainingTime)}</strong>
          </span>
         )}
-        {(p.totalDuration || p.duration) > 0 && (
-         <span className="fleetTimeBadge totalTime" title={`Estimated total print duration: ${fmtDuration(p.totalDuration || p.duration)}`}>
+        {p.duration > 0 && (
+         <span className="fleetTimeBadge totalTime" title={`Time this file has been running: ${fmtDuration(p.duration)}`}>
           <Timer size={12} className="timeIcon"/>
           <span className="timeLabel">Total Time:</span>
-          <strong className="timeValue">{fmtDuration(p.totalDuration || p.duration)}</strong>
+          <strong className="timeValue">{fmtDuration(p.duration)}</strong>
          </span>
         )}
        </div>
@@ -290,11 +290,11 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
          </span>
         )}
 
-        {(p.totalDuration || p.duration) > 0 && (
-         <span className="fleetTimeBadge totalTime" title={`Estimated total print duration: ${fmtDuration(p.totalDuration || p.duration)}`}>
+        {p.duration > 0 && (
+         <span className="fleetTimeBadge totalTime" title={`Time this file has been running: ${fmtDuration(p.duration)}`}>
           <Timer size={12} className="timeIcon"/>
           <span className="timeLabel">Total Time:</span>
-          <strong className="timeValue">{fmtDuration(p.totalDuration || p.duration)}</strong>
+          <strong className="timeValue">{fmtDuration(p.duration)}</strong>
          </span>
         )}
 
@@ -332,11 +332,11 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
          </span>
         )}
 
-        {(p.duration || p.totalDuration) > 0 && (
-         <span className="fleetTimeBadge totalTime" title={`Total print time taken: ${fmtDuration(p.duration || p.totalDuration)}`}>
+        {p.duration > 0 && (
+         <span className="fleetTimeBadge totalTime" title={`Total print time taken: ${fmtDuration(p.duration)}`}>
           <Timer size={12} className="timeIcon"/>
           <span className="timeLabel">Total Time:</span>
-          <strong className="timeValue">{fmtDuration(p.duration || p.totalDuration)}</strong>
+          <strong className="timeValue">{fmtDuration(p.duration)}</strong>
          </span>
         )}
 
@@ -385,11 +385,11 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
          </span>
         )}
 
-        {(p.totalDuration || p.duration) > 0 && (
-         <span className="fleetTimeBadge totalTime" title={`Estimated total print duration: ${fmtDuration(p.totalDuration || p.duration)}`}>
+        {p.duration > 0 && (
+         <span className="fleetTimeBadge totalTime" title={`Time this file has been running: ${fmtDuration(p.duration)}`}>
           <Timer size={12} className="timeIcon"/>
           <span className="timeLabel">Total Time:</span>
-          <strong className="timeValue">{fmtDuration(p.totalDuration || p.duration)}</strong>
+          <strong className="timeValue">{fmtDuration(p.duration)}</strong>
          </span>
         )}
 
@@ -541,9 +541,9 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
          <CheckCircle2 size={11}/> Completed: <b>{formatCompletedTime(p.completedAt)}</b>
         </span>
        )}
-       {(p.duration || p.totalDuration) > 0 && (
-        <span className="compTimePill" title={`Total print time taken: ${fmtDuration(p.duration || p.totalDuration)}`}>
-         <Timer size={11}/> Total Time: <b>{fmtDuration(p.duration || p.totalDuration)}</b>
+       {p.duration > 0 && (
+        <span className="compTimePill" title={`Total print time taken: ${fmtDuration(p.duration)}`}>
+         <Timer size={11}/> Total Time: <b>{fmtDuration(p.duration)}</b>
         </span>
        )}
        {p.jobHoldSec > 0 && (
@@ -1429,9 +1429,9 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
        <div className="elementCard">
         <span className="elementLabel"><Timer size={13}/> Total Print Time</span>
         <strong className="elementVal">
-         {p.status==='completed' ? (p.duration ? fmtDuration(p.duration) : '—') : (p.totalDuration ? fmtDuration(p.totalDuration) : (p.duration ? fmtDuration(p.duration) : '—'))}
+         {p.duration ? fmtDuration(p.duration) : '—'}
         </strong>
-        <small className="elementSub">{p.status==='completed' ? 'Actual time taken to finish' : 'Overall estimated print duration'}</small>
+        <small className="elementSub">{p.status==='completed' ? 'Actual time taken to finish' : 'Time this file has been running'}</small>
        </div>
        <div className="elementCard">
         <span className="elementLabel"><Pause size={13}/> Filament Hold Duration</span>
