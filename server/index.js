@@ -201,6 +201,8 @@ async function syncPrinterHistory(p){
    if(j.status==='in_progress'||!j.filename)continue;
    const id=p.id+'_'+(j.job_id||j.start_time);
    const endSec=j.end_time||(j.start_time?(j.start_time+(j.print_duration||0)):null);
+   const startSec=j.start_time||null;
+   const dur=Math.round(j.print_duration||j.total_duration||0);
    const existingIdx=allJobs.findIndex(x=>x.id===id);
    const jobObj={
     id,
@@ -211,8 +213,10 @@ async function syncPrinterHistory(p){
     status:j.status||'unknown',
     isCompleted:j.status==='completed',
     isFailed:j.status!=='completed',
+    startedAt:startSec?new Date(startSec*1000).toISOString():(endSec?new Date((endSec-dur)*1000).toISOString():null),
     completedAt:endSec?new Date(endSec*1000).toISOString():new Date().toISOString(),
-    duration:Math.round(j.print_duration||j.total_duration||0),
+    duration:dur,
+    totalDuration:dur,
     filamentUsed:Math.round(j.filament_used||0)
    };
    if(existingIdx===-1){
@@ -236,7 +240,7 @@ async function syncAllHistory(){
  await Promise.all(printers.map(syncPrinterHistory));
 }
 
-function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason){
+function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJob){
  const s=body?.result?.status||{},ps=s.print_stats||{},sd=s.virtual_sdcard||{},gm=s.gcode_move||{},wh=s.webhooks||{};
  const sensed=Object.entries(s).filter(([k])=>k.startsWith('filament_switch_sensor ')||k.startsWith('filament_motion_sensor ')||k.startsWith('filament_sensor')||k.includes('filament'));
  const enabled=sensed.filter(([,v])=>v && v.enabled!==0 && v.enabled!==false);
@@ -367,8 +371,24 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason){
   if (totalHold > 0) jobHoldSec = totalHold;
  }
 
+ let finalTotalDuration = totalDuration;
+ if (computedStatus === 'completed') {
+  finalTotalDuration = compInfo?.duration || finalDuration || duration;
+ } else if (finalTotalDuration == null && (state === 'printing' || state === 'paused')) {
+  const slicerEst = (typeof meta?.estimated_time === 'number' && meta.estimated_time > 0) ? meta.estimated_time : null;
+  if (slicerEst) {
+   finalTotalDuration = Math.max(0, Math.round(slicerEst / speedFactor));
+  } else if (progressRatio > 0.01 && duration > 20) {
+   finalTotalDuration = Math.round(duration / progressRatio);
+  }
+ }
+
  let jobStartedAt = null;
- if (jobStartTimes[p.id]?.file === finalFile && jobStartTimes[p.id]?.startedAt) {
+ if (compInfo?.startedAt) {
+  jobStartedAt = compInfo.startedAt;
+ } else if (latestJob?.start_time && (latestJob.filename === finalFile || !finalFile || !latestJob.filename)) {
+  jobStartedAt = new Date(latestJob.start_time * 1000).toISOString();
+ } else if (jobStartTimes[p.id]?.file === finalFile && jobStartTimes[p.id]?.startedAt) {
   jobStartedAt = jobStartTimes[p.id].startedAt;
  } else if (finalFile && (state === 'printing' || state === 'paused')) {
   const totalDur = (ps.total_duration != null && ps.total_duration > 0) ? ps.total_duration : (ps.print_duration || duration || 0);
@@ -390,7 +410,7 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason){
   file:finalFile,
   progress:finalProgress,
   duration:finalDuration,
-  totalDuration,
+  totalDuration:finalTotalDuration,
   remainingTime:computedStatus==='completed'?null:remainingTime,
   eta:computedStatus==='completed'?null:eta,
   speedFactor,
@@ -409,7 +429,7 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason){
   runoutStartedAt: runoutState[p.id]?.startedAt || null,
   jobHoldSec,
   startedAt: jobStartedAt,
-  completedAt:compInfo?.completedAt||null,
+  completedAt:compInfo?.completedAt||(computedStatus==='completed'&&latestJob?.end_time?new Date(latestJob.end_time*1000).toISOString():null),
   updatedAt:new Date().toISOString()
  };
 }
@@ -493,6 +513,7 @@ async function scan(p){
     const compFilament=latestJob?.filament_used||existingComp?.filamentUsed||prev?.filamentUsed||0;
     const compCompletedAt=existingComp?.completedAt||(latestJob?.end_time?new Date(latestJob.end_time*1000).toISOString():new Date().toISOString());
     const compJobId=latestJob?.job_id||existingComp?.jobId||null;
+    const compStartedAt=existingComp?.startedAt||(latestJob?.start_time?new Date(latestJob.start_time*1000).toISOString():(jobStartTimes[p.id]?.file===compFile?jobStartTimes[p.id].startedAt:new Date(new Date(compCompletedAt).getTime()-compDuration*1000).toISOString()));
     const alreadyLogged=(compJobId&&allJobs.some(x=>x.printerId===p.id&&x.jobId===compJobId))||
       allJobs.some(x=>x.printerId===p.id&&x.file===compFile&&Math.abs(new Date(x.completedAt)-new Date(compCompletedAt))<120000);
 
@@ -501,6 +522,7 @@ async function scan(p){
      duration:compDuration,
      filamentUsed:compFilament,
      completedAt:compCompletedAt,
+     startedAt:compStartedAt,
      jobId:compJobId,
      notified:existingComp?.notified||alreadyLogged
     });
@@ -510,7 +532,7 @@ async function scan(p){
   const compInfo=completedState.get(p.id)||null;
   const filename=compInfo?.file||body?.result?.status?.print_stats?.filename;
   const meta=filename?await fetchMetadata(endpoint,filename):null;
-  const next=normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason);
+  const next=normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJob);
   current.set(p.id,next);last.set(p.id,next);
 
   // If printer was previously offline, handle reconnect & clear alert tracking
@@ -528,11 +550,15 @@ async function scan(p){
 
   // 0. Print start tracking
   if (next.file && (next.status === 'printing' || next.status === 'paused' || isNowRunout)) {
-   if (!jobStartTimes[p.id] || jobStartTimes[p.id].file !== next.file) {
-    const elapsed = (next.totalDuration != null && next.totalDuration > 0) ? next.totalDuration : (next.duration || 0);
+   const exactStart = (latestJob?.start_time && (latestJob.filename === next.file || !latestJob.filename)) ? new Date(latestJob.start_time * 1000).toISOString() : null;
+   const elapsed = (body?.result?.status?.print_stats?.total_duration != null && body.result.status.print_stats.total_duration > 0) ? body.result.status.print_stats.total_duration : (next.duration || 0);
+   const fallbackStart = new Date(Date.now() - Math.round(elapsed * 1000)).toISOString();
+   const chosenStart = exactStart || fallbackStart;
+
+   if (!jobStartTimes[p.id] || jobStartTimes[p.id].file !== next.file || (exactStart && jobStartTimes[p.id].startedAt !== exactStart)) {
     jobStartTimes[p.id] = {
      file: next.file,
-     startedAt: new Date(Date.now() - Math.round(elapsed * 1000)).toISOString()
+     startedAt: chosenStart
     };
     save(jobStartsFile, jobStartTimes);
    }
@@ -600,12 +626,16 @@ async function scan(p){
 
   // 3. Completed notification & history recording (guaranteed to fire and deduplicated)
   if (next.status === 'completed' && next.file) {
+   const totalStr = formatHoldDuration(next.duration || compInfo?.duration || 0);
+   const startedStr = next.startedAt ? new Date(next.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : null;
+   const compMsg = `${p.name}: COMPLETED — ${next.file}${totalStr ? ` (Total: ${totalStr}` : ''}${startedStr ? `, Started: ${startedStr})` : totalStr ? ')' : ''}`;
+
    if (compInfo && !compInfo.notified) {
     compInfo.notified = true;
     completedState.set(p.id, compInfo);
-    record(p.id, 'completed', p.name + ': COMPLETED — ' + next.file);
+    record(p.id, 'completed', compMsg);
    } else if (!compInfo && (!prev || prev.status !== 'completed')) {
-    record(p.id, 'completed', p.name + ': COMPLETED — ' + next.file);
+    record(p.id, 'completed', compMsg);
    }
 
    const liveId = p.id + '_live_' + Date.now();
@@ -623,8 +653,10 @@ async function scan(p){
      status: 'completed',
      isCompleted: true,
      isFailed: false,
+     startedAt: next.startedAt || compInfo?.startedAt || null,
      completedAt: next.completedAt || new Date().toISOString(),
-     duration: next.duration || 0,
+     duration: next.duration || compInfo?.duration || 0,
+     totalDuration: next.duration || compInfo?.duration || 0,
      filamentUsed: next.filamentUsed || 0
     });
     if (allJobs.length > 4000) allJobs = allJobs.slice(0, 4000);

@@ -1,7 +1,7 @@
 
 import React,{useEffect,useState} from 'react';
 import{createRoot}from'react-dom/client';
-import{Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap,Key,Lock,Copy,Check,Cpu,HardDrive}from'lucide-react';
+import{Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Timer,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap,Key,Lock,Copy,Check,Cpu,HardDrive}from'lucide-react';
 import './style.css';
 
 function urlBase64ToUint8Array(base64String) {
@@ -105,6 +105,20 @@ const formatStartTime=iso=>{
  if(dtDate===today)return timeStr;
  if(dtDate===yesterday)return `Yest. ${timeStr}`;
  return `${dt.toLocaleDateString(undefined,{month:'short',day:'numeric'})} ${timeStr}`;
+};
+
+const formatCompletedTime=iso=>{
+ if(!iso)return'—';
+ const dt=new Date(iso);
+ if(isNaN(dt.getTime()))return'—';
+ const today=getLocalDateStr(new Date());
+ const tm=new Date();tm.setDate(tm.getDate()-1);
+ const yesterday=getLocalDateStr(tm);
+ const dtDate=getLocalDateStr(dt);
+ const timeStr=dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true});
+ if(dtDate===today)return `Today at ${timeStr}`;
+ if(dtDate===yesterday)return `Yesterday at ${timeStr}`;
+ return `${dt.toLocaleDateString(undefined,{month:'short',day:'numeric'})} at ${timeStr}`;
 };
 
 function Login({done}){
@@ -217,6 +231,13 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
      <div className="fleetJobFoot">
       {hasRunout ? (
        <div className="fleetTimeRow">
+        {p.startedAt && (
+         <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
+          <Play size={12} className="timeIcon"/>
+          <span className="timeLabel">Started:</span>
+          <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
+         </span>
+        )}
         <span className="fleetTimeBadge runout" title="Filament sensor triggered — spool is empty">
          <AlertTriangle size={13} className="timeIcon"/>
          <span className="timeLabel">Filament Runout:</span>
@@ -227,6 +248,13 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
           <Clock size={13} className="timeIcon"/>
           <span className="timeLabel">Remaining:</span>
           <strong className="timeValue">{fmtDuration(p.remainingTime)}</strong>
+         </span>
+        )}
+        {(p.totalDuration || p.duration) > 0 && (
+         <span className="fleetTimeBadge totalTime" title={`Estimated total print duration: ${fmtDuration(p.totalDuration || p.duration)}`}>
+          <Timer size={12} className="timeIcon"/>
+          <span className="timeLabel">Total Time:</span>
+          <strong className="timeValue">{fmtDuration(p.totalDuration || p.duration)}</strong>
          </span>
         )}
        </div>
@@ -262,6 +290,14 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
          </span>
         )}
 
+        {(p.totalDuration || p.duration) > 0 && (
+         <span className="fleetTimeBadge totalTime" title={`Estimated total print duration: ${fmtDuration(p.totalDuration || p.duration)}`}>
+          <Timer size={12} className="timeIcon"/>
+          <span className="timeLabel">Total Time:</span>
+          <strong className="timeValue">{fmtDuration(p.totalDuration || p.duration)}</strong>
+         </span>
+        )}
+
         {p.jobHoldSec > 0 && (
          <span className="fleetTimeBadge holdTime" title={`Printer held for ${fmtDuration(p.jobHoldSec)} during filament reload`}>
           <Pause size={13} className="timeIcon"/>
@@ -280,11 +316,30 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
        </div>
       ) : isDone ? (
        <div className="fleetTimeRow completedRow">
-        <span className="fleetTimeBadge completed" title="Print completed successfully">
-         <CheckCircle2 size={13} className="timeIcon"/>
-         <span className="timeLabel">Print Completed ·</span>
-         <strong className="timeValue">{p.duration ? fmtDuration(p.duration) + ' total' : 'Finished'}</strong>
-        </span>
+        {p.startedAt && (
+         <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
+          <Play size={12} className="timeIcon"/>
+          <span className="timeLabel">Started:</span>
+          <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
+         </span>
+        )}
+
+        {p.completedAt && (
+         <span className="fleetTimeBadge completedAt" title={`Print finished at ${formatCompletedTime(p.completedAt)}`}>
+          <CheckCircle2 size={13} className="timeIcon"/>
+          <span className="timeLabel">Completed:</span>
+          <strong className="timeValue">{formatCompletedTime(p.completedAt)}</strong>
+         </span>
+        )}
+
+        {(p.duration || p.totalDuration) > 0 && (
+         <span className="fleetTimeBadge totalTime" title={`Total print time taken: ${fmtDuration(p.duration || p.totalDuration)}`}>
+          <Timer size={12} className="timeIcon"/>
+          <span className="timeLabel">Total Time:</span>
+          <strong className="timeValue">{fmtDuration(p.duration || p.totalDuration)}</strong>
+         </span>
+        )}
+
         {p.jobHoldSec > 0 && (
          <span className="fleetTimeBadge holdTime" title={`Filament runout hold duration: ${fmtDuration(p.jobHoldSec)}`}>
           <Pause size={13} className="timeIcon"/>
@@ -292,6 +347,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
           <strong className="timeValue">{fmtDuration(p.jobHoldSec)}</strong>
          </span>
         )}
+
         <button 
          className="fleetClearBedBtn" 
          onClick={(e)=>{e.stopPropagation();onClearBed&&onClearBed(p);}}
@@ -323,8 +379,17 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
 
         {p.eta && (
          <span className="fleetTimeBadge completedBy">
+          <CheckCircle2 size={13} className="timeIcon"/>
           <span className="timeLabel">Completed by:</span>
           <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
+         </span>
+        )}
+
+        {(p.totalDuration || p.duration) > 0 && (
+         <span className="fleetTimeBadge totalTime" title={`Estimated total print duration: ${fmtDuration(p.totalDuration || p.duration)}`}>
+          <Timer size={12} className="timeIcon"/>
+          <span className="timeLabel">Total Time:</span>
+          <strong className="timeValue">{fmtDuration(p.totalDuration || p.duration)}</strong>
          </span>
         )}
 
@@ -465,6 +530,28 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
       <span>
        {p.file ? `Model "${p.file}" has finished printing.` : 'Print job completed.'} Remove printed model from build plate and click <b>Clear Bed</b> when ready.
       </span>
+      <div className="fleetCompletedTimeStrip">
+       {p.startedAt && (
+        <span className="compTimePill" title={`Started at ${formatStartTime(p.startedAt)}`}>
+         <Play size={11}/> Started: <b>{formatStartTime(p.startedAt)}</b>
+        </span>
+       )}
+       {p.completedAt && (
+        <span className="compTimePill" title={`Completed at ${formatCompletedTime(p.completedAt)}`}>
+         <CheckCircle2 size={11}/> Completed: <b>{formatCompletedTime(p.completedAt)}</b>
+        </span>
+       )}
+       {(p.duration || p.totalDuration) > 0 && (
+        <span className="compTimePill" title={`Total print time taken: ${fmtDuration(p.duration || p.totalDuration)}`}>
+         <Timer size={11}/> Total Time: <b>{fmtDuration(p.duration || p.totalDuration)}</b>
+        </span>
+       )}
+       {p.jobHoldSec > 0 && (
+        <span className="compTimePill hold" title={`Filament runout hold: ${fmtDuration(p.jobHoldSec)}`}>
+         <Pause size={11}/> Hold: <b>{fmtDuration(p.jobHoldSec)}</b>
+        </span>
+       )}
+      </div>
      </div>
      <button 
       className="fleetClearBedBannerBtn"
@@ -915,8 +1002,10 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
       <strong style={{color:'#34d399'}}>{p.progress??0}%</strong>
      </div>
      <div>
-      <span>Remaining</span>
-      <strong style={{color:'#38bdf8'}}>{p.remainingTime!=null?fmtDuration(p.remainingTime):'—'}</strong>
+      <span>{p.status==='completed' ? 'Total Time' : 'Remaining'}</span>
+      <strong style={{color:'#38bdf8'}}>
+       {p.status==='completed' ? (p.duration ? fmtDuration(p.duration) : '—') : (p.remainingTime!=null?fmtDuration(p.remainingTime):'—')}
+      </strong>
      </div>
     </div>
 
@@ -1333,9 +1422,16 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
         <small className="elementSub">{p.startedAt ? `Started: ${new Date(p.startedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true})}` : 'Not currently printing'}</small>
        </div>
        <div className="elementCard">
-        <span className="elementLabel"><CheckCircle2 size={13}/> Estimated Completion</span>
-        <strong className="elementVal">{p.eta ? formatFinishTime(p.eta) : '—'}</strong>
-        <small className="elementSub">{p.remainingTime != null ? `${fmtDuration(p.remainingTime)} remaining` : 'No ETA available'}</small>
+        <span className="elementLabel"><CheckCircle2 size={13}/> {p.status==='completed' ? 'Print Completed At' : 'Estimated Completion'}</span>
+        <strong className="elementVal">{p.status==='completed' ? formatCompletedTime(p.completedAt) : (p.eta ? formatFinishTime(p.eta) : '—')}</strong>
+        <small className="elementSub">{p.status==='completed' ? 'Finished time' : (p.remainingTime != null ? `${fmtDuration(p.remainingTime)} remaining` : 'No ETA available')}</small>
+       </div>
+       <div className="elementCard">
+        <span className="elementLabel"><Timer size={13}/> Total Print Time</span>
+        <strong className="elementVal">
+         {p.status==='completed' ? (p.duration ? fmtDuration(p.duration) : '—') : (p.totalDuration ? fmtDuration(p.totalDuration) : (p.duration ? fmtDuration(p.duration) : '—'))}
+        </strong>
+        <small className="elementSub">{p.status==='completed' ? 'Actual time taken to finish' : 'Overall estimated print duration'}</small>
        </div>
        <div className="elementCard">
         <span className="elementLabel"><Pause size={13}/> Filament Hold Duration</span>
@@ -1847,9 +1943,17 @@ function CompletedPage({data, onSync, printers=[]}){
           <td>
            <div className="prodLogTimeWrap">
             <Calendar size={13} style={{color:'#60a5fa',flexShrink:0}}/>
-            <strong className="prodLogTime">
-             {new Date(j.completedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
-            </strong>
+            <div>
+             <strong className="prodLogTime">
+              {new Date(j.completedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+             </strong>
+             {(j.startedAt || (j.completedAt && j.duration)) && (
+              <div style={{fontSize:'11.5px',color:'#7f94b0',marginTop:'3px',display:'flex',alignItems:'center',gap:'4px'}}>
+               <Play size={10} style={{color:'#34d399',flexShrink:0}}/>
+               <span>Started: <b>{formatStartTime(j.startedAt || new Date(new Date(j.completedAt).getTime() - (j.duration * 1000)).toISOString())}</b></span>
+              </div>
+             )}
+            </div>
            </div>
           </td>
 
@@ -1865,7 +1969,7 @@ function CompletedPage({data, onSync, printers=[]}){
 
           {/* Duration */}
           <td>
-           <span className="prodTimeVal">{fmtDuration(j.duration)}</span>
+           <span className="prodTimeVal bold" title="Total print duration">{fmtDuration(j.duration || j.totalDuration)}</span>
           </td>
 
           {/* Filament */}
