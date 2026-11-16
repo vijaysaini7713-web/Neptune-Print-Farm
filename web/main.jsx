@@ -3478,18 +3478,33 @@ function App(){
   api('/me').then(res=>{
    setAuthed(true);
    setCurrentUser(res.user);
+   setPage('overview');
   }).catch(()=>{
    setAuthed(false);
    setCurrentUser(null);
+   setPage('overview');
   });
  },[]);
  useEffect(()=>{if(!authed)return;refresh();loadConfig();const t=setInterval(refresh,5000);return()=>clearInterval(t)},[authed]);
 
+ useEffect(()=>{
+  // Force first page to 'overview' (Printer status) on any login or user change
+  if (authed) {
+   setPage('overview');
+  }
+ }, [authed, currentUser?.id]);
+
  if(authed===null)return <div className="boot">Loading Neptune Print Farm…</div>;
- if(!authed)return <Login done={(u)=>{setAuthed(true);setCurrentUser(u);refresh();loadConfig();}}/>;
+ if(!authed)return <Login done={(u)=>{setAuthed(true);setCurrentUser(u);setPage('overview');refresh();loadConfig();}}/>;
 
  const isAdmin = currentUser?.role === 'admin';
  const isGuest = currentUser?.role === 'guest';
+
+ useEffect(()=>{
+  if (!isAdmin && page === 'settings') {
+   setPage('overview');
+  }
+ }, [isAdmin, page]);
 
  const isLocal = Boolean(
   window.location.hostname === 'localhost' ||
@@ -3528,7 +3543,7 @@ function App(){
 
  return <div className={`layout theme-${theme}`}>
   <aside>
-   <div className="logo">
+   <div className="logo" onClick={()=>setPage('overview')} style={{cursor:'pointer'}} title="Go to Printer Status">
     <div className="logoIconBox"><Printer size={20}/></div>
     <div className="logoTitle">NEPTUNE <span>FARM</span></div>
    </div>
@@ -3571,7 +3586,7 @@ function App(){
      </div>
      <div className="hostStatusSub">HOST: {systemInfo?.primaryIp||'172.16.20.139'}</div>
     </div>
-    <button className="nav signout" onClick={async()=>{await api('/logout',{method:'POST'});setAuthed(false);setCurrentUser(null);}}>
+    <button className="nav signout" onClick={async()=>{await api('/logout',{method:'POST'});setAuthed(false);setCurrentUser(null);setPage('overview');}}>
      <LogOut size={16}/> <span>Sign out</span>
     </button>
    </div>
@@ -3674,7 +3689,7 @@ function App(){
 
    {error&&<div className="banner">{error}</div>}
 
-   {page==='overview'?(
+   {(page==='overview' || (!isAdmin && page==='settings'))?(
     <>
      {/* PRINTER FLEET Page Title Header */}
      <div className="fleetPageHeader">
@@ -3817,7 +3832,7 @@ function App(){
     </>
    ):page==='completed'?(
     <CompletedPage data={completed} printers={printers} onSync={syncHistory}/>
-   ):page==='settings'?(
+   ):(page==='settings' && isAdmin)?(
     <SettingsPage list={config} reload={async()=>{await loadConfig();await refresh()}} systemInfo={systemInfo}/>
    ):(
     <>
