@@ -3494,17 +3494,17 @@ function App(){
   }
  }, [authed, currentUser?.id]);
 
- if(authed===null)return <div className="boot">Loading Neptune Print Farm…</div>;
- if(!authed)return <Login done={(u)=>{setAuthed(true);setCurrentUser(u);setPage('overview');refresh();loadConfig();}}/>;
-
  const isAdmin = currentUser?.role === 'admin';
  const isGuest = currentUser?.role === 'guest';
 
  useEffect(()=>{
-  if (!isAdmin && page === 'settings') {
+  if (authed && !isAdmin && page === 'settings') {
    setPage('overview');
   }
- }, [isAdmin, page]);
+ }, [authed, isAdmin, page]);
+
+ if(authed===null)return <div className="boot">Loading Neptune Print Farm…</div>;
+ if(!authed)return <Login done={(u)=>{setAuthed(true);setCurrentUser(u);setPage('overview');refresh();loadConfig();}}/>;
 
  const isLocal = Boolean(
   window.location.hostname === 'localhost' ||
