@@ -1,7 +1,7 @@
 
 import React,{useEffect,useState} from 'react';
 import{createRoot}from'react-dom/client';
-import{Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Timer,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap,Key,Lock,Copy,Check,Cpu,HardDrive}from'lucide-react';
+import{Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Timer,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap,Key,Lock,Copy,Check,Cpu,HardDrive,Users,UserPlus,Eye,Shield,Mail}from'lucide-react';
 import './style.css';
 
 function urlBase64ToUint8Array(base64String) {
@@ -122,29 +122,127 @@ const formatCompletedTime=iso=>{
 };
 
 function Login({done}){
- const[password,setPassword]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(false),[sys,setSys]=useState(null);
+ const [email,setEmail]=useState('admin@neptunemonitor.com');
+ const [password,setPassword]=useState('');
+ const [error,setError]=useState('');
+ const [loading,setLoading]=useState(false);
+ const [sys,setSys]=useState(null);
+
  useEffect(()=>{api('/system-info').then(setSys).catch(()=>{})},[]);
+
  const isLocal = sys ? (sys.isLocalClient || ['localhost','127.0.0.1'].includes(window.location.hostname) || window.location.hostname.startsWith('172.16.') || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.')) : true;
- async function submit(e){e.preventDefault();setLoading(true);setError('');try{await api('/login',{method:'POST',body:JSON.stringify({password})});done()}catch(e){setError(e.message)}finally{setLoading(false)}}
+ const localUrl = sys?.localUrl || `http://${sys?.primaryIp||'172.16.20.139'}:${sys?.port||3080}`;
+ const remoteUrl = sys?.remoteUrl || 'https://neptunemonitor.com';
+
+ async function submit(e){
+  e.preventDefault();
+  setLoading(true);
+  setError('');
+  try{
+   const r = await api('/login',{
+    method:'POST',
+    body:JSON.stringify({email, password})
+   });
+   done(r.user);
+  }catch(e){
+   setError(e.message);
+  }finally{
+   setLoading(false);
+  }
+ }
+
  return <main className="loginShell">
-  <form onSubmit={submit} className="login card">
+  <form onSubmit={submit} className="login card" style={{maxWidth:'460px'}}>
    <div className="logo"><Printer size={25}/> NEPTUNE <span>FARM</span></div>
-   <div className={'netBadge '+(isLocal?'local':'remote')} style={{marginBottom:'16px'}}>
-    {isLocal?<Wifi size={13}/>:<Globe size={13}/>}
-    <span>{isLocal?`LAN Network (${sys?.primaryIp||'172.16.20.139'})`:`Remote Access (Host: ${sys?.primaryIp||'172.16.20.139'})`}</span>
+
+   {/* Connection Mode Links & Live Switcher */}
+   <div className="loginNetSwitcher" style={{background:'#09111e',border:'1px solid #1e293b',borderRadius:'10px',padding:'12px 14px',marginBottom:'18px',textAlign:'left'}}>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'8px'}}>
+     <span style={{fontSize:'11px',fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.5px'}}>Connection Access Mode</span>
+     <span className={'netPill '+(isLocal?'local':'remote')} style={{fontSize:'11px',padding:'2px 8px',borderRadius:'12px',fontWeight:700,display:'inline-flex',alignItems:'center',gap:'4px'}}>
+      {isLocal ? <Wifi size={11}/> : <Globe size={11}/>}
+      {isLocal ? 'LAN Active' : 'Remote Active'}
+     </span>
+    </div>
+
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
+     <a 
+      href={localUrl} 
+      className={'loginNetCard '+(isLocal?'active':'')}
+      style={{display:'block',padding:'8px 10px',borderRadius:'8px',border:isLocal?'1.5px solid #10b981':'1px solid #1e293b',background:isLocal?'rgba(16,185,129,0.12)':'#0f172a',textDecoration:'none'}}
+      title="Click to use Local LAN Wi-Fi connection"
+     >
+      <div style={{display:'flex',alignItems:'center',gap:'6px',color:isLocal?'#34d399':'#94a3b8',fontSize:'11px',fontWeight:700}}>
+       <Wifi size={12}/> Local LAN (Wi-Fi)
+      </div>
+      <div style={{fontSize:'11.5px',color:'#cbd5e1',marginTop:'3px',fontFamily:'monospace',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+       {localUrl.replace('http://','')}
+      </div>
+     </a>
+
+     <a 
+      href={remoteUrl} 
+      className={'loginNetCard '+(!isLocal?'active':'')}
+      style={{display:'block',padding:'8px 10px',borderRadius:'8px',border:!isLocal?'1.5px solid #38bdf8':'1px solid #1e293b',background:!isLocal?'rgba(56,189,248,0.12)':'#0f172a',textDecoration:'none'}}
+      title="Click to use Remote Internet Cloud connection"
+     >
+      <div style={{display:'flex',alignItems:'center',gap:'6px',color:!isLocal?'#38bdf8':'#94a3b8',fontSize:'11px',fontWeight:700}}>
+       <Globe size={12}/> Remote Cloud
+      </div>
+      <div style={{fontSize:'11.5px',color:'#cbd5e1',marginTop:'3px',fontFamily:'monospace',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+       {remoteUrl.replace('https://','')}
+      </div>
+     </a>
+    </div>
+
+    <div style={{fontSize:'11px',color:'#64748b',marginTop:'8px',lineHeight:1.4}}>
+     {isLocal ? '✓ Connected directly to local farm network for fastest speed.' : '💡 On farm Wi-Fi? Switch to Local LAN link above for instant local speed.'}
+    </div>
    </div>
-   <h1>Welcome back</h1>
-   <p>Monitor your entire 3D printer farm in one place.</p>
-   <label>Admin password</label>
-   <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Enter password" required autoFocus/>
-   <button className="primary full" disabled={loading}>{loading?'Signing in…':'Sign in to dashboard'}</button>
-   {error&&<div className="error">{error}</div>}
-   <small>Read-only printer monitoring</small>
+
+   <h1>Welcome Back</h1>
+   <p>Sign in to monitor and manage your Neptune 3D printers.</p>
+
+   <label>Email Address</label>
+   <input 
+    type="email" 
+    value={email} 
+    onChange={e=>setEmail(e.target.value)} 
+    placeholder="admin@neptunemonitor.com" 
+    required 
+    autoFocus
+   />
+
+   <label style={{marginTop:'10px'}}>Password</label>
+   <input 
+    type="password" 
+    value={password} 
+    onChange={e=>setPassword(e.target.value)} 
+    placeholder="Enter your password" 
+    required
+   />
+
+   <button className="primary full" disabled={loading} style={{marginTop:'16px'}}>
+    {loading ? 'Signing in…' : 'Sign In to Dashboard'}
+   </button>
+
+   {error && <div className="error" style={{marginTop:'12px'}}>{error}</div>}
+
+   <div style={{marginTop:'16px',padding:'10px 12px',background:'#070d18',border:'1px solid #1e293b',borderRadius:'8px',fontSize:'11.5px',color:'#7f94b0',lineHeight:1.5,textAlign:'left'}}>
+    <div style={{display:'flex',alignItems:'center',gap:'6px',color:'#c084fc',fontWeight:700,marginBottom:'2px'}}>
+     <ShieldCheck size={12}/> Admin Account
+    </div>
+    <span>Full farm controls, G-code execution, and guest user management.</span>
+    <div style={{display:'flex',alignItems:'center',gap:'6px',color:'#38bdf8',fontWeight:700,marginTop:'6px',marginBottom:'2px'}}>
+     <Eye size={12}/> Guest Account
+    </div>
+    <span>Real-time view-only access to assigned printers. Cannot cancel or stop prints.</span>
+   </div>
   </form>
  </main>;
 }
 
-function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRestart}){
+function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRestart,isAdmin=true}){
  const s=p.status||'connecting';
  const printerUrl=p.host?`http://${p.host}${p.port&&p.port!==80?':'+p.port:''}`:null;
  const isDone=s==='completed';
@@ -361,14 +459,16 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
          </span>
         )}
 
-        <button 
-         className="fleetClearBedBtn" 
-         onClick={(e)=>{e.stopPropagation();onClearBed&&onClearBed(p);}}
-         title="Mark model removed from bed and reset printer to Idle"
-        >
-         <CheckCircle2 size={13}/>
-         <span>Clear Bed</span>
-        </button>
+        {isAdmin && (
+         <button 
+          className="fleetClearBedBtn" 
+          onClick={(e)=>{e.stopPropagation();onClearBed&&onClearBed(p);}}
+          title="Mark model removed from bed and reset printer to Idle"
+         >
+          <CheckCircle2 size={13}/>
+          <span>Clear Bed</span>
+         </button>
+        )}
        </div>
       ) : isIdle ? (
        <span className="fleetTimeBadge idle">
@@ -452,7 +552,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
 
     {/* Col 4: Badges & Action Buttons */}
     <div className="fleetCol actions">
-     {isShutdown&&(
+     {isAdmin&&isShutdown&&(
       <button 
        className="fleetBtn restart" 
        onClick={()=>onFirmwareRestart&&onFirmwareRestart(p)}
@@ -462,7 +562,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
        <span>Firmware Restart</span>
       </button>
      )}
-     {isDone&&(
+     {isAdmin&&isDone&&(
       <button 
        className="fleetBtn clearBedTop" 
        onClick={()=>onClearBed&&onClearBed(p)} 
@@ -588,13 +688,15 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
        )}
       </div>
      </div>
-     <button 
-      className="fleetClearBedBannerBtn"
-      onClick={()=>onClearBed&&onClearBed(p)}
-     >
-      <CheckCircle2 size={14}/>
-      <span>Clear Bed</span>
-     </button>
+     {isAdmin&&(
+      <button 
+       className="fleetClearBedBannerBtn"
+       onClick={()=>onClearBed&&onClearBed(p)}
+      >
+       <CheckCircle2 size={14}/>
+       <span>Clear Bed</span>
+      </button>
+     )}
     </div>
    )}
 
@@ -608,7 +710,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
        {p.shutdownReason || p.error || `Connection timed out while contacting Moonraker at ${p.host}:${p.port}. Check the printer power, IP address, and Moonraker port.`}
       </span>
      </div>
-     {isShutdown&&(
+     {isAdmin&&isShutdown&&(
       <button 
        className="fleetFirmwareRestartBtn"
        onClick={()=>onFirmwareRestart&&onFirmwareRestart(p)}
@@ -778,6 +880,469 @@ function HostStatusModal({systemInfo, total, online, onClose, onOpenGuide, onRef
  );
 }
 
+function ConnectionSwitcherModal({isLocal, systemInfo, onClose}){
+ const lanHost = systemInfo?.primaryIp || '172.16.20.139';
+ const lanPort = systemInfo?.port || 3080;
+ const lanUrl = systemInfo?.localUrl || `http://${lanHost}:${lanPort}`;
+ const remoteUrl = systemInfo?.remoteUrl || 'https://neptunemonitor.com';
+ const [copiedLan, setCopiedLan] = useState(false);
+ const [copiedRemote, setCopiedRemote] = useState(false);
+
+ const copyLan = () => {
+  if (navigator?.clipboard?.writeText) {
+   navigator.clipboard.writeText(lanUrl).then(()=>{
+    setCopiedLan(true);
+    setTimeout(()=>setCopiedLan(false), 2000);
+   });
+  }
+ };
+
+ const copyRemote = () => {
+  if (navigator?.clipboard?.writeText) {
+   navigator.clipboard.writeText(remoteUrl).then(()=>{
+    setCopiedRemote(true);
+    setTimeout(()=>setCopiedRemote(false), 2000);
+   });
+  }
+ };
+
+ return (
+  <div className="hostModalBackdrop" onClick={onClose}>
+   <div className="hostModalCard" style={{maxWidth:'560px'}} onClick={e=>e.stopPropagation()}>
+    <div className="hostModalHead">
+     <div className="hostModalTitle">
+      <Radio size={18} color="#38bdf8"/>
+      <span>Connection Access Switcher</span>
+     </div>
+     <button className="hostModalClose" onClick={onClose} title="Close">
+      <X size={18}/>
+     </button>
+    </div>
+
+    <div className="hostModalBody" style={{padding:'18px 20px'}}>
+     {/* Current active status pill */}
+     <div style={{background:'#09111e',border:'1px solid #1e293b',borderRadius:'10px',padding:'12px 14px',marginBottom:'16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+      <div>
+       <span style={{fontSize:'11px',textTransform:'uppercase',letterSpacing:'0.5px',color:'#64748b',fontWeight:700}}>Currently Connected Via</span>
+       <div style={{fontSize:'13.5px',fontWeight:700,color:'#f8fafc',marginTop:'2px',display:'flex',alignItems:'center',gap:'6px'}}>
+        {isLocal ? <Wifi size={14} color="#10b981"/> : <Globe size={14} color="#38bdf8"/>}
+        {isLocal ? `Local LAN Network (${lanHost})` : 'Remote Cloudflare Internet'}
+       </div>
+      </div>
+      <span className={'netPill '+(isLocal?'local':'remote')} style={{padding:'4px 10px',borderRadius:'12px',fontSize:'11.5px',fontWeight:700,display:'inline-flex',alignItems:'center',gap:'5px'}}>
+       <span className="liveDot green"/>
+       {isLocal ? 'LAN Active' : 'Remote Active'}
+      </span>
+     </div>
+
+     {/* 2 Big Cards: Local LAN and Remote Cloud */}
+     <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
+      {/* Option 1: Local LAN */}
+      <div style={{background:'#0e1726',border:isLocal?'1.5px solid #10b981':'1px solid #1e2c40',borderRadius:'10px',padding:'14px 16px',position:'relative'}}>
+       {isLocal && (
+        <span style={{position:'absolute',right:'14px',top:'14px',background:'rgba(16,185,129,0.15)',color:'#34d399',border:'1px solid rgba(16,185,129,0.3)',fontSize:'10.5px',padding:'2px 8px',borderRadius:'10px',fontWeight:700}}>
+         CURRENTLY ACTIVE
+        </span>
+       )}
+       <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
+        <Wifi size={16} color="#34d399"/>
+        <strong style={{fontSize:'14px',color:'#f8fafc'}}>Local LAN Wi-Fi Access</strong>
+       </div>
+       <p style={{fontSize:'12px',color:'#94a3b8',margin:'0 0 10px 0',lineHeight:1.4}}>
+        Use when connected to the <b>same workshop Wi-Fi / LAN</b> as the printers. Direct network path with fastest update rate and native Fluidd Web UI support.
+       </p>
+       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'#070d18',padding:'8px 12px',borderRadius:'6px',border:'1px solid #1a273b'}}>
+        <code style={{fontSize:'12.5px',color:'#38bdf8',fontFamily:'monospace'}}>{lanUrl}</code>
+        <div style={{display:'flex',gap:'6px'}}>
+         <button className="copyBtn" onClick={copyLan} title="Copy LAN URL" style={{padding:'4px 8px',fontSize:'11px',display:'inline-flex',alignItems:'center',gap:'4px'}}>
+          {copiedLan ? <Check size={12} color="#10b981"/> : <Copy size={12}/>} {copiedLan ? 'Copied' : 'Copy'}
+         </button>
+         <a href={lanUrl} className="primary" style={{padding:'4px 10px',fontSize:'11px',textDecoration:'none',display:'inline-flex',alignItems:'center',gap:'4px'}}>
+          <ExternalLink size={12}/> Open LAN
+         </a>
+        </div>
+       </div>
+      </div>
+
+      {/* Option 2: Remote Cloud */}
+      <div style={{background:'#0e1726',border:!isLocal?'1.5px solid #38bdf8':'1px solid #1e2c40',borderRadius:'10px',padding:'14px 16px',position:'relative'}}>
+       {!isLocal && (
+        <span style={{position:'absolute',right:'14px',top:'14px',background:'rgba(56,189,248,0.15)',color:'#38bdf8',border:'1px solid rgba(56,189,248,0.3)',fontSize:'10.5px',padding:'2px 8px',borderRadius:'10px',fontWeight:700}}>
+         CURRENTLY ACTIVE
+        </span>
+       )}
+       <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
+        <Globe size={16} color="#38bdf8"/>
+        <strong style={{fontSize:'14px',color:'#f8fafc'}}>Remote Cloud Internet Access</strong>
+       </div>
+       <p style={{fontSize:'12px',color:'#94a3b8',margin:'0 0 10px 0',lineHeight:1.4}}>
+        Use when you are <b>outside the workshop, at home, or on mobile 4G/5G data</b>. Securely relayed through Cloudflare tunnel 24/7.
+       </p>
+       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'#070d18',padding:'8px 12px',borderRadius:'6px',border:'1px solid #1a273b'}}>
+        <code style={{fontSize:'12.5px',color:'#38bdf8',fontFamily:'monospace'}}>{remoteUrl}</code>
+        <div style={{display:'flex',gap:'6px'}}>
+         <button className="copyBtn" onClick={copyRemote} title="Copy Remote URL" style={{padding:'4px 8px',fontSize:'11px',display:'inline-flex',alignItems:'center',gap:'4px'}}>
+          {copiedRemote ? <Check size={12} color="#10b981"/> : <Copy size={12}/>} {copiedRemote ? 'Copied' : 'Copy'}
+         </button>
+         <a href={remoteUrl} className="primary" style={{padding:'4px 10px',fontSize:'11px',textDecoration:'none',display:'inline-flex',alignItems:'center',gap:'4px'}}>
+          <ExternalLink size={12}/> Open Remote
+         </a>
+        </div>
+       </div>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div>
+ );
+}
+
+function UsersManager({printers = [], currentUser}){
+ const [users, setUsers] = useState([]);
+ const [loading, setLoading] = useState(false);
+ const [error, setError] = useState('');
+ const [success, setSuccess] = useState('');
+ const [editingUser, setEditingUser] = useState(null);
+ const [showAddForm, setShowAddForm] = useState(false);
+
+ const [formEmail, setFormEmail] = useState('');
+ const [formName, setFormName] = useState('');
+ const [formPassword, setFormPassword] = useState('');
+ const [formRole, setFormRole] = useState('guest');
+ const [formPrinters, setFormPrinters] = useState(['*']);
+
+ const loadUsers = async () => {
+  setLoading(true);
+  setError('');
+  try {
+   const res = await api('/users');
+   const list = Array.isArray(res) ? res : (res.users || []);
+   setUsers(list);
+  } catch (err) {
+   setError(err.message);
+  } finally {
+   setLoading(false);
+  }
+ };
+
+ useEffect(() => {
+  loadUsers();
+ }, []);
+
+ const startAdd = () => {
+  setEditingUser(null);
+  setFormEmail('');
+  setFormName('');
+  setFormPassword('');
+  setFormRole('guest');
+  setFormPrinters(['*']);
+  setShowAddForm(true);
+  setError('');
+  setSuccess('');
+ };
+
+ const startEdit = (u) => {
+  setEditingUser(u);
+  setFormEmail(u.email);
+  setFormName(u.name || '');
+  setFormPassword('');
+  setFormRole(u.role || 'guest');
+  setFormPrinters(Array.isArray(u.assignedPrinters) && u.assignedPrinters.length ? u.assignedPrinters : ['*']);
+  setShowAddForm(true);
+  setError('');
+  setSuccess('');
+ };
+
+ const cancelForm = () => {
+  setShowAddForm(false);
+  setEditingUser(null);
+  setError('');
+ };
+
+ const togglePrinter = (printerId) => {
+  if (printerId === '*') {
+   setFormPrinters(['*']);
+   return;
+  }
+  let current = formPrinters.filter(x => x !== '*');
+  if (current.includes(printerId)) {
+   current = current.filter(x => x !== printerId);
+   if (current.length === 0) current = ['*'];
+  } else {
+   current.push(printerId);
+  }
+  setFormPrinters(current);
+ };
+
+ const handleSave = async (e) => {
+  e.preventDefault();
+  setError('');
+  setSuccess('');
+  try {
+   if (!editingUser) {
+    if (!formEmail || !formEmail.includes('@')) throw new Error('Valid email address is required');
+    if (!formPassword || formPassword.length < 6) throw new Error('Password must be at least 6 characters');
+    await api('/users', {
+     method: 'POST',
+     body: JSON.stringify({
+      email: formEmail,
+      name: formName,
+      password: formPassword,
+      role: formRole,
+      assignedPrinters: formPrinters
+     })
+    });
+    setSuccess(`Created ${formRole} user "${formEmail}" successfully!`);
+   } else {
+    await api(`/users/${editingUser.id}`, {
+     method: 'PUT',
+     body: JSON.stringify({
+      email: formEmail,
+      name: formName,
+      password: formPassword || undefined,
+      role: formRole,
+      assignedPrinters: formPrinters
+     })
+    });
+    setSuccess(`Updated user "${formEmail}" successfully!`);
+   }
+   setShowAddForm(false);
+   setEditingUser(null);
+   await loadUsers();
+   setTimeout(() => setSuccess(''), 4000);
+  } catch (err) {
+   setError(err.message);
+  }
+ };
+
+ const handleDelete = async (u) => {
+  if (u.role === 'admin' && users.filter(x => x.role === 'admin').length <= 1) {
+   alert('Cannot delete the only admin account.');
+   return;
+  }
+  if (!confirm(`Are you sure you want to delete user "${u.email}" (${u.name})?`)) return;
+  try {
+   await api(`/users/${u.id}`, { method: 'DELETE' });
+   setSuccess(`User "${u.email}" deleted successfully.`);
+   await loadUsers();
+   setTimeout(() => setSuccess(''), 4000);
+  } catch (err) {
+   setError(err.message);
+  }
+ };
+
+ return (
+  <div className="usersManagerWrap">
+   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px',flexWrap:'wrap',gap:'10px'}}>
+    <div>
+     <h3 style={{fontSize:'16px',fontWeight:700,color:'#f8fafc',margin:0}}>User & Guest Accounts</h3>
+     <p style={{fontSize:'12.5px',color:'#8fa2bc',margin:'2px 0 0'}}>
+      Manage user logins, Admin privileges, and Guest view-only printer assignments.
+     </p>
+    </div>
+    {!showAddForm && (
+     <button className="primary" onClick={startAdd} style={{display:'inline-flex',alignItems:'center',gap:'6px',padding:'7px 14px',fontSize:'13px'}}>
+      <UserPlus size={15}/> Add New Guest / Admin
+     </button>
+    )}
+   </div>
+
+   {success && <div className="tgFeedback success" style={{marginBottom:'14px'}}>{success}</div>}
+   {error && <div className="tgFeedback error" style={{marginBottom:'14px'}}>{error}</div>}
+
+   {showAddForm && (
+    <form onSubmit={handleSave} className="card" style={{background:'#0c1424',border:'1px solid #1e3a5f',borderRadius:'10px',padding:'16px 18px',marginBottom:'18px'}}>
+     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px',borderBottom:'1px solid #1a273e',paddingBottom:'8px'}}>
+      <strong style={{fontSize:'14px',color:'#38bdf8',display:'flex',alignItems:'center',gap:'6px'}}>
+       {editingUser ? <Users size={16}/> : <UserPlus size={16}/>}
+       {editingUser ? `Edit Account: ${editingUser.email}` : 'Create New Account'}
+      </strong>
+      <button type="button" className="iconButton" onClick={cancelForm} title="Cancel"><X size={16}/></button>
+     </div>
+
+     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:'12px',marginBottom:'12px'}}>
+      <label style={{display:'flex',flexDirection:'column',gap:'4px',fontSize:'12px',color:'#94a3b8'}}>
+       Email Address *
+       <input 
+        type="email" 
+        value={formEmail} 
+        onChange={e=>setFormEmail(e.target.value)} 
+        placeholder="guest@example.com" 
+        required 
+        style={{background:'#080e18',border:'1px solid #1e2c40',padding:'8px 10px',borderRadius:'6px',color:'#fff',fontSize:'13px'}}
+       />
+      </label>
+
+      <label style={{display:'flex',flexDirection:'column',gap:'4px',fontSize:'12px',color:'#94a3b8'}}>
+       Full Name / Nickname
+       <input 
+        type="text" 
+        value={formName} 
+        onChange={e=>setFormName(e.target.value)} 
+        placeholder="e.g. Workshop Guest" 
+        style={{background:'#080e18',border:'1px solid #1e2c40',padding:'8px 10px',borderRadius:'6px',color:'#fff',fontSize:'13px'}}
+       />
+      </label>
+
+      <label style={{display:'flex',flexDirection:'column',gap:'4px',fontSize:'12px',color:'#94a3b8'}}>
+       Password {editingUser ? '(leave blank to keep unchanged)' : '*'}
+       <input 
+        type="password" 
+        value={formPassword} 
+        onChange={e=>setFormPassword(e.target.value)} 
+        placeholder={editingUser ? '•••••••• (unchanged)' : 'Min 6 characters'} 
+        required={!editingUser}
+        minLength={formPassword ? 6 : undefined}
+        style={{background:'#080e18',border:'1px solid #1e2c40',padding:'8px 10px',borderRadius:'6px',color:'#fff',fontSize:'13px'}}
+       />
+      </label>
+
+      <label style={{display:'flex',flexDirection:'column',gap:'4px',fontSize:'12px',color:'#94a3b8'}}>
+       Account Role *
+       <select 
+        value={formRole} 
+        onChange={e=>setFormRole(e.target.value)}
+        style={{background:'#080e18',border:'1px solid #1e2c40',padding:'8px 10px',borderRadius:'6px',color:'#fff',fontSize:'13px'}}
+       >
+        <option value="guest">Guest (View Only — No Stops or Controls)</option>
+        <option value="admin">Admin (Full Control + Management)</option>
+       </select>
+      </label>
+     </div>
+
+     {/* Printer Assignment Selection */}
+     <div style={{background:'#070d18',border:'1px solid #162438',borderRadius:'8px',padding:'12px 14px',marginBottom:'14px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
+       <span style={{fontSize:'12px',fontWeight:700,color:'#cbd5e1'}}>Assigned Printers Access</span>
+       <span style={{fontSize:'11px',color:'#64748b'}}>
+        {formPrinters.includes('*') ? 'Can view all printers' : `Assigned to ${formPrinters.length} printer(s)`}
+       </span>
+      </div>
+
+      <div style={{display:'flex',flexWrap:'wrap',gap:'10px'}}>
+       <label style={{display:'inline-flex',alignItems:'center',gap:'6px',background:'#0e1a2d',border:formPrinters.includes('*')?'1px solid #38bdf8':'1px solid #1c2b42',padding:'5px 10px',borderRadius:'6px',cursor:'pointer',fontSize:'12px',color:formPrinters.includes('*')?'#38bdf8':'#cbd5e1'}}>
+        <input 
+         type="checkbox" 
+         checked={formPrinters.includes('*')} 
+         onChange={()=>togglePrinter('*')}
+        />
+        <strong>All Fleet Printers (*)</strong>
+       </label>
+
+       {printers.map(p => {
+        const isChecked = formPrinters.includes('*') || formPrinters.includes(p.id);
+        return (
+         <label key={p.id} style={{display:'inline-flex',alignItems:'center',gap:'6px',background:'#0e1a2d',border:isChecked?'1px solid #10b981':'1px solid #1c2b42',padding:'5px 10px',borderRadius:'6px',cursor:'pointer',fontSize:'12px',color:isChecked?'#34d399':'#94a3b8',opacity:formPrinters.includes('*')?0.6:1}}>
+          <input 
+           type="checkbox" 
+           checked={isChecked} 
+           disabled={formPrinters.includes('*')}
+           onChange={()=>togglePrinter(p.id)}
+          />
+          <span>{p.name} ({p.host})</span>
+         </label>
+        );
+       })}
+      </div>
+     </div>
+
+     <div style={{display:'flex',gap:'10px',justifyContent:'flex-end'}}>
+      <button type="button" className="outline" onClick={cancelForm}>Cancel</button>
+      <button type="submit" className="primary">
+       {editingUser ? 'Save Account Changes' : 'Create Account'}
+      </button>
+     </div>
+    </form>
+   )}
+
+   {/* Users Table */}
+   <div className="card" style={{padding:0,overflow:'hidden',background:'#0c1322',border:'1px solid #162032'}}>
+    <table style={{width:'100%',borderCollapse:'collapse',textAlign:'left',fontSize:'12.5px'}}>
+     <thead>
+      <tr style={{background:'#080e18',borderBottom:'1px solid #162032',color:'#64748b',fontSize:'11px',textTransform:'uppercase',letterSpacing:'0.5px'}}>
+       <th style={{padding:'10px 14px'}}>User / Email</th>
+       <th style={{padding:'10px 14px'}}>Name</th>
+       <th style={{padding:'10px 14px'}}>Role</th>
+       <th style={{padding:'10px 14px'}}>Assigned Printers</th>
+       <th style={{padding:'10px 14px',textAlign:'right'}}>Actions</th>
+      </tr>
+     </thead>
+     <tbody>
+      {users.map(u => {
+       const isCurrent = u.id === currentUser?.id || u.email === currentUser?.email;
+       const assignedNames = u.assignedPrinters?.includes('*') 
+        ? 'All Fleet Printers (*)' 
+        : u.assignedPrinters?.map(id => {
+           const match = printers.find(p => p.id === id);
+           return match ? match.name : id;
+          }).join(', ') || 'None';
+
+       return (
+        <tr key={u.id} style={{borderBottom:'1px solid #141e2e'}}>
+         <td style={{padding:'12px 14px'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+           <Mail size={14} color="#64748b"/>
+           <strong style={{color:'#f8fafc'}}>{u.email}</strong>
+           {isCurrent && <span style={{fontSize:'10px',background:'#1e293b',color:'#94a3b8',padding:'1px 5px',borderRadius:'4px'}}>You</span>}
+          </div>
+         </td>
+         <td style={{padding:'12px 14px',color:'#cbd5e1'}}>{u.name || '—'}</td>
+         <td style={{padding:'12px 14px'}}>
+          <span className={'roleBadge ' + (u.role === 'admin' ? 'admin' : 'guest')}>
+           {u.role === 'admin' ? <ShieldCheck size={12}/> : <Eye size={12}/>}
+           {u.role === 'admin' ? 'Admin' : 'Guest (View Only)'}
+          </span>
+         </td>
+         <td style={{padding:'12px 14px',color:'#94a3b8',fontSize:'12px'}}>
+          {assignedNames}
+         </td>
+         <td style={{padding:'12px 14px',textAlign:'right'}}>
+          <div style={{display:'inline-flex',gap:'6px'}}>
+           <button className="iconButton" onClick={()=>startEdit(u)} title="Edit user">
+            <Sliders size={13}/>
+           </button>
+           <button 
+            className="iconButton deleteBtn" 
+            onClick={()=>handleDelete(u)} 
+            title="Delete user"
+            disabled={u.role === 'admin' && users.filter(x => x.role === 'admin').length <= 1}
+           >
+            <Trash2 size={13}/>
+           </button>
+          </div>
+         </td>
+        </tr>
+       );
+      })}
+     </tbody>
+    </table>
+   </div>
+  </div>
+ );
+}
+
+function UsersModal({printers, currentUser, onClose}){
+ return (
+  <div className="hostModalBackdrop" onClick={onClose}>
+   <div className="hostModalCard" style={{maxWidth:'820px',maxHeight:'90vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+    <div className="hostModalHead">
+     <div className="hostModalTitle">
+      <Users size={18} color="#c084fc"/>
+      <span>User & Guest Management</span>
+     </div>
+     <button className="hostModalClose" onClick={onClose} title="Close">
+      <X size={18}/>
+     </button>
+    </div>
+
+    <div className="hostModalBody" style={{padding:'18px 20px'}}>
+     <UsersManager printers={printers} currentUser={currentUser}/>
+    </div>
+   </div>
+  </div>
+ );
+}
+
 function HostSetupGuideModal({onClose, onOpenStatus}){
  const [guideTab, setGuideTab] = useState('remote'); // 'remote' | 'printers' | 'watchdog'
  const [copiedRemote, setCopiedRemote] = useState(false);
@@ -930,7 +1495,7 @@ function HostSetupGuideModal({onClose, onOpenStatus}){
  );
 }
 
-function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
+function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true}){
  const hasRunout = Boolean(
   (p.status === 'runout' || (p.filamentRunout === true && (p.status === 'printing' || p.status === 'paused'))) &&
   Boolean(p.file) &&
@@ -974,6 +1539,10 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
  },[logs]);
 
  async function sendCommand(action,gcode,confirmPrompt){
+  if(!isAdmin){
+   setFeedback({type:'error',text:'Guest View-Only Mode: Printer controls and command execution are restricted to Admins.'});
+   return;
+  }
   if(confirmPrompt&&!window.confirm(confirmPrompt))return;
   setSending(true);
   setFeedback(null);
@@ -1024,6 +1593,17 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
       <button className="iconButton" onClick={onClose} title="Close"><X size={18}/></button>
      </div>
     </div>
+
+    {/* Guest View-Only Notice Banner */}
+    {!isAdmin&&(
+     <div style={{background:'rgba(56,189,248,0.12)',border:'1px solid rgba(56,189,248,0.3)',borderRadius:'8px',padding:'10px 14px',margin:'10px 18px 0',display:'flex',alignItems:'center',gap:'10px',color:'#38bdf8',fontSize:'12.5px'}}>
+      <Eye size={16}/>
+      <div>
+       <strong style={{color:'#7dd3fc'}}>Guest View-Only Mode</strong>
+       <span style={{display:'block',fontSize:'11.5px',color:'#cbd5e1',marginTop:'2px'}}>You have real-time monitoring access. Motion, heating, G-code execution, and print cancellations are disabled.</span>
+      </div>
+     </div>
+    )}
 
     {/* Live Telemetry Summary Strip */}
     <div className="controlStatsBar">
@@ -1427,12 +2007,12 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
       <form className="termInputRow" style={{padding:'10px 0 12px'}} onSubmit={e=>{e.preventDefault();if(cmd.trim())sendCommand('gcode',cmd.trim())}}>
        <input 
         type="text" 
-        placeholder="Type custom G-code (e.g. G28, M104 S210, M117 Printing)..." 
+        placeholder={!isAdmin ? "Guest view-only mode: terminal commands disabled" : "Type custom G-code (e.g. G28, M104 S210, M117 Printing)..."}
         value={cmd} 
         onChange={e=>setCmd(e.target.value)} 
-        disabled={sending}
+        disabled={sending||!isAdmin}
        />
-       <button type="submit" className="primary" disabled={sending||!cmd.trim()}>
+       <button type="submit" className="primary" disabled={sending||!isAdmin||!cmd.trim()}>
         <Send size={14}/> {sending?'Sending...':'Send'}
        </button>
       </form>
@@ -1536,24 +2116,33 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
     )}
 
     {/* Persistent Print & Safety Action Bar */}
-    <div className="modalFooterActions">
-     <div className="actionGroupLeft">
-      <button className="ctrlBtn pause" disabled={sending} onClick={()=>sendCommand('pause')}>
-       <Pause size={14}/> Pause
-      </button>
-      <button className="ctrlBtn resume" disabled={sending} onClick={()=>sendCommand('resume')}>
-       <Play size={14}/> Resume
-      </button>
-      <button className="ctrlBtn cancel" disabled={sending} onClick={()=>sendCommand('cancel',null,`Are you sure you want to CANCEL the print on ${p.name}?`)}>
-       <Square size={14}/> Cancel Print
-      </button>
+    {isAdmin ? (
+     <div className="modalFooterActions">
+      <div className="actionGroupLeft">
+       <button className="ctrlBtn pause" disabled={sending} onClick={()=>sendCommand('pause')}>
+        <Pause size={14}/> Pause
+       </button>
+       <button className="ctrlBtn resume" disabled={sending} onClick={()=>sendCommand('resume')}>
+        <Play size={14}/> Resume
+       </button>
+       <button className="ctrlBtn cancel" disabled={sending} onClick={()=>sendCommand('cancel',null,`Are you sure you want to CANCEL the print on ${p.name}?`)}>
+        <Square size={14}/> Cancel Print
+       </button>
+      </div>
+      <div className="actionGroupRight">
+       <button className="ctrlBtn emergency" disabled={sending} onClick={()=>sendCommand('emergency_stop',null,`EMERGENCY STOP (M112): Immediately halt all motors and heaters on ${p.name}. Confirm?`)}>
+        <ShieldAlert size={15}/> EMERGENCY STOP (M112)
+       </button>
+      </div>
      </div>
-     <div className="actionGroupRight">
-      <button className="ctrlBtn emergency" disabled={sending} onClick={()=>sendCommand('emergency_stop',null,`EMERGENCY STOP (M112): Immediately halt all motors and heaters on ${p.name}. Confirm?`)}>
-       <ShieldAlert size={15}/> EMERGENCY STOP (M112)
-      </button>
+    ) : (
+     <div style={{background:'#09111e',borderTop:'1px solid #1a273b',padding:'12px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:'12px',color:'#7f94b0'}}>
+      <div style={{display:'flex',alignItems:'center',gap:'6px',color:'#38bdf8',fontWeight:600}}>
+       <Eye size={14}/> <span>Guest Account (View-Only Mode)</span>
+      </div>
+      <span>Manual controls, axis jogging & print cancellations are restricted to Admins.</span>
      </div>
-    </div>
+    )}
    </div>
   </div>
  );
@@ -2292,6 +2881,12 @@ function SettingsPage({list,reload,systemInfo}){
       <Printer size={15}/> <span>Printer Fleet ({items.length})</span>
      </button>
      <button 
+      className={'settingsSubTab ' + (settingsTab==='users'?'active':'')}
+      onClick={()=>setSettingsTab('users')}
+     >
+      <Users size={15}/> <span>Users & Guests</span>
+     </button>
+     <button 
       className={'settingsSubTab ' + (settingsTab==='host'?'active':'')}
       onClick={()=>setSettingsTab('host')}
      >
@@ -2329,6 +2924,15 @@ function SettingsPage({list,reload,systemInfo}){
          Port
          <input type="number" min="1" max="65535" value={p.port} onChange={e=>edit(i,'port',Number(e.target.value))}/>
         </label>
+        <label style={{minWidth:'170px'}}>
+         Assigned Email
+         <input 
+          value={p.ownerEmail||''} 
+          onChange={e=>edit(i,'ownerEmail',e.target.value)} 
+          placeholder="e.g. guest@example.com"
+          title="Guest user email assigned to this printer (or leave blank for all)"
+         />
+        </label>
         <label className="enabled">
          <input type="checkbox" checked={p.enabled} onChange={e=>edit(i,'enabled',e.target.checked)}/>
          Enabled
@@ -2347,6 +2951,10 @@ function SettingsPage({list,reload,systemInfo}){
       </div>
      </div>
     </>
+   ) : settingsTab==='users' ? (
+    <div style={{marginTop:'14px'}}>
+     <UsersManager printers={items} currentUser={systemInfo?.user}/>
+    </div>
    ) : (
     /* HOST SERVER SETUP TAB */
     <div className="hostSetupWrapper">
@@ -2806,10 +3414,12 @@ function SettingsPage({list,reload,systemInfo}){
 }
 
 function App(){
- const[authed,setAuthed]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[systemInfo,setSystemInfo]=useState(null),[controlPrinter,setControlPrinter]=useState(null),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);
+ const[authed,setAuthed]=useState(null),[currentUser,setCurrentUser]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[systemInfo,setSystemInfo]=useState(null),[controlPrinter,setControlPrinter]=useState(null),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);
  const[pushActive,setPushActive]=useState(typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted');
  const[showHostStatusModal,setShowHostStatusModal]=useState(false);
  const[showSetupGuideModal,setShowSetupGuideModal]=useState(false);
+ const[showConnectionModal,setShowConnectionModal]=useState(false);
+ const[showUsersModal,setShowUsersModal]=useState(false);
 
  useEffect(()=>{
   if(typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && 'serviceWorker' in navigator){
@@ -2864,11 +3474,22 @@ function App(){
   }
  }
 
- useEffect(()=>{api('/me').then(()=>setAuthed(true)).catch(()=>setAuthed(false))},[]);
+ useEffect(()=>{
+  api('/me').then(res=>{
+   setAuthed(true);
+   setCurrentUser(res.user);
+  }).catch(()=>{
+   setAuthed(false);
+   setCurrentUser(null);
+  });
+ },[]);
  useEffect(()=>{if(!authed)return;refresh();loadConfig();const t=setInterval(refresh,5000);return()=>clearInterval(t)},[authed]);
 
  if(authed===null)return <div className="boot">Loading Neptune Print Farm…</div>;
- if(!authed)return <Login done={()=>setAuthed(true)}/>;
+ if(!authed)return <Login done={(u)=>{setAuthed(true);setCurrentUser(u);refresh();loadConfig();}}/>;
+
+ const isAdmin = currentUser?.role === 'admin';
+ const isGuest = currentUser?.role === 'guest';
 
  const isLocal = Boolean(
   window.location.hostname === 'localhost' ||
@@ -2922,10 +3543,27 @@ function App(){
     <Bell size={17}/> <span>Alerts & events</span>
     {events.length>0&&<span className="asideBadge">{events.length>9?'9+':events.length}</span>}
    </button>
-   <button className={'nav '+(page==='settings'?'active':'')} onClick={()=>setPage('settings')}>
-    <Settings size={17}/> <span>Printer settings</span>
-   </button>
+   {isAdmin && (
+    <button className={'nav '+(page==='settings'?'active':'')} onClick={()=>setPage('settings')}>
+     <Settings size={17}/> <span>Printer settings</span>
+    </button>
+   )}
    <div className="asideFoot">
+    {/* Current user badge in sidebar */}
+    <div className="asideUserCard" style={{padding:'8px 10px',background:'#080e18',border:'1px solid #142030',borderRadius:'8px',marginBottom:'8px'}}>
+     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'2px'}}>
+      <span style={{fontSize:'11.5px',fontWeight:700,color:'#cbd5e1',maxWidth:'120px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+       {currentUser?.name || currentUser?.email || 'User'}
+      </span>
+      <span className={'roleBadge ' + (isAdmin ? 'admin' : 'guest')} style={{fontSize:'9px',padding:'1px 5px'}}>
+       {isAdmin ? 'Admin' : 'Guest'}
+      </span>
+     </div>
+     <div style={{fontSize:'10px',color:'#64748b',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+      {currentUser?.email}
+     </div>
+    </div>
+
     <div className="hostStatusBox" onClick={()=>setShowHostStatusModal(true)} style={{cursor:'pointer'}} title="Click to view Host System Status">
      <div className="hostStatusHead">
       <span className="liveDot green"/>
@@ -2933,7 +3571,7 @@ function App(){
      </div>
      <div className="hostStatusSub">HOST: {systemInfo?.primaryIp||'172.16.20.139'}</div>
     </div>
-    <button className="nav signout" onClick={async()=>{await api('/logout',{method:'POST'});setAuthed(false)}}>
+    <button className="nav signout" onClick={async()=>{await api('/logout',{method:'POST'});setAuthed(false);setCurrentUser(null);}}>
      <LogOut size={16}/> <span>Sign out</span>
     </button>
    </div>
@@ -2942,10 +3580,35 @@ function App(){
   <main className="main">
    <header>
     <div className="headerLeftGroup">
-     <div className={'netBadge '+(isLocal?'local':'remote')} title={isLocal?`Connected via Local Farm LAN (${systemInfo?.primaryIp||'172.16.20.139'})`:`Remote Access: Telemetry is continuously relayed from Farm Host PC (${systemInfo?.primaryIp||'172.16.20.139'})`}>
+     <div 
+      className={'netBadge '+(isLocal?'local':'remote')} 
+      onClick={()=>setShowConnectionModal(true)}
+      style={{cursor:'pointer'}}
+      title={isLocal?`Connected via Local Farm LAN (${systemInfo?.primaryIp||'172.16.20.139'}). Click to change network mode.`:`Remote Access: Relayed continuously from Host PC. Click to change network mode.`}
+     >
       <span className="liveDot green"/>
       <span>{isLocal?'LAN connected':'Remote connected'}</span>
      </div>
+
+     {/* 1-Click Quick Switch Link */}
+     {isLocal ? (
+      <a 
+       href={systemInfo?.remoteUrl || 'https://neptunemonitor.com'} 
+       className="headerQuickSwitchBtn remote" 
+       title="Click to switch to Remote Cloud connection"
+      >
+       <Globe size={12}/> Switch to Remote
+      </a>
+     ) : (
+      <a 
+       href={systemInfo?.localUrl || `http://${systemInfo?.primaryIp||'172.16.20.139'}:${systemInfo?.port||3080}`} 
+       className="headerQuickSwitchBtn local" 
+       title="On farm Wi-Fi? Switch to Local LAN link for faster speed"
+      >
+       <Wifi size={12}/> Switch to Local LAN
+      </a>
+     )}
+
      <span className="headerTime">Updated {refreshed?refreshed.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true}):'--:--'}</span>
      <button 
       className="pushHeaderBtn" 
@@ -2968,6 +3631,27 @@ function App(){
      <button className="themeToggleBtn" onClick={()=>setShowSetupGuideModal(true)} title="How to Setup Neptune Farm">
       <Sparkles size={13}/> How to Setup
      </button>
+
+     {/* Admin Only: Users & Guests Management Button */}
+     {isAdmin && (
+      <button 
+       className="headerUsersBtn" 
+       onClick={()=>setShowUsersModal(true)} 
+       title="Manage User & Guest Accounts"
+      >
+       <Users size={13}/> Users & Guests
+      </button>
+     )}
+
+     {/* User Role & Identity Badge */}
+     <div className="headerUserPill">
+      <span className={'roleBadge ' + (isAdmin ? 'admin' : 'guest')} style={{fontSize:'10px',padding:'2px 6px'}}>
+       {isAdmin ? <ShieldCheck size={11}/> : <Eye size={11}/>}
+       {isAdmin ? 'Admin' : 'Guest'}
+      </span>
+      <span className="userEmailText" title={currentUser?.email}>{currentUser?.name || currentUser?.email || 'User'}</span>
+     </div>
+
      <button className="themeToggleBtn" onClick={toggleTheme} title={`Switch to ${theme==='dark'?'Light':'Dark'} mode`}>
       {theme==='dark'?(
        <><Sun size={13}/> Light</>
@@ -2985,7 +3669,7 @@ function App(){
     <button onClick={()=>setPage('overview')}>Printer status</button>
     <button onClick={()=>setPage('completed')}>Production</button>
     <button onClick={()=>setPage('alerts')}>Alerts</button>
-    <button onClick={()=>setPage('settings')}>Settings</button>
+    {isAdmin && <button onClick={()=>setPage('settings')}>Settings</button>}
    </div>
 
    {error&&<div className="banner">{error}</div>}
@@ -3000,14 +3684,29 @@ function App(){
        <p className="fleetSubtitle">Monitor real-time printer status, jobs, and connection health.</p>
       </div>
       <div className="fleetHeaderActions">
-       <button className="fleetAddBtn" onClick={()=>setPage('settings')}>
-        <Plus size={15}/> Add printer
-       </button>
+       {isAdmin && (
+        <button className="fleetAddBtn" onClick={()=>setPage('settings')}>
+         <Plus size={15}/> Add printer
+        </button>
+       )}
        <button className="fleetRefreshBtn" onClick={refresh} title="Refresh telemetry">
         <RefreshCw size={14}/> Refresh
        </button>
       </div>
      </div>
+
+     {/* Guest View-Only Banner */}
+     {!isAdmin && (
+      <div style={{background:'rgba(56,189,248,0.1)',border:'1px solid rgba(56,189,248,0.25)',borderRadius:'10px',padding:'12px 16px',marginBottom:'16px',display:'flex',alignItems:'center',gap:'12px',color:'#38bdf8'}}>
+       <Eye size={20} style={{flexShrink:0}}/>
+       <div style={{flex:1}}>
+        <strong style={{color:'#7dd3fc',fontSize:'13px'}}>Guest Account (View-Only Mode)</strong>
+        <p style={{margin:'2px 0 0 0',fontSize:'12px',color:'#cbd5e1'}}>
+         You are viewing printers assigned to <b>{currentUser?.email}</b>. Manual printer controls, G-code execution, and print cancellations are disabled.
+        </p>
+       </div>
+      </div>
+     )}
 
      {/* Chrome Remote Desktop Style Host Remote Status Bar */}
      <div className="hostRemoteBar">
@@ -3111,6 +3810,7 @@ function App(){
         onOpenControl={setControlPrinter}
         onClearBed={handleClearBed}
         onFirmwareRestart={handleFirmwareRestart}
+        isAdmin={isAdmin}
        />
       ))}
      </section>
@@ -3135,6 +3835,7 @@ function App(){
      systemInfo={systemInfo} 
      onClose={()=>setControlPrinter(null)} 
      onRefresh={refresh}
+     isAdmin={isAdmin}
     />
    )}
 
@@ -3153,6 +3854,22 @@ function App(){
     <HostSetupGuideModal
      onClose={()=>setShowSetupGuideModal(false)}
      onOpenStatus={()=>{setShowSetupGuideModal(false);setShowHostStatusModal(true);}}
+    />
+   )}
+
+   {showConnectionModal&&(
+    <ConnectionSwitcherModal
+     isLocal={isLocal}
+     systemInfo={systemInfo}
+     onClose={()=>setShowConnectionModal(false)}
+    />
+   )}
+
+   {showUsersModal&&(
+    <UsersModal
+     printers={printers}
+     currentUser={currentUser}
+     onClose={()=>setShowUsersModal(false)}
     />
    )}
   </main>

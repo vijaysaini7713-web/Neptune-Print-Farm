@@ -21,7 +21,7 @@ const app=express(),port=Number(process.env.PORT||3080),root=process.cwd();
 app.set('trust proxy', 1);
 const dataDir=path.join(root,'data'),configDir=path.join(root,'config');
 fs.mkdirSync(dataDir,{recursive:true});
-const configFile=path.join(configDir,'printers.json'),exampleFile=path.join(configDir,'printers.example.json'),historyFile=path.join(dataDir,'events.json'),completedFile=path.join(dataDir,'completed_prints.json'),jobsFile=path.join(dataDir,'print_jobs.json'),clearedFile=path.join(dataDir,'cleared_prints.json'),hostSettingsFile=path.join(dataDir,'host_settings.json'),runoutFile=path.join(dataDir,'runout_state.json'),jobHoldFile=path.join(dataDir,'job_holds.json'),jobStartsFile=path.join(dataDir,'job_starts.json');
+const configFile=path.join(configDir,'printers.json'),exampleFile=path.join(configDir,'printers.example.json'),historyFile=path.join(dataDir,'events.json'),completedFile=path.join(dataDir,'completed_prints.json'),jobsFile=path.join(dataDir,'print_jobs.json'),clearedFile=path.join(dataDir,'cleared_prints.json'),hostSettingsFile=path.join(dataDir,'host_settings.json'),runoutFile=path.join(dataDir,'runout_state.json'),jobHoldFile=path.join(dataDir,'job_holds.json'),jobStartsFile=path.join(dataDir,'job_starts.json'),usersFile=path.join(dataDir,'users.json');
 const defaultHostSettings = {
  farmName: 'Neptune Print Farm',
  primaryIp: '',
@@ -82,13 +82,25 @@ async function sendPushToAll({ title, body, tag, url }) {
   save(pushSubsFile, pushSubscriptions);
  }
 }
-let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{}),runoutState=read(runoutFile,{}),jobHoldStats=read(jobHoldFile,{}),jobStartTimes=read(jobStartsFile,{});
+let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{}),runoutState=read(runoutFile,{}),jobHoldStats=read(jobHoldFile,{}),jobStartTimes=read(jobStartsFile,{}),users=read(usersFile,[]);
 const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map(),recentCommands=new Map();
 const offlineSince=new Map(),offlineAlertSent=new Map();
 const secret=process.env.JWT_SECRET,password=process.env.ADMIN_PASSWORD;
 if(!secret||secret.length<32||!password||password.startsWith('replace-with')||password.startsWith('change-this')){console.error('Set ADMIN_PASSWORD and a 32+ character JWT_SECRET in .env');process.exit(1)}
 const passwordHash=bcrypt.hashSync(password,11);
 let currentPasswordHash=hostSettings.passwordHash||passwordHash;
+if (!Array.isArray(users) || !users.length || users[0].passwordHash?.includes('00M9yL')) {
+ users = [{
+  id: 'user_admin',
+  email: 'admin@neptunemonitor.com',
+  name: 'Farm Admin',
+  passwordHash: currentPasswordHash,
+  role: 'admin',
+  assignedPrinters: ['*'],
+  createdAt: new Date().toISOString()
+ }];
+ save(usersFile, users);
+}
 
 function parseTelegramChatIds(input, chatsList = []) {
  const ids = [];
@@ -806,14 +818,61 @@ app.use(express.json({limit:'40kb'}));app.use(cookieParser());
 const limitLogin=rateLimit({windowMs:900000,limit:30,standardHeaders:'draft-7',legacyHeaders:false,validate:{xForwardedForHeader:false}});
 
 app.post('/api/login',limitLogin,async(req,res)=>{
- if(typeof req.body?.password!=='string'||!(await bcrypt.compare(req.body.password,currentPasswordHash)))return res.status(401).json({error:'Invalid password'});
- const token=jwt.sign({role:'admin'},secret,{expiresIn:'12h'});
- res.cookie('farm_session',token,{httpOnly:true,sameSite:'strict',secure:process.env.COOKIE_SECURE==='true',maxAge:43200000});
- res.json({ok:true});
+ const { email, password } = req.body || {};
+ if(typeof password!=='string'||!password) return res.status(400).json({error:'Password is required'});
+ 
+ const cleanEmail = (typeof email === 'string' ? email.trim().toLowerCase() : '');
+ let matchedUser = null;
+ if (cleanEmail) {
+  matchedUser = users.find(u => u.email.toLowerCase() === cleanEmail || (u.role === 'admin' && cleanEmail === 'admin'));
+ } else {
+  matchedUser = users.find(u => u.role === 'admin') || users[0];
+ }
+
+ if (!matchedUser) {
+  return res.status(401).json({ error: 'User not found with this email' });
+ }
+
+ const hashToCompare = matchedUser.passwordHash || currentPasswordHash;
+ const isMatch = await bcrypt.compare(password, hashToCompare);
+ if (!isMatch) {
+  return res.status(401).json({ error: 'Invalid email or password' });
+ }
+
+ const tokenPayload = {
+  userId: matchedUser.id,
+  email: matchedUser.email,
+  name: matchedUser.name || (matchedUser.role === 'admin' ? 'Farm Admin' : 'Guest User'),
+  role: matchedUser.role || 'guest',
+  assignedPrinters: matchedUser.assignedPrinters || ['*']
+ };
+
+ const token = jwt.sign(tokenPayload, secret, { expiresIn: '12h' });
+ res.cookie('farm_session', token, { httpOnly: true, sameSite: 'strict', secure: process.env.COOKIE_SECURE==='true', maxAge: 43200000 });
+ res.json({ ok: true, user: tokenPayload });
 });
 app.post('/api/logout',(_req,res)=>{res.clearCookie('farm_session');res.json({ok:true})});
 
-function auth(req,res,next){try{if(jwt.verify(req.cookies.farm_session,secret).role!=='admin')throw Error('Denied');next()}catch{res.status(401).json({error:'Login required'})}}
+function auth(req,res,next){
+ try{
+  const sessionCookie = req.cookies.farm_session;
+  if (!sessionCookie) return res.status(401).json({ error: 'Login required' });
+  const decoded = jwt.verify(sessionCookie, secret);
+  req.user = decoded;
+  next();
+ }catch{
+  res.status(401).json({ error: 'Login required' });
+ }
+}
+
+function requireAdmin(req,res,next){
+ auth(req,res,()=>{
+  if(req.user?.role!=='admin'){
+   return res.status(403).json({ error: 'Admin permission required. Guests have view-only access.' });
+  }
+  next();
+ });
+}
 
 function getNetworkInfo(req){
  const nets=os.networkInterfaces();
@@ -826,6 +885,8 @@ function getNetworkInfo(req){
   }
  }
  const primaryIp=(hostSettings.primaryIp&&hostSettings.primaryIp.trim())||localIps[0]?.address||'127.0.0.1';
+ const localUrl=`http://${primaryIp}:${port}`;
+ const remoteUrl=hostSettings.publicTunnelUrl||'https://neptunemonitor.com';
  const forwarded=req?.headers['x-forwarded-for'];
  const clientIp=(typeof forwarded==='string'?forwarded.split(',')[0].trim():'')||req?.socket?.remoteAddress||'';
  const isLocalClient=(
@@ -841,6 +902,8 @@ function getNetworkInfo(req){
   hostname:os.hostname(),
   port,
   primaryIp,
+  localUrl,
+  remoteUrl,
   localIps,
   clientIp,
   isLocalClient,
@@ -854,15 +917,29 @@ function getNetworkInfo(req){
 app.get('/api/system-info',(req,res)=>{
  const net=getNetworkInfo(req);
  let authed=false;
+ let user=null;
  try{
-  if(req.cookies.farm_session&&jwt.verify(req.cookies.farm_session,secret).role==='admin')authed=true;
+  if(req.cookies.farm_session){
+   const decoded=jwt.verify(req.cookies.farm_session,secret);
+   authed=true;
+   user={
+    id: decoded.userId || 'admin',
+    email: decoded.email || 'admin@neptunemonitor.com',
+    name: decoded.name || 'Farm Admin',
+    role: decoded.role || 'admin',
+    assignedPrinters: decoded.assignedPrinters || ['*']
+   };
+  }
  }catch{}
- res.json({...net,authenticated:authed});
+ res.json({...net,authenticated:authed,user});
 });
 
 app.all('/api/printers/:id/proxy/*',auth,async(req,res)=>{
  const p=printers.find(x=>x.id===req.params.id);
  if(!p||!p.enabled||!validHost(p.host))return res.status(404).json({error:'Printer not found or disabled'});
+ if(req.user?.role==='guest'&&['POST','PUT','PATCH','DELETE'].includes(req.method)){
+  return res.status(403).json({error:'Guest accounts have view-only access'});
+ }
  const subpath=req.params[0]||'';
  const queryString=req.url.includes('?')?'?'+req.url.split('?')[1]:'';
  const targetUrl='http://'+p.host+':'+p.port+'/'+subpath+queryString;
@@ -892,6 +969,7 @@ app.all('/api/printers/:id/proxy/*',auth,async(req,res)=>{
 app.post(['/api/printers/:id/command', '/api/printers/:id/control'],auth,async(req,res)=>{
  const p=printers.find(x=>x.id===req.params.id);
  if(!p||!p.enabled||!validHost(p.host))return res.status(404).json({error:'Printer not found or disabled'});
+ if(req.user?.role==='guest')return res.status(403).json({error:'Guest accounts have view-only access. Printer controls, pausing, stopping, and G-code commands are disabled.'});
  const {action,gcode}=req.body||{};
  let targetPath='',payload=null;
  if(action==='pause')targetPath='/printer/print/pause';
@@ -962,6 +1040,7 @@ app.get('/api/printers/:id/console',auth,async(req,res)=>{
 app.post('/api/printers/:id/clear-completed',auth,async(req,res)=>{
  const p=printers.find(x=>x.id===req.params.id);
  if(!p)return res.status(404).json({error:'Printer not found'});
+ if(req.user?.role==='guest')return res.status(403).json({error:'Guest accounts have view-only access'});
  const comp=completedState.get(p.id);
  completedState.delete(p.id);
  const jobId=comp?.jobId||'cleared_'+Date.now();
@@ -980,18 +1059,77 @@ app.post('/api/printers/:id/clear-completed',auth,async(req,res)=>{
  res.json({ok:true});
 });
 
-app.get('/api/me',auth,(_req,res)=>res.json({ok:true}));
-app.get('/api/printers',auth,(_req,res)=>{
- const list=printers.map(p=>current.get(p.id)||{...p,status:'connecting',connected:false});
+app.get('/api/me',auth,(req,res)=>{
+ res.json({
+  ok: true,
+  user: {
+   id: req.user?.userId || 'admin',
+   email: req.user?.email || 'admin@neptunemonitor.com',
+   name: req.user?.name || 'Farm Admin',
+   role: req.user?.role || 'admin',
+   assignedPrinters: req.user?.assignedPrinters || ['*']
+  }
+ });
+});
+
+app.get('/api/printers',auth,(req,res)=>{
+ let list=printers.map(p=>current.get(p.id)||{...p,status:'connecting',connected:false});
+ if (req.user && req.user.role !== 'admin') {
+  const userPrinters = Array.isArray(req.user.assignedPrinters) ? req.user.assignedPrinters : [];
+  const isAll = userPrinters.includes('*');
+  list = list.filter(p => 
+   isAll || 
+   userPrinters.includes(p.id) || 
+   (p.ownerEmail && p.ownerEmail.toLowerCase() === req.user.email?.toLowerCase())
+  );
+ }
  list.sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{numeric:true,sensitivity:'base'}));
  res.json(list);
 });
-app.get('/api/events',auth,(_req,res)=>res.json(events.slice(0,200)));
-app.get('/api/config',auth,(_req,res)=>res.json(printers));
 
-app.get('/api/completed-prints',auth,(_req,res)=>{
+app.get('/api/events',auth,(req,res)=>{
+ let list = events;
+ if (req.user && req.user.role !== 'admin') {
+  const userPrinters = Array.isArray(req.user.assignedPrinters) ? req.user.assignedPrinters : [];
+  const isAll = userPrinters.includes('*');
+  const allowed = new Set(
+   printers
+    .filter(p => isAll || userPrinters.includes(p.id) || (p.ownerEmail && p.ownerEmail.toLowerCase() === req.user.email?.toLowerCase()))
+    .map(p => p.id)
+  );
+  list = events.filter(e => !e.printerId || e.printerId === 'system' || allowed.has(e.printerId));
+ }
+ res.json(list.slice(0,200));
+});
+
+app.get('/api/config',auth,(req,res)=>{
+ let list = printers;
+ if (req.user && req.user.role !== 'admin') {
+  const userPrinters = Array.isArray(req.user.assignedPrinters) ? req.user.assignedPrinters : [];
+  const isAll = userPrinters.includes('*');
+  list = list.filter(p => 
+   isAll || 
+   userPrinters.includes(p.id) || 
+   (p.ownerEmail && p.ownerEmail.toLowerCase() === req.user.email?.toLowerCase())
+  );
+ }
+ res.json(list);
+});
+
+app.get('/api/completed-prints',auth,(req,res)=>{
+ let filteredJobs = allJobs;
+ if (req.user && req.user.role !== 'admin') {
+  const userPrinters = Array.isArray(req.user.assignedPrinters) ? req.user.assignedPrinters : [];
+  const isAll = userPrinters.includes('*');
+  const allowed = new Set(
+   printers
+    .filter(p => isAll || userPrinters.includes(p.id) || (p.ownerEmail && p.ownerEmail.toLowerCase() === req.user.email?.toLowerCase()))
+    .map(p => p.id)
+  );
+  filteredJobs = allJobs.filter(j => allowed.has(j.printerId));
+ }
  const summaryMap=new Map();
- for(const j of allJobs){
+ for(const j of filteredJobs){
   const fn=j.file||'Unknown';
   if(!summaryMap.has(fn)){
    summaryMap.set(fn,{file:fn,quantity:0,failedCount:0,totalJobs:0,totalDuration:0,failedDuration:0,lastCompletedAt:null,lastFailedAt:null,printers:new Set()});
@@ -1016,20 +1154,132 @@ app.get('/api/completed-prints',auth,(_req,res)=>{
   successRate:x.totalJobs?Math.round((x.quantity/x.totalJobs)*100):0
  })).sort((a,b)=>b.quantity-a.quantity||b.totalJobs-a.totalJobs);
 
- res.json({jobs:allJobs.slice(0,3000),summary});
+ res.json({jobs:filteredJobs.slice(0,3000),summary});
 });
 
-app.post('/api/completed-prints/sync',auth,async(_req,res)=>{
+app.post('/api/completed-prints/sync',requireAdmin,async(_req,res)=>{
  await syncAllHistory();
  res.json({ok:true});
 });
 
-app.put('/api/config',auth,(req,res)=>{
+app.put('/api/config',requireAdmin,(req,res)=>{
  const incoming=req.body;if(!Array.isArray(incoming)||incoming.length>100)return res.status(400).json({error:'Expected up to 100 printers'});
  const ids=new Set();
  for(const p of incoming){if(!p||typeof p.id!=='string'||!/^[-_a-z0-9]{1,48}$/i.test(p.id)||ids.has(p.id)||typeof p.name!=='string'||!p.name.trim()||p.name.length>80||!validHost(p.host)||!Number.isInteger(p.port)||p.port<1||p.port>65535||typeof p.enabled!=='boolean')return res.status(400).json({error:'Invalid printer configuration'});ids.add(p.id)}
- printers=incoming.map(({id,name,host,port,enabled})=>({id,name,host,port,enabled}));
+ printers=incoming.map(({id,name,host,port,enabled,ownerEmail})=>({
+  id,
+  name,
+  host,
+  port,
+  enabled,
+  ownerEmail: (typeof ownerEmail==='string'?ownerEmail.trim().toLowerCase():'') || 'admin@neptunemonitor.com'
+ }));
  save(configFile,printers);current.clear();last.clear();metadataCache.clear();void poll();void syncAllHistory();res.json({ok:true});
+});
+
+app.get('/api/users', requireAdmin, (_req, res) => {
+ const safeList = users.map(u => ({
+  id: u.id,
+  email: u.email,
+  name: u.name,
+  role: u.role,
+  assignedPrinters: u.assignedPrinters || ['*'],
+  createdAt: u.createdAt || new Date().toISOString()
+ }));
+ res.json({ ok: true, users: safeList });
+});
+
+app.post('/api/users', requireAdmin, async (req, res) => {
+ const { email, password, name, role, assignedPrinters } = req.body || {};
+ if (!email || typeof email !== 'string' || !email.includes('@')) {
+  return res.status(400).json({ error: 'Valid email address is required' });
+ }
+ const cleanEmail = email.trim().toLowerCase();
+ if (users.some(u => u.email.toLowerCase() === cleanEmail)) {
+  return res.status(400).json({ error: 'A user with this email already exists' });
+ }
+ if (!password || typeof password !== 'string' || password.length < 6) {
+  return res.status(400).json({ error: 'Password must be at least 6 characters' });
+ }
+ const userRole = role === 'admin' ? 'admin' : 'guest';
+ const pwdHash = await bcrypt.hash(password, 11);
+ const newUser = {
+  id: 'user_' + crypto.randomUUID().slice(0, 8),
+  email: cleanEmail,
+  name: (name && typeof name === 'string' && name.trim()) || (userRole === 'admin' ? 'Admin' : 'Guest'),
+  passwordHash: pwdHash,
+  role: userRole,
+  assignedPrinters: Array.isArray(assignedPrinters) && assignedPrinters.length ? assignedPrinters : ['*'],
+  createdAt: new Date().toISOString()
+ };
+ users.push(newUser);
+ save(usersFile, users);
+ record('system', 'user', `New ${userRole} user created: ${cleanEmail} (${newUser.name})`);
+ res.json({
+  ok: true,
+  user: {
+   id: newUser.id,
+   email: newUser.email,
+   name: newUser.name,
+   role: newUser.role,
+   assignedPrinters: newUser.assignedPrinters,
+   createdAt: newUser.createdAt
+  }
+ });
+});
+
+app.put('/api/users/:id', requireAdmin, async (req, res) => {
+ const target = users.find(u => u.id === req.params.id);
+ if (!target) return res.status(404).json({ error: 'User not found' });
+ const { email, password, name, role, assignedPrinters } = req.body || {};
+ if (email && typeof email === 'string' && email.includes('@')) {
+  const cleanEmail = email.trim().toLowerCase();
+  if (cleanEmail !== target.email.toLowerCase() && users.some(u => u.id !== target.id && u.email.toLowerCase() === cleanEmail)) {
+   return res.status(400).json({ error: 'Another user already has this email' });
+  }
+  target.email = cleanEmail;
+ }
+ if (name && typeof name === 'string') target.name = name.trim();
+ if (role && (role === 'admin' || role === 'guest')) {
+  if (target.role === 'admin' && role === 'guest') {
+   const adminCount = users.filter(u => u.role === 'admin').length;
+   if (adminCount <= 1) return res.status(400).json({ error: 'Cannot demote the only admin account' });
+  }
+  target.role = role;
+ }
+ if (Array.isArray(assignedPrinters)) target.assignedPrinters = assignedPrinters;
+ if (password && typeof password === 'string' && password.length >= 6) {
+  target.passwordHash = await bcrypt.hash(password, 11);
+  if (target.role === 'admin' && target.id === 'user_admin') {
+   currentPasswordHash = target.passwordHash;
+   hostSettings.passwordHash = currentPasswordHash;
+   save(hostSettingsFile, hostSettings);
+  }
+ }
+ save(usersFile, users);
+ res.json({
+  ok: true,
+  user: {
+   id: target.id,
+   email: target.email,
+   name: target.name,
+   role: target.role,
+   assignedPrinters: target.assignedPrinters,
+   createdAt: target.createdAt
+  }
+ });
+});
+
+app.delete('/api/users/:id', requireAdmin, (req, res) => {
+ const target = users.find(u => u.id === req.params.id);
+ if (!target) return res.status(404).json({ error: 'User not found' });
+ if (target.role === 'admin') {
+  const adminCount = users.filter(u => u.role === 'admin').length;
+  if (adminCount <= 1) return res.status(400).json({ error: 'Cannot delete the only admin account' });
+ }
+ users = users.filter(u => u.id !== req.params.id);
+ save(usersFile, users);
+ res.json({ ok: true });
 });
 
 app.get('/api/host-settings', auth, (req, res) => {
@@ -1068,7 +1318,7 @@ app.get('/api/host-settings', auth, (req, res) => {
  });
 });
 
-app.put('/api/host-settings', auth, (req, res) => {
+app.put('/api/host-settings', requireAdmin, (req, res) => {
  const incoming = req.body || {};
  if (typeof incoming.farmName === 'string') {
   hostSettings.farmName = incoming.farmName.trim().slice(0, 60) || 'Neptune Print Farm';
@@ -1118,12 +1368,24 @@ app.post('/api/host-settings/password', auth, async (req, res) => {
  const { currentPassword, newPassword } = req.body || {};
  if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Current and new password are required' });
  if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
- const valid = await bcrypt.compare(currentPassword, currentPasswordHash);
+ 
+ const userId = req.user?.userId;
+ const currentUser = users.find(u => u.id === userId) || users.find(u => u.role === 'admin') || users[0];
+ const hashToCompare = currentUser?.passwordHash || currentPasswordHash;
+ const valid = await bcrypt.compare(currentPassword, hashToCompare);
  if (!valid) return res.status(400).json({ error: 'Current password is incorrect' });
- currentPasswordHash = bcrypt.hashSync(newPassword, 11);
- hostSettings.passwordHash = currentPasswordHash;
- save(hostSettingsFile, hostSettings);
- res.json({ ok: true, message: 'Admin password updated successfully' });
+
+ const newHash = bcrypt.hashSync(newPassword, 11);
+ if (currentUser) {
+  currentUser.passwordHash = newHash;
+  save(usersFile, users);
+ }
+ if (req.user?.role === 'admin' || currentUser?.role === 'admin') {
+  currentPasswordHash = newHash;
+  hostSettings.passwordHash = currentPasswordHash;
+  save(hostSettingsFile, hostSettings);
+ }
+ res.json({ ok: true, message: 'Password updated successfully' });
 });
 
 app.post('/api/host-settings/test-telegram', auth, async (req, res) => {
