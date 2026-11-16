@@ -31,7 +31,7 @@ const defaultHostSettings = {
  telegramChatId: process.env.TELEGRAM_CHAT_ID||'',
  telegramChats: [],
  telegramEnabled: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
- telegramEvents: ['completed', 'runout', 'resumed', 'error', 'paused', 'offline'],
+ telegramEvents: ['completed', 'runout', 'resumed', 'error', 'paused', 'offline', 'cancelled'],
  publicTunnelUrl: 'https://neptunemonitor.com'
 };
 const read=(file,fallback)=>{try{return JSON.parse(fs.readFileSync(file,'utf8'))}catch{return fallback}};
@@ -83,7 +83,7 @@ async function sendPushToAll({ title, body, tag, url }) {
  }
 }
 let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{}),runoutState=read(runoutFile,{}),jobHoldStats=read(jobHoldFile,{}),jobStartTimes=read(jobStartsFile,{});
-const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map();
+const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map(),recentCommands=new Map();
 const offlineSince=new Map(),offlineAlertSent=new Map();
 const secret=process.env.JWT_SECRET,password=process.env.ADMIN_PASSWORD;
 if(!secret||secret.length<32||!password||password.startsWith('replace-with')||password.startsWith('change-this')){console.error('Set ADMIN_PASSWORD and a 32+ character JWT_SECRET in .env');process.exit(1)}
@@ -153,7 +153,7 @@ function formatHoldDuration(seconds) {
 function record(printerId,type,message){
  events.unshift({id:crypto.randomUUID(),printerId,type,message,time:new Date().toISOString()});
  events=events.slice(0,2000);save(historyFile,events);
- if(['completed','paused','error','runout','offline','resumed'].includes(type)){
+ if(['completed','paused','error','runout','offline','resumed','cancelled'].includes(type)){
   const tgType = (type === 'offline' && !hostSettings.telegramEvents?.includes('offline')) ? 'error' : ((type === 'resumed' && !hostSettings.telegramEvents?.includes('resumed')) ? 'runout' : type);
   void telegram(message, tgType);
   let title = '🖨 Neptune Farm Alert';
@@ -162,6 +162,7 @@ function record(printerId,type,message){
   else if (type === 'resumed') title = '▶️ Filament Reloaded & Resumed';
   else if (type === 'error') title = '🚨 Printer Error / Shutdown!';
   else if (type === 'paused') title = '⏸️ Print Paused';
+  else if (type === 'cancelled') title = '🛑 Print Cancelled / Stopped';
   else if (type === 'offline') title = '⚠️ Printer Offline (>5 min)';
   void sendPushToAll({
    title,
@@ -240,7 +241,7 @@ async function syncAllHistory(){
  await Promise.all(printers.map(syncPrinterHistory));
 }
 
-function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJob){
+function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJob,gcodeLogs=[],recentCmd=null){
  const s=body?.result?.status||{},ps=s.print_stats||{},sd=s.virtual_sdcard||{},gm=s.gcode_move||{},wh=s.webhooks||{};
  const sensed=Object.entries(s).filter(([k])=>k.startsWith('filament_switch_sensor ')||k.startsWith('filament_motion_sensor ')||k.startsWith('filament_sensor')||k.includes('filament'));
  const enabled=sensed.filter(([,v])=>v && v.enabled!==0 && v.enabled!==false);
@@ -345,21 +346,55 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJo
  }
 
   let computedStatus = statuses[state]||'unknown';
- if(isShutdown){
-  computedStatus = 'error';
- }else if(compInfo && state!=='printing'){
-  computedStatus='completed';
- }else if(state==='complete'||(state==='standby'&&sd.progress>=0.98&&ps.filename&&duration>30)){
-  computedStatus='completed';
- }
- const isRunout = (filament === false && computedStatus !== 'completed' && !isShutdown);
- if(isRunout && (computedStatus === 'idle' || computedStatus === 'unknown' || computedStatus === 'standby' || computedStatus === 'paused')){
-  computedStatus = 'runout';
- }
- const finalProgress=computedStatus==='completed'?100:Math.max(0,Math.min(100,Math.round((sd.progress||0)*100)));
- const finalFile=computedStatus==='completed'?(compInfo?.file||ps.filename||''):(ps.filename||'');
- const finalDuration=computedStatus==='completed'?(compInfo?.duration||duration):duration;
- const finalFilament=computedStatus==='completed'?(compInfo?.filamentUsed||ps.filament_used||0):(ps.filament_used||0);
+  if(isShutdown){
+   computedStatus = 'error';
+  }else if(compInfo && state!=='printing'){
+   computedStatus='completed';
+  }else if(state==='complete'||(state==='standby'&&sd.progress>=0.98&&ps.filename&&duration>30)){
+   computedStatus='completed';
+  }
+
+  const finalProgress=computedStatus==='completed'?100:Math.max(0,Math.min(100,Math.round((sd.progress||0)*100)));
+  const finalFile=computedStatus==='completed'?(compInfo?.file||ps.filename||''):(ps.filename||'');
+  const finalDuration=computedStatus==='completed'?(compInfo?.duration||duration):duration;
+  const finalFilament=computedStatus==='completed'?(compInfo?.filamentUsed||ps.filament_used||0):(ps.filament_used||0);
+
+  // Check if bed leveling or homing is active
+  const msgText = (((ps.message || '') + ' ' + (wh.state_message || ''))).toLowerCase();
+  const recentGcode = (gcodeLogs || []).slice(0, 10).join(' ').toLowerCase();
+  const isLevelingActive = (state === 'standby' || state === 'idle') && (
+   msgText.includes('level') ||
+   msgText.includes('mesh') ||
+   msgText.includes('probe') ||
+   recentGcode.includes('bed_mesh_calibrate') ||
+   recentGcode.includes('bed_mesh') ||
+   recentGcode.includes('g29') ||
+   recentGcode.includes('probe_calibrate') ||
+   (recentCmd && (Date.now() - recentCmd.time < 60000) && (recentCmd.action === 'level' || recentCmd.action === 'bed_mesh' || (recentCmd.gcode && recentCmd.gcode.toLowerCase().includes('mesh'))))
+  );
+
+  const isHomingActive = (state === 'standby' || state === 'idle') && !isLevelingActive && (
+   msgText.includes('homing') ||
+   msgText.includes('moving home') ||
+   recentGcode.includes('g28') ||
+   (recentCmd && (Date.now() - recentCmd.time < 20000) && (recentCmd.action === 'home' || (recentCmd.gcode && recentCmd.gcode.includes('G28'))))
+  );
+
+  if (!isShutdown && computedStatus !== 'completed' && state !== 'printing' && state !== 'paused' && state !== 'cancelled') {
+   if (isLevelingActive) {
+    computedStatus = 'leveling';
+   } else if (isHomingActive) {
+    computedStatus = 'homing';
+   }
+  }
+
+  // Filament Runout is ONLY valid when actively printing or paused during a print with a file
+  const isActivelyPrinting = Boolean(finalFile) && (state === 'printing' || state === 'paused') && state !== 'cancelled';
+  const isRunout = Boolean(filament === false && isActivelyPrinting && computedStatus !== 'completed' && !isShutdown);
+
+  if (isRunout && (computedStatus === 'paused' || computedStatus === 'printing')) {
+   computedStatus = 'runout';
+  }
 
  let jobHoldSec = null;
  const curHold = jobHoldStats[p.id];
@@ -479,7 +514,7 @@ async function scan(p){
   const duration=Math.round(body?.result?.status?.print_stats?.total_duration||body?.result?.status?.print_stats?.print_duration||0);
   const progressRatio=body?.result?.status?.virtual_sdcard?.progress||0;
 
-  if(isKlippyShutdown){
+  if(isKlippyShutdown || rawState==='cancelled'){
    completedState.delete(p.id);
   }else if(rawState==='printing'){
    completedState.delete(p.id);
@@ -522,7 +557,8 @@ async function scan(p){
   const compInfo=completedState.get(p.id)||null;
   const filename=compInfo?.file||body?.result?.status?.print_stats?.filename;
   const meta=filename?await fetchMetadata(endpoint,filename):null;
-  const next=normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJob);
+  const recentCmd=recentCommands.get(p.id)||null;
+  const next=normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJob,gcodeLogs,recentCmd);
   current.set(p.id,next);last.set(p.id,next);
 
   // If printer was previously offline, handle reconnect & clear alert tracking
@@ -535,8 +571,29 @@ async function scan(p){
    }
   }
 
-  // 1. Filament Runout tracking & notification (MUST be declared before print start tracking)
-  const isNowRunout = Boolean(next.filamentRunout || next.filamentDetected === false || next.status === 'runout');
+  // 1. Filament Runout tracking & notification (ONLY valid during active print or pause waiting reload)
+  const isNowRunout = Boolean(
+   (next.status === 'runout' || (next.filamentRunout === true && (next.status === 'printing' || next.status === 'paused'))) &&
+   Boolean(next.file) &&
+   !isKlippyShutdown &&
+   next.status !== 'cancelled' &&
+   next.status !== 'completed' &&
+   next.status !== 'idle' &&
+   next.status !== 'leveling' &&
+   next.status !== 'homing'
+  );
+
+  // Clear runoutState & jobHoldStats immediately if printer is cancelled, idle, leveling, homing, or completed
+  if (runoutState[p.id] && (next.status === 'cancelled' || rawState === 'cancelled' || next.status === 'idle' || next.status === 'leveling' || next.status === 'homing' || next.status === 'completed')) {
+   delete runoutState[p.id];
+   save(runoutFile, runoutState);
+   if (next.status === 'cancelled' || rawState === 'cancelled' || (next.status === 'idle' && !next.file)) {
+    delete jobHoldStats[p.id];
+    save(jobHoldFile, jobHoldStats);
+    delete jobStartTimes[p.id];
+    save(jobStartsFile, jobStartTimes);
+   }
+  }
 
   // 0. Print start tracking
   if (next.file && (next.status === 'printing' || next.status === 'paused' || isNowRunout)) {
@@ -660,6 +717,8 @@ async function scan(p){
   if (prev?.connected && prev.status !== next.status) {
    if (next.status === 'error' || (next.status === 'paused' && !isNowRunout)) {
     record(p.id, next.status, p.name + ': ' + next.status.toUpperCase() + ' — ' + (next.file || 'No filename'));
+   } else if (next.status === 'cancelled') {
+    record(p.id, 'cancelled', p.name + ': Print CANCELLED / STOPPED — ' + (next.file || prev?.file || 'Job stopped'));
    }
    if (['error', 'cancelled'].includes(next.status) && (next.file || prev.file)) {
     const liveId = p.id + '_live_fail_' + Date.now();
@@ -830,7 +889,7 @@ app.all('/api/printers/:id/proxy/*',auth,async(req,res)=>{
  }
 });
 
-app.post('/api/printers/:id/command',auth,async(req,res)=>{
+app.post(['/api/printers/:id/command', '/api/printers/:id/control'],auth,async(req,res)=>{
  const p=printers.find(x=>x.id===req.params.id);
  if(!p||!p.enabled||!validHost(p.host))return res.status(404).json({error:'Printer not found or disabled'});
  const {action,gcode}=req.body||{};
@@ -842,6 +901,7 @@ app.post('/api/printers/:id/command',auth,async(req,res)=>{
  else if(action==='firmware_restart')targetPath='/printer/firmware_restart';
  else if(action==='cooldown'){targetPath='/printer/gcode/script';payload={script:'M104 S0\nM140 S0\nM106 S0'}}
  else if(action==='home'){targetPath='/printer/gcode/script';payload={script:'G28'}}
+ else if(action==='level'||action==='bed_mesh'){targetPath='/printer/gcode/script';payload={script:'BED_MESH_CALIBRATE'}}
  else if(action==='gcode'||typeof gcode==='string'){
   const script=(gcode||'').trim();
   if(!script)return res.status(400).json({error:'Empty G-code command'});
@@ -849,6 +909,18 @@ app.post('/api/printers/:id/command',auth,async(req,res)=>{
   payload={script};
  }else{
   return res.status(400).json({error:'Unknown action: '+action});
+ }
+
+ recentCommands.set(p.id, { action, gcode, time: Date.now() });
+
+ if (action === 'cancel' || action === 'emergency_stop') {
+  delete runoutState[p.id];
+  save(runoutFile, runoutState);
+  delete jobHoldStats[p.id];
+  save(jobHoldFile, jobHoldStats);
+  delete jobStartTimes[p.id];
+  save(jobStartsFile, jobStartTimes);
+  completedState.delete(p.id);
  }
 
  try{
@@ -864,8 +936,8 @@ app.post('/api/printers/:id/command',auth,async(req,res)=>{
    const errMsg=data?.error?.message||`Moonraker HTTP ${r.status}`;
    return res.status(400).json({error:errMsg});
   }
-  const cmdDesc=action==='gcode'?(gcode||'G-code'):(action||'command');
-  record(p.id,'command',`${p.name}: Remote command [${cmdDesc}] executed`);
+  const cmdDesc = action === 'level' ? 'Auto Bed Leveling (BED_MESH_CALIBRATE)' : (action === 'home' ? 'Home All (G28)' : (action === 'cancel' ? 'Cancel Print' : (action === 'emergency_stop' ? 'Emergency Stop (M112)' : (action === 'gcode' ? (gcode || 'G-code') : (action || 'command')))));
+  record(p.id,'command',`${p.name}: Command [${cmdDesc}] executed`);
   void poll();
   res.json({ok:true,result:data?.result||'ok'});
  }catch(err){
@@ -974,7 +1046,7 @@ app.get('/api/host-settings', auth, (req, res) => {
   telegramChatId: hostSettings.telegramChatId || '',
   telegramChats: hostSettings.telegramChats || [],
   telegramEnabled: hostSettings.telegramEnabled !== false,
-  telegramEvents: hostSettings.telegramEvents || ['completed', 'runout', 'resumed', 'error', 'paused', 'offline'],
+  telegramEvents: hostSettings.telegramEvents || ['completed', 'runout', 'resumed', 'error', 'paused', 'offline', 'cancelled'],
   publicTunnelUrl: hostSettings.publicTunnelUrl || 'https://neptunemonitor.com',
   system: {
    hostname: os.hostname(),
@@ -1033,7 +1105,7 @@ app.put('/api/host-settings', auth, (req, res) => {
   hostSettings.telegramEnabled = incoming.telegramEnabled;
  }
  if (Array.isArray(incoming.telegramEvents)) {
-  hostSettings.telegramEvents = incoming.telegramEvents.filter(x => ['completed', 'runout', 'resumed', 'error', 'paused', 'offline'].includes(x));
+  hostSettings.telegramEvents = incoming.telegramEvents.filter(x => ['completed', 'runout', 'resumed', 'error', 'paused', 'offline', 'cancelled'].includes(x));
  }
  if (typeof incoming.publicTunnelUrl === 'string') {
   hostSettings.publicTunnelUrl = incoming.publicTunnelUrl.trim();

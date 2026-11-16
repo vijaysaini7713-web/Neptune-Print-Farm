@@ -2533,3 +2533,7 @@ html[data-theme="light"],
   color: #0f172a;
 }
 
+@keyframes spin { 100% { transform: rotate(360deg); } }
+.spin { animation: spin 2s linear infinite; }
+
+

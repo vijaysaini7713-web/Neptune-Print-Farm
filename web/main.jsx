@@ -42,7 +42,7 @@ async function subscribeToWebPush(sendTest = true) {
 const api=async(url,options={})=>{const r=await fetch('/api'+url,{credentials:'same-origin',headers:{'content-type':'application/json'},...options});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data};
 const fmtDuration=n=>{if(n==null)return'—';const s=Math.max(0,Math.round(n)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),remS=s%60;if(h>0)return `${h}h ${m}m`;if(m>0)return `${m}m ${remS}s`;return `${remS}s`;};
 const temp=n=>typeof n==='number'?n.toFixed(1)+'°C':'—';
-const color=s=>({printing:'green',completed:'purple',idle:'blue',paused:'amber',offline:'red',error:'red',disabled:'gray',connecting:'gray',cancelled:'gray',runout:'orange',filament_runout:'orange'})[s]||'gray';
+const color=s=>({printing:'green',completed:'purple',idle:'blue',standby:'blue',paused:'amber',offline:'red',error:'red',disabled:'gray',connecting:'gray',cancelled:'gray',leveling:'teal',homing:'teal',runout:'orange',filament_runout:'orange'})[s]||'gray';
 
 const getLocalDateStr=d=>{
  if(!d)return'';
@@ -161,12 +161,25 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
   p.shutdownReason
  );
  const effectiveStatus = isShutdown ? 'error' : s;
- const hasRunout=(p.filamentDetected===false || p.filamentRunout===true || s==='runout') && !isDone && !isShutdown;
+ const hasRunout = Boolean(
+  (s === 'runout' || (p.filamentRunout === true && (s === 'printing' || s === 'paused'))) &&
+  !isDone &&
+  !isShutdown &&
+  s !== 'cancelled' &&
+  s !== 'idle' &&
+  s !== 'standby' &&
+  s !== 'leveling' &&
+  s !== 'homing' &&
+  Boolean(p.file)
+ );
  const isError=(effectiveStatus==='error'||s==='offline'||isShutdown) && !hasRunout;
  const hasIssue=(isError||Boolean(p.error)||isShutdown) && !hasRunout;
- const isIdle=s==='idle' && !hasRunout && !isShutdown;
+ const isIdle=(s==='idle' || s==='standby') && !hasRunout && !isShutdown;
  const isPaused=s==='paused' && !hasRunout && !isShutdown;
  const isPrinting=s==='printing' && !hasRunout && !isShutdown;
+ const isCancelled=s==='cancelled' && !hasRunout && !isShutdown;
+ const isLeveling=s==='leveling';
+ const isHoming=s==='homing';
  const progressVal=isDone?100:Math.max(0,Math.min(100,p.progress??0));
 
  return (
@@ -201,7 +214,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
       <div className="fleetPillWrap">
        <span className={'fleetPill '+(hasRunout ? 'orange' : color(effectiveStatus))}>
         <i/>
-        {hasRunout ? 'Filament Runout' : isShutdown ? 'Printer Shutdown' : effectiveStatus==='completed'?'Print Completed':effectiveStatus==='offline'?'Offline':effectiveStatus==='error'?'Printer Shutdown':effectiveStatus==='printing'?'Printing':effectiveStatus==='paused'?'Paused':effectiveStatus==='idle'?'Idle':effectiveStatus}
+        {hasRunout ? 'Filament Runout' : isShutdown ? 'Printer Shutdown' : effectiveStatus==='completed'?'Print Completed':effectiveStatus==='offline'?'Offline':effectiveStatus==='error'?'Printer Shutdown':effectiveStatus==='printing'?'Printing':effectiveStatus==='paused'?'Paused':effectiveStatus==='cancelled'?'Cancelled':effectiveStatus==='leveling'?'Leveling Bed':effectiveStatus==='homing'?'Homing Axes':effectiveStatus==='idle'?'Idle':effectiveStatus}
        </span>
       </div>
       <h3 className="fleetPrinterName" title={p.name}>{p.name}</h3>
@@ -518,6 +531,28 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
       <Sliders size={13}/>
       <span>Filament Guide</span>
      </button>
+    </div>
+   )}
+
+   {/* Bed Leveling Banner */}
+   {isLeveling&&(
+    <div className="fleetLevelingBanner" style={{background:'rgba(20,184,166,0.12)',border:'1px solid rgba(20,184,166,0.3)',borderRadius:'8px',padding:'10px 14px',margin:'10px 14px 0',display:'flex',alignItems:'center',gap:'10px',color:'#2dd4bf',fontSize:'12.5px'}}>
+     <Activity size={16} className="spin" color="#2dd4bf"/>
+     <div style={{flex:1}}>
+      <strong style={{color:'#5eead4'}}>Auto Bed Mesh Leveling in Progress</strong>
+      <span style={{display:'block',fontSize:'11.5px',color:'#cbd5e1',marginTop:'2px'}}>Toolhead is probing bed mesh calibration points. Axes are actively moving.</span>
+     </div>
+    </div>
+   )}
+
+   {/* Cancelled Banner */}
+   {isCancelled&&(
+    <div className="fleetCancelledBanner" style={{background:'rgba(100,116,139,0.12)',border:'1px solid rgba(100,116,139,0.3)',borderRadius:'8px',padding:'10px 14px',margin:'10px 14px 0',display:'flex',alignItems:'center',gap:'10px',color:'#94a3b8',fontSize:'12.5px'}}>
+     <Square size={15} color="#94a3b8"/>
+     <div style={{flex:1}}>
+      <strong style={{color:'#f1f5f9'}}>Print Cancelled / Stopped</strong>
+      <span style={{display:'block',fontSize:'11.5px',color:'#94a3b8',marginTop:'2px'}}>Job was stopped manually. Printer is ready for a new file or calibration.</span>
+     </div>
     </div>
    )}
 
@@ -896,7 +931,16 @@ function HostSetupGuideModal({onClose, onOpenStatus}){
 }
 
 function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
- const hasRunout = Boolean(p.filamentDetected === false || p.filamentRunout === true || p.status === 'runout');
+ const hasRunout = Boolean(
+  (p.status === 'runout' || (p.filamentRunout === true && (p.status === 'printing' || p.status === 'paused'))) &&
+  Boolean(p.file) &&
+  p.status !== 'cancelled' &&
+  p.status !== 'idle' &&
+  p.status !== 'standby' &&
+  p.status !== 'leveling' &&
+  p.status !== 'homing' &&
+  !p.isShutdown
+ );
  const [logs,setLogs]=useState([]);
  const [cmd,setCmd]=useState('');
  const [sending,setSending]=useState(false);
@@ -964,7 +1008,7 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
       <div>
        <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
         <h2 style={{fontSize:'18px',margin:0,color:'#fff',fontWeight:800}}>{p.name}</h2>
-        <span className={'pill '+color(s)} style={{fontSize:'10px',padding:'2px 8px'}}><i/>{s}</span>
+        <span className={'pill '+(hasRunout ? 'orange' : color(s))} style={{fontSize:'10px',padding:'2px 8px'}}><i/>{hasRunout ? 'Filament Runout' : s === 'cancelled' ? 'Cancelled' : s === 'leveling' ? 'Leveling Bed' : s === 'homing' ? 'Homing' : s === 'completed' ? 'Completed' : s}</span>
        </div>
        <div style={{fontSize:'11.5px',color:'#7f94b0',marginTop:'2px'}}>
         {p.host}:{p.port||80} · {isLocal?'Direct LAN Link':'Relayed via Farm Host'} · Fluidd / Klipper
@@ -1176,11 +1220,12 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
          </div>
         </div>
 
-        {/* Quick Homing Chips */}
+        {/* Quick Homing & Leveling Chips */}
         <div className="homingChipsRow">
          <button className="chipBtn" disabled={sending} onClick={()=>sendCommand('gcode','G28 X')}>Home X</button>
          <button className="chipBtn" disabled={sending} onClick={()=>sendCommand('gcode','G28 Y')}>Home Y</button>
          <button className="chipBtn" disabled={sending} onClick={()=>sendCommand('gcode','G28 Z')}>Home Z</button>
+         <button className="chipBtn primary" disabled={sending} style={{background:'rgba(20,184,166,0.18)',borderColor:'rgba(20,184,166,0.45)',color:'#2dd4bf'}} onClick={()=>sendCommand('level',null,'Start Auto Bed Mesh Leveling (BED_MESH_CALIBRATE)? The toolhead will home and probe grid points.')}>Auto Bed Level (Mesh)</button>
          <button className="chipBtn warn" disabled={sending} onClick={()=>sendCommand('gcode','M84')}>Motors Off (M84)</button>
         </div>
        </div>
@@ -1452,8 +1497,8 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh}){
        </div>
        <div className="elementCard">
         <span className="elementLabel"><Sparkles size={13}/> Filament Sensor</span>
-        <strong className="elementVal" style={{color: p.filamentDetected !== false ? '#34d399' : '#f97316'}}>
-         {p.filamentDetected !== false ? 'Filament Detected (OK)' : 'Runout Detected (Empty)'}
+        <strong className="elementVal" style={{color: p.filamentDetected !== false ? '#34d399' : (hasRunout ? '#f97316' : '#94a3b8')}}>
+         {p.filamentDetected !== false ? 'Filament Detected (OK)' : (hasRunout ? 'Runout Detected (Empty)' : 'No Filament Loaded (Empty)')}
         </strong>
         <small className="elementSub">{p.filamentUsed ? `${Math.round(p.filamentUsed)} mm used` : 'Switch sensor active'}</small>
        </div>
@@ -2555,6 +2600,7 @@ function SettingsPage({list,reload,systemInfo}){
           {key:'resumed',label:'Filament Reloaded & Resumed'},
           {key:'error',label:'Shutdown / Heater Error'},
           {key:'paused',label:'Print Paused'},
+          {key:'cancelled',label:'Print Cancelled / Stopped'},
           {key:'offline',label:'Offline (>5 min)'}
          ].map(ev=>(
           <label key={ev.key} className="tgEventCheck">
@@ -2834,14 +2880,22 @@ function App(){
   systemInfo?.isLocalClient === true
  );
 
+ const isPrinterRunout = (p) => Boolean(
+  (p.status === 'runout' || (p.filamentRunout === true && (p.status === 'printing' || p.status === 'paused'))) &&
+  Boolean(p.file) &&
+  p.status !== 'cancelled' &&
+  p.status !== 'idle' &&
+  p.status !== 'standby' &&
+  p.status !== 'leveling' &&
+  p.status !== 'homing' &&
+  !p.isShutdown
+ );
  const total=printers.length;
  const online=printers.filter(p=>p.connected).length;
- const printing=printers.filter(p=>p.connected&&(p.status==='printing'||p.rawState==='printing')&&p.filamentDetected!==false&&!p.isShutdown).length;
+ const printing=printers.filter(p=>p.connected&&(p.status==='printing'||p.rawState==='printing')&&!isPrinterRunout(p)&&!p.isShutdown).length;
  const completedPrinters=printers.filter(p=>p.status==='completed'||p.isDone).length;
  const issues=printers.filter(p=>(
-  p.filamentDetected===false||
-  p.filamentRunout===true||
-  p.status==='runout'||
+  isPrinterRunout(p)||
   p.status==='paused'||
   p.status==='error'||
   p.isShutdown||
