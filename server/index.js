@@ -85,6 +85,7 @@ async function sendPushToAll({ title, body, tag, url }) {
 let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{}),runoutState=read(runoutFile,{}),jobHoldStats=read(jobHoldFile,{}),jobStartTimes=read(jobStartsFile,{}),users=read(usersFile,[]);
 const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map(),recentCommands=new Map();
 const offlineSince=new Map(),offlineAlertSent=new Map();
+const idleSince=new Map(),errorSince=new Map(),pauseSince=new Map();
 const secret=process.env.JWT_SECRET,password=process.env.ADMIN_PASSWORD;
 if(!secret||secret.length<32||!password||password.startsWith('replace-with')||password.startsWith('change-this')){console.error('Set ADMIN_PASSWORD and a 32+ character JWT_SECRET in .env');process.exit(1)}
 const passwordHash=bcrypt.hashSync(password,11);
@@ -408,12 +409,44 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJo
    computedStatus = 'runout';
   }
 
+ const nowMs = Date.now();
+ // State duration tracking: idle, error, pause
+ if (computedStatus === 'idle' || computedStatus === 'standby') {
+  if (!idleSince.has(p.id)) idleSince.set(p.id, nowMs);
+  errorSince.delete(p.id);
+  pauseSince.delete(p.id);
+ } else {
+  idleSince.delete(p.id);
+ }
+
+ if (computedStatus === 'error' || isShutdown) {
+  if (!errorSince.has(p.id)) errorSince.set(p.id, nowMs);
+  idleSince.delete(p.id);
+  pauseSince.delete(p.id);
+ } else {
+  errorSince.delete(p.id);
+ }
+
+ if (computedStatus === 'paused' || computedStatus === 'runout') {
+  if (!pauseSince.has(p.id)) pauseSince.set(p.id, nowMs);
+  idleSince.delete(p.id);
+  errorSince.delete(p.id);
+ } else if (computedStatus === 'printing') {
+  pauseSince.delete(p.id);
+ }
+
+ const idleSec = idleSince.has(p.id) ? Math.max(0, Math.round((nowMs - idleSince.get(p.id)) / 1000)) : null;
+ const errorSec = errorSince.has(p.id) ? Math.max(0, Math.round((nowMs - errorSince.get(p.id)) / 1000)) : null;
+ const pausedSec = pauseSince.has(p.id) ? Math.max(0, Math.round((nowMs - pauseSince.get(p.id)) / 1000)) : null;
+
+ // Filament change hold time: ONLY shown when actively printing, paused, or runout
  let jobHoldSec = null;
+ const isPrintActive = (computedStatus === 'printing' || computedStatus === 'paused' || computedStatus === 'runout');
  const curHold = jobHoldStats[p.id];
- if (curHold && (curHold.file === finalFile || !curHold.file || !finalFile)) {
+ if (isPrintActive && curHold && (curHold.file === finalFile || !curHold.file)) {
   let totalHold = curHold.accumulatedHoldSec || 0;
   if (curHold.currentHoldStart) {
-   totalHold += Math.max(0, Math.round((Date.now() - curHold.currentHoldStart) / 1000));
+   totalHold += Math.max(0, Math.round((nowMs - curHold.currentHoldStart) / 1000));
   }
   if (totalHold > 0) jobHoldSec = totalHold;
  }
@@ -465,6 +498,9 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJo
   runoutHoldSec: runoutState[p.id] ? Math.max(0, Math.round((Date.now() - (runoutState[p.id].startTime || new Date(runoutState[p.id].startedAt).getTime())) / 1000)) : null,
   runoutStartedAt: runoutState[p.id]?.startedAt || null,
   jobHoldSec,
+  idleSec,
+  errorSec,
+  pausedSec,
   startedAt: jobStartedAt,
   completedAt:compInfo?.completedAt||(computedStatus==='completed'&&latestJob?.end_time?new Date(latestJob.end_time*1000).toISOString():null),
   updatedAt:new Date().toISOString()
@@ -614,14 +650,28 @@ async function scan(p){
    const fallbackStart = new Date(Date.now() - Math.round(elapsed * 1000)).toISOString();
    const chosenStart = exactStart || fallbackStart;
 
-   if (!jobStartTimes[p.id] || jobStartTimes[p.id].file !== next.file || (exactStart && jobStartTimes[p.id].startedAt !== exactStart)) {
+   const prevStart = jobStartTimes[p.id];
+   const isNewPrintRun = (
+    !prevStart ||
+    prevStart.file !== next.file ||
+    (exactStart && prevStart.startedAt !== exactStart) ||
+    (prev && ['completed', 'idle', 'standby', 'cancelled'].includes(prev.status) && next.status === 'printing') ||
+    (prev && prev.duration > 30 && (next.duration || 0) < 15)
+   );
+
+   if (isNewPrintRun) {
     jobStartTimes[p.id] = {
      file: next.file,
      startedAt: chosenStart
     };
     save(jobStartsFile, jobStartTimes);
-   }
-   if (jobHoldStats[p.id] && jobHoldStats[p.id].file && jobHoldStats[p.id].file !== next.file) {
+
+    // Reset hold/filament-change time for the new print run (even if reprinting same file)
+    delete jobHoldStats[p.id];
+    save(jobHoldFile, jobHoldStats);
+    delete runoutState[p.id];
+    save(runoutFile, runoutState);
+   } else if (jobHoldStats[p.id] && jobHoldStats[p.id].file && jobHoldStats[p.id].file !== next.file) {
     delete jobHoldStats[p.id];
     save(jobHoldFile, jobHoldStats);
    }
@@ -658,7 +708,7 @@ async function scan(p){
     const startMs = runoutState[p.id].startTime || (runoutState[p.id].startedAt ? new Date(runoutState[p.id].startedAt).getTime() : Date.now());
     const holdSec = Math.max(0, Math.round((Date.now() - startMs) / 1000));
     const holdStr = formatHoldDuration(holdSec);
-    const resumeMsg = `${p.name}: Filament reloaded & print resumed! Printer hold time: ${holdStr}`;
+    const resumeMsg = `${p.name}: Filament reloaded & print resumed! Filament change time: ${holdStr}`;
     record(p.id, 'resumed', resumeMsg);
     delete runoutState[p.id];
     save(runoutFile, runoutState);
@@ -778,6 +828,12 @@ async function scan(p){
   // Brief network jitter smoothing (under 15s) when previously printing so dashboard doesn't flicker
   const isBriefNetworkGlitch=!isShutdown && elapsedMs<15000 && previous?.connected && previous?.status==='printing';
 
+  if (!errorSince.has(p.id)) {
+   errorSince.set(p.id, Date.now());
+  }
+  idleSince.delete(p.id);
+  pauseSince.delete(p.id);
+
   const next={
    ...p,
    connected: isShutdown ? false : (isBriefNetworkGlitch ? true : false),
@@ -790,7 +846,12 @@ async function scan(p){
    progress: previous?.progress || 0,
    file: previous?.file || '',
    duration: previous?.duration || 0,
-   offlineSince: offlineSince.get(p.id)
+   startedAt: previous?.startedAt || (jobStartTimes[p.id]?.startedAt || null),
+   offlineSince: offlineSince.get(p.id),
+   errorSec: errorSince.has(p.id) ? Math.max(0, Math.round((Date.now() - errorSince.get(p.id)) / 1000)) : null,
+   idleSec: null,
+   pausedSec: null,
+   jobHoldSec: null
   };
   current.set(p.id,next);last.set(p.id,next);
 

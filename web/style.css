@@ -528,11 +528,78 @@ header{height:54px;border-bottom:1px solid #142032;display:flex;align-items:cent
 .fleetTimeBadge.completedBy{background:rgba(16,185,129,.14);color:#34d399;border:1px solid rgba(16,185,129,.38);box-shadow:0 0 12px rgba(16,185,129,.12)}
 .fleetTimeBadge.completedBy .timeValue{color:#ffffff;text-shadow:0 0 8px rgba(52,211,153,.6)}
 
-/* HOLD TIME BADGE (Persistent after Completed by) */
+/* FILAMENT CHANGE TIME BADGE (Persistent after Completed by) */
 .fleetTimeBadge.holdTime{background:rgba(245,158,11,.16);color:#fbbf24;border:1px solid rgba(245,158,11,.45);box-shadow:0 0 12px rgba(245,158,11,.15)}
 .fleetTimeBadge.holdTime .timeIcon{color:#f59e0b}
 .fleetTimeBadge.holdTime .timeLabel{color:#fde68a}
 .fleetTimeBadge.holdTime .timeValue{color:#ffffff;text-shadow:0 0 8px rgba(245,158,11,.7)}
+
+/* IDLE TIME BADGE */
+.fleetTimeBadge.idle{
+ background:rgba(148,163,184,.14);
+ color:#cbd5e1;
+ border:1px solid rgba(148,163,184,.32);
+ box-shadow:0 0 10px rgba(148,163,184,.08);
+}
+.fleetTimeBadge.idle .timeIcon{color:#94a3b8}
+.fleetTimeBadge.idle .timeLabel{color:#cbd5e1}
+.fleetTimeBadge.idle .timeValue{color:#ffffff;text-shadow:0 0 6px rgba(148,163,184,.5)}
+
+.fleetTimeBadge.idleReady{
+ background:rgba(16,185,129,.1);
+ color:#6ee7b7;
+ border:1px solid rgba(16,185,129,.28);
+ font-size:11.5px;
+}
+
+/* ERROR TIME BADGE */
+.fleetTimeBadge.errorTime{
+ background:rgba(239,68,68,.18);
+ color:#fca5a5;
+ border:1px solid rgba(239,68,68,.5);
+ box-shadow:0 0 14px rgba(239,68,68,.18);
+}
+.fleetTimeBadge.errorTime .timeIcon{color:#ef4444}
+.fleetTimeBadge.errorTime .timeLabel{color:#fecaca}
+.fleetTimeBadge.errorTime .timeValue{color:#ffffff;text-shadow:0 0 8px rgba(239,68,68,.7)}
+
+/* PAUSED TIME BADGE */
+.fleetTimeBadge.pausedTime{
+ background:rgba(245,158,11,.16);
+ color:#fbbf24;
+ border:1px solid rgba(245,158,11,.45);
+ box-shadow:0 0 12px rgba(245,158,11,.15);
+}
+.fleetTimeBadge.pausedTime .timeIcon{color:#f59e0b}
+.fleetTimeBadge.pausedTime .timeLabel{color:#fde68a}
+.fleetTimeBadge.pausedTime .timeValue{color:#ffffff;text-shadow:0 0 8px rgba(245,158,11,.7)}
+
+/* BANNER ERROR TIME & JOB CONTEXT */
+.fleetBannerErrorTime{
+ display:inline-flex;
+ align-items:center;
+ gap:4px;
+ padding:2px 8px;
+ border-radius:6px;
+ background:rgba(239,68,68,.25);
+ border:1px solid rgba(239,68,68,.5);
+ font-size:11.5px;
+ font-weight:700;
+ color:#fee2e2;
+}
+.fleetErrorJobContext{
+ margin-top:6px;
+ font-size:12px;
+ color:#f1f5f9;
+ display:flex;
+ flex-wrap:wrap;
+ gap:8px;
+ padding:6px 10px;
+ background:rgba(0,0,0,.35);
+ border-radius:6px;
+ border:1px solid rgba(239,68,68,.25);
+}
+.fleetErrorJobContext b{color:#ffffff}
 
 /* DONE / COMPLETED */
 .fleetTimeBadge.completed{background:rgba(168,85,247,.18);color:#d8b4fe;border:1px solid rgba(168,85,247,.5);box-shadow:0 0 14px rgba(168,85,247,.18)}
@@ -2459,6 +2526,42 @@ html[data-theme="light"],
 }
 [data-theme="light"] .fleetTimeBadge.holdTime .timeLabel { color: #b45309; }
 [data-theme="light"] .fleetTimeBadge.holdTime .timeValue { color: #92400e; text-shadow: none; }
+
+[data-theme="light"] .fleetTimeBadge.idle {
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
+  border-color: rgba(100, 116, 139, 0.3);
+}
+[data-theme="light"] .fleetTimeBadge.idle .timeLabel { color: #475569; }
+[data-theme="light"] .fleetTimeBadge.idle .timeValue { color: #1e293b; text-shadow: none; }
+
+[data-theme="light"] .fleetTimeBadge.errorTime {
+  background: rgba(239, 68, 68, 0.14);
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.4);
+}
+[data-theme="light"] .fleetTimeBadge.errorTime .timeLabel { color: #dc2626; }
+[data-theme="light"] .fleetTimeBadge.errorTime .timeValue { color: #991b1b; text-shadow: none; }
+
+[data-theme="light"] .fleetTimeBadge.pausedTime {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+  border-color: rgba(217, 119, 6, 0.4);
+}
+[data-theme="light"] .fleetTimeBadge.pausedTime .timeLabel { color: #b45309; }
+[data-theme="light"] .fleetTimeBadge.pausedTime .timeValue { color: #92400e; text-shadow: none; }
+
+[data-theme="light"] .fleetBannerErrorTime {
+  background: rgba(239, 68, 68, 0.15);
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.4);
+}
+[data-theme="light"] .fleetErrorJobContext {
+  background: rgba(255, 255, 255, 0.85);
+  color: #334155;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+[data-theme="light"] .fleetErrorJobContext b { color: #0f172a; }
 
 [data-theme="light"] .fleetTimeBadge.totalTime {
   background: rgba(99, 102, 241, 0.12);

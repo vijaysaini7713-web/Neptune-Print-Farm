@@ -340,192 +340,226 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
       <span className="fleetProgressPct">{p.progress??0}%</span>
      </div>
      <div className="fleetJobFoot">
-      {hasRunout ? (
-       <div className="fleetTimeRow">
-        {p.startedAt && (
-         <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
-          <Play size={12} className="timeIcon"/>
-          <span className="timeLabel">Started:</span>
-          <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
+       {hasRunout ? (
+        <div className="fleetTimeRow">
+         {p.startedAt && (
+          <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
+           <Play size={12} className="timeIcon"/>
+           <span className="timeLabel">Started:</span>
+           <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
+          </span>
+         )}
+         <span className="fleetTimeBadge runout" title="Filament sensor triggered — spool is empty">
+          <AlertTriangle size={13} className="timeIcon"/>
+          <span className="timeLabel">Filament Runout:</span>
+          <strong className="timeValue">{p.runoutHoldSec ? `Change needed · Paused ${fmtDuration(p.runoutHoldSec)}` : 'Replace spool'}</strong>
          </span>
-        )}
-        <span className="fleetTimeBadge runout" title="Filament sensor triggered — spool is empty">
-         <AlertTriangle size={13} className="timeIcon"/>
-         <span className="timeLabel">Filament Runout:</span>
-         <strong className="timeValue">{p.runoutHoldSec ? `On hold for ${fmtDuration(p.runoutHoldSec)} · Load new spool` : 'Replace with new spool'}</strong>
-        </span>
-        {p.remainingTime != null && (
-         <span className="fleetTimeBadge remaining" title="Estimated time left once resumed">
+         {p.remainingTime != null && (
+          <span className="fleetTimeBadge remaining" title="Estimated time left once resumed">
+           <Clock size={13} className="timeIcon"/>
+           <span className="timeLabel">Remaining:</span>
+           <strong className="timeValue">{fmtDuration(p.remainingTime)}</strong>
+          </span>
+         )}
+         {p.duration > 0 && (
+          <span className="fleetTimeBadge totalTime" title={`Time this file has been running: ${fmtDuration(p.duration)}`}>
+           <Timer size={12} className="timeIcon"/>
+           <span className="timeLabel">Total Time:</span>
+           <strong className="timeValue">{fmtDuration(p.duration)}</strong>
+          </span>
+         )}
+         {p.jobHoldSec > 0 && (
+          <span className="fleetTimeBadge holdTime" title={`Filament change hold time: ${fmtDuration(p.jobHoldSec)}`}>
+           <Pause size={13} className="timeIcon"/>
+           <span className="timeLabel">Filament Change:</span>
+           <strong className="timeValue">{fmtDuration(p.jobHoldSec)}</strong>
+          </span>
+         )}
+        </div>
+       ) : (isShutdown || isError) ? (
+        <div className="fleetTimeRow errorRow">
+         {p.startedAt && p.file && (
+          <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
+           <Play size={12} className="timeIcon"/>
+           <span className="timeLabel">Started:</span>
+           <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
+          </span>
+         )}
+         {p.duration > 0 && p.file && (
+          <span className="fleetTimeBadge totalTime" title={`Elapsed print time before error: ${fmtDuration(p.duration)}`}>
+           <Timer size={12} className="timeIcon"/>
+           <span className="timeLabel">Total Time:</span>
+           <strong className="timeValue">{fmtDuration(p.duration)}</strong>
+          </span>
+         )}
+         <span className="fleetTimeBadge errorTime" title={`Error active for ${p.errorSec > 0 ? fmtDuration(p.errorSec) : 'just now'}: ${p.shutdownReason || p.error || 'Printer error'}`}>
+          <AlertTriangle size={13} className="timeIcon"/>
+          <span className="timeLabel">{isShutdown ? 'Shutdown Time:' : 'Error Time:'}</span>
+          <strong className="timeValue">{p.errorSec > 0 ? fmtDuration(p.errorSec) : 'Active'}</strong>
+         </span>
+        </div>
+       ) : isPrinting ? (
+        <div className="fleetTimeRow">
+         {p.startedAt && (
+          <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
+           <Play size={12} className="timeIcon"/>
+           <span className="timeLabel">Started:</span>
+           <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
+          </span>
+         )}
+
+         <span className="fleetTimeBadge remaining" title="Estimated time left">
           <Clock size={13} className="timeIcon"/>
           <span className="timeLabel">Remaining:</span>
-          <strong className="timeValue">{fmtDuration(p.remainingTime)}</strong>
+          <strong className="timeValue">{p.remainingTime != null ? fmtDuration(p.remainingTime) : '—'}</strong>
          </span>
-        )}
-        {p.duration > 0 && (
-         <span className="fleetTimeBadge totalTime" title={`Time this file has been running: ${fmtDuration(p.duration)}`}>
-          <Timer size={12} className="timeIcon"/>
-          <span className="timeLabel">Total Time:</span>
-          <strong className="timeValue">{fmtDuration(p.duration)}</strong>
-         </span>
-        )}
-       </div>
-      ) : isShutdown ? (
-       <div className="fleetTimeRow">
-        <span className="fleetTimeBadge shutdown" title={p.shutdownReason || p.error || 'Printer is shutdown'}>
-         <AlertTriangle size={13} className="timeIcon"/>
-         <span className="timeLabel">Klipper Error:</span>
-         <strong className="timeValue">Printer is shutdown · FIRMWARE_RESTART required</strong>
-        </span>
-       </div>
-      ) : isPrinting ? (
-       <div className="fleetTimeRow">
-        {p.startedAt && (
-         <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
-          <Play size={12} className="timeIcon"/>
-          <span className="timeLabel">Started:</span>
-          <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
-         </span>
-        )}
 
-        <span className="fleetTimeBadge remaining" title="Estimated time left">
-         <Clock size={13} className="timeIcon"/>
-         <span className="timeLabel">Remaining:</span>
-         <strong className="timeValue">{p.remainingTime != null ? fmtDuration(p.remainingTime) : '—'}</strong>
-        </span>
+         {p.eta && (
+          <span className="fleetTimeBadge completedBy" title="Estimated completion time">
+           <CheckCircle2 size={13} className="timeIcon"/>
+           <span className="timeLabel">Completed by:</span>
+           <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
+          </span>
+         )}
 
-        {p.eta && (
-         <span className="fleetTimeBadge completedBy" title="Estimated completion time">
-          <CheckCircle2 size={13} className="timeIcon"/>
-          <span className="timeLabel">Completed by:</span>
-          <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
+         {p.duration > 0 && (
+          <span className="fleetTimeBadge totalTime" title={`Time this file has been running: ${fmtDuration(p.duration)}`}>
+           <Timer size={12} className="timeIcon"/>
+           <span className="timeLabel">Total Time:</span>
+           <strong className="timeValue">{fmtDuration(p.duration)}</strong>
+          </span>
+         )}
+
+         {p.jobHoldSec > 0 && (
+          <span className="fleetTimeBadge holdTime" title={`Filament change hold time: ${fmtDuration(p.jobHoldSec)}`}>
+           <Pause size={13} className="timeIcon"/>
+           <span className="timeLabel">Filament Change:</span>
+           <strong className="timeValue">{fmtDuration(p.jobHoldSec)}</strong>
+          </span>
+         )}
+
+         {p.speedFactor && p.speedFactor !== 1 && (
+          <span className="fleetTimeBadge speedFactor" title={`Printing speed override: ${Math.round(p.speedFactor * 100)}%`}>
+           <Zap size={13} className="timeIcon"/>
+           <span className="timeLabel">Speed:</span>
+           <strong className="timeValue">{Math.round(p.speedFactor * 100)}%</strong>
+          </span>
+         )}
+        </div>
+       ) : isDone ? (
+        <div className="fleetTimeRow completedRow">
+         {p.startedAt && (
+          <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
+           <Play size={12} className="timeIcon"/>
+           <span className="timeLabel">Started:</span>
+           <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
+          </span>
+         )}
+
+         {p.completedAt && (
+          <span className="fleetTimeBadge completedAt" title={`Print finished at ${formatCompletedTime(p.completedAt)}`}>
+           <CheckCircle2 size={13} className="timeIcon"/>
+           <span className="timeLabel">Completed:</span>
+           <strong className="timeValue">{formatCompletedTime(p.completedAt)}</strong>
+          </span>
+         )}
+
+         {p.duration > 0 && (
+          <span className="fleetTimeBadge totalTime" title={`Total print time taken: ${fmtDuration(p.duration)}`}>
+           <Timer size={12} className="timeIcon"/>
+           <span className="timeLabel">Total Time:</span>
+           <strong className="timeValue">{fmtDuration(p.duration)}</strong>
+          </span>
+         )}
+
+         {isAdmin && (
+          <button 
+           className="fleetClearBedBtn" 
+           onClick={(e)=>{e.stopPropagation();onClearBed&&onClearBed(p);}}
+           title="Mark model removed from bed and reset printer to Idle"
+          >
+           <CheckCircle2 size={13}/>
+           <span>Clear Bed</span>
+          </button>
+         )}
+        </div>
+       ) : isIdle ? (
+        <div className="fleetTimeRow">
+         <span className="fleetTimeBadge idle" title={p.idleSec ? `Printer has been idle for ${fmtDuration(p.idleSec)}` : 'Printer is idle and ready'}>
+          <Clock size={12} className="timeIcon"/>
+          <span className="timeLabel">Idle Time:</span>
+          <strong className="timeValue">{p.idleSec > 0 ? fmtDuration(p.idleSec) : 'Just Now'}</strong>
          </span>
-        )}
-
-        {p.duration > 0 && (
-         <span className="fleetTimeBadge totalTime" title={`Time this file has been running: ${fmtDuration(p.duration)}`}>
-          <Timer size={12} className="timeIcon"/>
-          <span className="timeLabel">Total Time:</span>
-          <strong className="timeValue">{fmtDuration(p.duration)}</strong>
+         <span className="fleetTimeBadge idleReady">
+          <span>Ready for next job</span>
          </span>
-        )}
+        </div>
+       ) : isPaused ? (
+        <div className="fleetTimeRow">
+         {p.startedAt && (
+          <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
+           <Play size={12} className="timeIcon"/>
+           <span className="timeLabel">Started:</span>
+           <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
+          </span>
+         )}
 
-        {p.jobHoldSec > 0 && (
-         <span className="fleetTimeBadge holdTime" title={`Printer held for ${fmtDuration(p.jobHoldSec)} during filament reload`}>
+         <span className="fleetTimeBadge paused">
           <Pause size={13} className="timeIcon"/>
-          <span className="timeLabel">Hold:</span>
-          <strong className="timeValue">{fmtDuration(p.jobHoldSec)}</strong>
+          <span className="timeLabel">Paused ·</span>
+          <strong className="timeValue">{p.remainingTime != null ? fmtDuration(p.remainingTime) : '—'} left</strong>
          </span>
-        )}
 
-        {p.speedFactor && p.speedFactor !== 1 && (
-         <span className="fleetTimeBadge speedFactor" title={`Printing speed override: ${Math.round(p.speedFactor * 100)}%`}>
-          <Zap size={13} className="timeIcon"/>
-          <span className="timeLabel">Speed:</span>
-          <strong className="timeValue">{Math.round(p.speedFactor * 100)}%</strong>
-         </span>
-        )}
-       </div>
-      ) : isDone ? (
-       <div className="fleetTimeRow completedRow">
-        {p.startedAt && (
-         <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
-          <Play size={12} className="timeIcon"/>
-          <span className="timeLabel">Started:</span>
-          <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
-         </span>
-        )}
+         {p.pausedSec > 0 && (
+          <span className="fleetTimeBadge pausedTime" title={`Paused for ${fmtDuration(p.pausedSec)}`}>
+           <Clock size={12} className="timeIcon"/>
+           <span className="timeLabel">Paused Time:</span>
+           <strong className="timeValue">{fmtDuration(p.pausedSec)}</strong>
+          </span>
+         )}
 
-        {p.completedAt && (
-         <span className="fleetTimeBadge completedAt" title={`Print finished at ${formatCompletedTime(p.completedAt)}`}>
-          <CheckCircle2 size={13} className="timeIcon"/>
-          <span className="timeLabel">Completed:</span>
-          <strong className="timeValue">{formatCompletedTime(p.completedAt)}</strong>
-         </span>
-        )}
+         {p.eta && (
+          <span className="fleetTimeBadge completedBy">
+           <CheckCircle2 size={13} className="timeIcon"/>
+           <span className="timeLabel">Completed by:</span>
+           <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
+          </span>
+         )}
 
-        {p.duration > 0 && (
-         <span className="fleetTimeBadge totalTime" title={`Total print time taken: ${fmtDuration(p.duration)}`}>
-          <Timer size={12} className="timeIcon"/>
-          <span className="timeLabel">Total Time:</span>
-          <strong className="timeValue">{fmtDuration(p.duration)}</strong>
-         </span>
-        )}
+         {p.duration > 0 && (
+          <span className="fleetTimeBadge totalTime" title={`Time this file has been running: ${fmtDuration(p.duration)}`}>
+           <Timer size={12} className="timeIcon"/>
+           <span className="timeLabel">Total Time:</span>
+           <strong className="timeValue">{fmtDuration(p.duration)}</strong>
+          </span>
+         )}
 
-        {p.jobHoldSec > 0 && (
-         <span className="fleetTimeBadge holdTime" title={`Filament runout hold duration: ${fmtDuration(p.jobHoldSec)}`}>
-          <Pause size={13} className="timeIcon"/>
-          <span className="timeLabel">Hold:</span>
-          <strong className="timeValue">{fmtDuration(p.jobHoldSec)}</strong>
-         </span>
-        )}
+         {p.jobHoldSec > 0 && (
+          <span className="fleetTimeBadge holdTime" title={`Filament change hold time: ${fmtDuration(p.jobHoldSec)}`}>
+           <Pause size={13} className="timeIcon"/>
+           <span className="timeLabel">Filament Change:</span>
+           <strong className="timeValue">{fmtDuration(p.jobHoldSec)}</strong>
+          </span>
+         )}
 
-        {isAdmin && (
-         <button 
-          className="fleetClearBedBtn" 
-          onClick={(e)=>{e.stopPropagation();onClearBed&&onClearBed(p);}}
-          title="Mark model removed from bed and reset printer to Idle"
-         >
-          <CheckCircle2 size={13}/>
-          <span>Clear Bed</span>
-         </button>
-        )}
-       </div>
-      ) : isIdle ? (
-       <span className="fleetTimeBadge idle">
-        <span>Ready for next job</span>
-       </span>
-      ) : isPaused ? (
-       <div className="fleetTimeRow">
-        {p.startedAt && (
-         <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
-          <Play size={12} className="timeIcon"/>
-          <span className="timeLabel">Started:</span>
-          <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
+         {p.speedFactor && p.speedFactor !== 1 && (
+          <span className="fleetTimeBadge speedFactor" title={`Printing speed override: ${Math.round(p.speedFactor * 100)}%`}>
+           <Zap size={13} className="timeIcon"/>
+           <span className="timeLabel">Speed:</span>
+           <strong className="timeValue">{Math.round(p.speedFactor * 100)}%</strong>
+          </span>
+         )}
+        </div>
+       ) : (
+        <div className="fleetTimeRow">
+         <span className="fleetTimeBadge standby" title={p.idleSec ? `Standby for ${fmtDuration(p.idleSec)}` : 'Printer on standby'}>
+          <Clock size={12} className="timeIcon"/>
+          <span className="timeLabel">Standby:</span>
+          <strong className="timeValue">{p.idleSec > 0 ? fmtDuration(p.idleSec) : 'Ready'}</strong>
          </span>
-        )}
-
-        <span className="fleetTimeBadge paused">
-         <Pause size={13} className="timeIcon"/>
-         <span className="timeLabel">Paused ·</span>
-         <strong className="timeValue">{p.remainingTime != null ? fmtDuration(p.remainingTime) : '—'} left</strong>
-        </span>
-
-        {p.eta && (
-         <span className="fleetTimeBadge completedBy">
-          <CheckCircle2 size={13} className="timeIcon"/>
-          <span className="timeLabel">Completed by:</span>
-          <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
-         </span>
-        )}
-
-        {p.duration > 0 && (
-         <span className="fleetTimeBadge totalTime" title={`Time this file has been running: ${fmtDuration(p.duration)}`}>
-          <Timer size={12} className="timeIcon"/>
-          <span className="timeLabel">Total Time:</span>
-          <strong className="timeValue">{fmtDuration(p.duration)}</strong>
-         </span>
-        )}
-
-        {p.jobHoldSec > 0 && (
-         <span className="fleetTimeBadge holdTime" title={`Filament runout hold duration: ${fmtDuration(p.jobHoldSec)}`}>
-          <Pause size={13} className="timeIcon"/>
-          <span className="timeLabel">Hold:</span>
-          <strong className="timeValue">{fmtDuration(p.jobHoldSec)}</strong>
-         </span>
-        )}
-
-        {p.speedFactor && p.speedFactor !== 1 && (
-         <span className="fleetTimeBadge speedFactor" title={`Printing speed override: ${Math.round(p.speedFactor * 100)}%`}>
-          <Zap size={13} className="timeIcon"/>
-          <span className="timeLabel">Speed:</span>
-          <strong className="timeValue">{Math.round(p.speedFactor * 100)}%</strong>
-         </span>
-        )}
-       </div>
-      ) : (
-       <span className="fleetTimeBadge standby">Standby</span>
-      )}
-     </div>
+        </div>
+       )}
+      </div>
     </div>
 
     {/* Col 3: Telemetry Metrics */}
@@ -573,7 +607,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
       </button>
      )}
      {hasRunout&&(
-      <span className="fleetRunoutBadge orange" title={`Filament runout detected! ${p.runoutHoldSec ? `On hold for ${fmtDuration(p.runoutHoldSec)}` : ''}`}>{p.runoutHoldSec ? `HOLD ${fmtDuration(p.runoutHoldSec)} · LOAD SPOOL` : 'REPLACE FILAMENT'}</span>
+      <span className="fleetRunoutBadge orange" title={`Filament runout detected! ${p.runoutHoldSec ? `Paused for filament change: ${fmtDuration(p.runoutHoldSec)}` : ''}`}>{p.runoutHoldSec ? `CHANGE ${fmtDuration(p.runoutHoldSec)} · LOAD SPOOL` : 'CHANGE FILAMENT'}</span>
      )}
      {p.enabled&&(
       <button 
@@ -619,7 +653,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
      <div className="fleetFilamentContent" style={{flex:1}}>
       <strong>⚠️ Filament Runout Detected — Print Paused</strong>
       <span>
-       {p.runoutHoldSec ? `Printer has been on hold for ${fmtDuration(p.runoutHoldSec)}. ` : ''}
+       {p.runoutHoldSec ? `Printer paused for filament change (${fmtDuration(p.runoutHoldSec)}). ` : ''}
        Spool is empty. To replace: load fresh filament into sensor, purge nozzle, and resume print.
       </span>
      </div>
@@ -682,8 +716,8 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
         </span>
        )}
        {p.jobHoldSec > 0 && (
-        <span className="compTimePill hold" title={`Filament runout hold: ${fmtDuration(p.jobHoldSec)}`}>
-         <Pause size={11}/> Hold: <b>{fmtDuration(p.jobHoldSec)}</b>
+        <span className="compTimePill hold" title={`Filament change time: ${fmtDuration(p.jobHoldSec)}`}>
+         <Pause size={11}/> Filament Change: <b>{fmtDuration(p.jobHoldSec)}</b>
         </span>
        )}
       </div>
@@ -705,10 +739,24 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
     <div className={`fleetErrorBanner ${isShutdown ? 'is-shutdown' : ''}`}>
      <AlertTriangle size={16} className="fleetErrorIcon"/>
      <div className="fleetErrorContent">
-      <strong>{isShutdown ? '🚨 Printer is shutdown (Klipper Error)' : "Can't reach this printer"}</strong>
+      <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+       <strong>{isShutdown ? '🚨 Printer is shutdown (Klipper Error)' : "Can't reach this printer"}</strong>
+       {p.errorSec > 0 && (
+        <span className="fleetBannerErrorTime">
+         <Clock size={11}/> Error active for {fmtDuration(p.errorSec)}
+        </span>
+       )}
+      </div>
       <span className="fleetErrorMsg">
        {p.shutdownReason || p.error || `Connection timed out while contacting Moonraker at ${p.host}:${p.port}. Check the printer power, IP address, and Moonraker port.`}
       </span>
+      {p.file && p.duration > 0 && (
+       <div className="fleetErrorJobContext">
+        <span>File was running: <b>{p.file}</b></span>
+        <span>• Elapsed: <b>{fmtDuration(p.duration)}</b></span>
+        {p.startedAt && <span>• Started: <b>{formatStartTime(p.startedAt)}</b></span>}
+       </div>
+      )}
      </div>
      {isAdmin&&isShutdown&&(
       <button 
@@ -2059,12 +2107,39 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
         <small className="elementSub">{p.status==='completed' ? 'Actual time taken to finish' : 'Time this file has been running'}</small>
        </div>
        <div className="elementCard">
-        <span className="elementLabel"><Pause size={13}/> Filament Hold Duration</span>
+        <span className="elementLabel"><Pause size={13}/> Filament Change Time</span>
         <strong className="elementVal" style={{color: p.jobHoldSec > 0 ? '#fbbf24' : '#94a3b8'}}>
-         {p.jobHoldSec > 0 ? fmtDuration(p.jobHoldSec) : '0s (No hold)'}
+         {p.jobHoldSec > 0 ? fmtDuration(p.jobHoldSec) : '0s'}
         </strong>
-        <small className="elementSub">{p.jobHoldSec > 0 ? 'Total runout pause time during this print' : 'No filament runouts occurred'}</small>
+        <small className="elementSub">{p.jobHoldSec > 0 ? 'Total pause duration for filament changes' : 'No filament change pauses during this print'}</small>
        </div>
+       {(p.idleSec > 0 || isIdle) && (
+        <div className="elementCard">
+         <span className="elementLabel"><Clock size={13}/> Idle Duration</span>
+         <strong className="elementVal" style={{color:'#38bdf8'}}>
+          {p.idleSec > 0 ? fmtDuration(p.idleSec) : '< 1m'}
+         </strong>
+         <small className="elementSub">Time printer has been idle waiting for jobs</small>
+        </div>
+       )}
+       {(p.errorSec > 0 || isShutdown || isError) && (
+        <div className="elementCard" style={{borderColor:'rgba(239,68,68,0.4)',background:'rgba(239,68,68,0.06)'}}>
+         <span className="elementLabel" style={{color:'#f87171'}}><AlertTriangle size={13}/> Error Duration</span>
+         <strong className="elementVal" style={{color:'#ef4444'}}>
+          {p.errorSec > 0 ? fmtDuration(p.errorSec) : '< 1m'}
+         </strong>
+         <small className="elementSub" style={{color:'#fca5a5'}}>Time printer has been in error / shutdown</small>
+        </div>
+       )}
+       {(p.pausedSec > 0 && !hasRunout) && (
+        <div className="elementCard">
+         <span className="elementLabel"><Pause size={13}/> Paused Duration</span>
+         <strong className="elementVal" style={{color:'#fbbf24'}}>
+          {fmtDuration(p.pausedSec)}
+         </strong>
+         <small className="elementSub">Time current print has remained paused</small>
+        </div>
+       )}
        <div className="elementCard">
         <span className="elementLabel"><Layers size={13}/> Print Layer & Height</span>
         <strong className="elementVal">{p.layer != null ? `Layer ${p.layer}` : '—'} {p.totalLayers ? `/ ${p.totalLayers}` : ''}</strong>
