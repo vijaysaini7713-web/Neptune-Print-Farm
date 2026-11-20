@@ -243,6 +243,7 @@ function Login({done}){
 }
 
 function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRestart,isAdmin=true}){
+ const [showMore, setShowMore] = useState(false);
  const s=p.status||'connecting';
  const printerUrl=p.host?`http://${p.host}${p.port&&p.port!==80?':'+p.port:''}`:null;
  const isDone=s==='completed';
@@ -302,7 +303,9 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
     <div className="fleetCardIssueFill"/>
    )}
 
-   <div className="fleetMainRow">
+   {/* Desktop & Tablet Landscape View (> 768px) */}
+   <div className="fleetDesktopView">
+    <div className="fleetMainRow">
     {/* Col 1: Identity (Status Pill on top, Printer name below, IP/Port at bottom) */}
     <div className="fleetCol identity">
      <div className="fleetPrinterIcon">
@@ -644,6 +647,249 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
       )
      )}
     </div>
+   </div>
+   </div>
+
+   {/* Mobile & Portrait Mode View (<= 768px and Portrait Mode) */}
+   <div className="fleetMobileCardView">
+    {/* 1. Header: Printer Name + Status Pill + Host Subline */}
+    <div className="fleetMobHeader">
+     <div className="fleetMobIdentity">
+      <div className="fleetMobPrinterIcon">
+       <Printer size={16}/>
+      </div>
+      <div className="fleetMobNameCol">
+       <h3 className="fleetMobPrinterName" title={p.name}>{p.name}</h3>
+       <span className="fleetMobSubline">{p.host||'unknown'}{p.enabled?` · Port: ${p.port||80}`:' · Disabled'}</span>
+      </div>
+     </div>
+     <div className="fleetMobPillWrap">
+      <span className={'fleetPill '+(hasRunout ? 'orange' : color(effectiveStatus))}>
+       <i/>
+       {hasRunout ? 'Filament Runout' : isShutdown ? 'Printer Shutdown' : effectiveStatus==='completed'?'Print Completed':effectiveStatus==='offline'?'Offline':effectiveStatus==='error'?'Printer Shutdown':effectiveStatus==='printing'?'Printing':effectiveStatus==='paused'?'Paused':effectiveStatus==='cancelled'?'Cancelled':effectiveStatus==='leveling'?'Leveling':effectiveStatus==='homing'?'Homing':effectiveStatus==='idle'?'Idle':effectiveStatus}
+      </span>
+     </div>
+    </div>
+
+    {/* 2. Job & Progress: File Name + Progress Bar + % */}
+    <div className="fleetMobJobWrap">
+     <div className="fleetMobJobHead">
+      {isDone ? <Sparkles size={13} style={{flexShrink:0,color:'#c084fc'}}/> : <Activity size={13} style={{flexShrink:0,opacity:.8,color:isPrinting?'#38bdf8':'#64748b'}}/>}
+      <span className="fleetMobJobName" title={p.file||(isDone?'Print Finished':'No active G-code job')}>
+       {p.file||(isDone?'Print Finished':'No active G-code job')}
+      </span>
+     </div>
+     <div className="fleetMobProgressRow">
+      <div className="fleetMobBar">
+       <div 
+        className={'fleetMobBarFill '+(hasRunout ? 'orange' : color(s))} 
+        style={{width:`${progressVal}%`}} 
+       />
+      </div>
+      <span className="fleetMobProgressPct">{Math.round(progressVal)}%</span>
+     </div>
+    </div>
+
+    {/* 3. Primary Time: ONLY Completed by time (ETA) directly visible */}
+    <div className="fleetMobPrimaryTimeRow">
+     {hasRunout ? (
+      <span className="fleetTimeBadge runout" title="Filament sensor triggered">
+       <AlertTriangle size={13} className="timeIcon"/>
+       <span className="timeLabel">Filament Runout:</span>
+       <strong className="timeValue">{p.runoutHoldSec ? `Paused ${fmtDuration(p.runoutHoldSec)}` : 'Spool empty'}</strong>
+      </span>
+     ) : (isShutdown || isError) ? (
+      <span className="fleetTimeBadge errorTime" title={p.shutdownReason || p.error || 'Printer error'}>
+       <AlertTriangle size={13} className="timeIcon"/>
+       <span className="timeLabel">{isShutdown ? 'Shutdown:' : 'Error:'}</span>
+       <strong className="timeValue">{p.errorSec > 0 ? fmtDuration(p.errorSec) : 'Active'}</strong>
+      </span>
+     ) : isDone ? (
+      <span className="fleetTimeBadge completedAt" title="Print completed">
+       <CheckCircle2 size={13} className="timeIcon"/>
+       <span className="timeLabel">Completed:</span>
+       <strong className="timeValue">{p.completedAt ? formatCompletedTime(p.completedAt) : 'Done'}</strong>
+      </span>
+     ) : (isPrinting || isPaused) ? (
+      p.eta ? (
+       <span className="fleetTimeBadge completedBy" title="Estimated finish time">
+        <CheckCircle2 size={13} className="timeIcon"/>
+        <span className="timeLabel">Completed by:</span>
+        <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
+       </span>
+      ) : p.remainingTime != null ? (
+       <span className="fleetTimeBadge remaining" title="Estimated time left">
+        <Clock size={13} className="timeIcon"/>
+        <span className="timeLabel">Remaining:</span>
+        <strong className="timeValue">{fmtDuration(p.remainingTime)}</strong>
+       </span>
+      ) : (
+       <span className="fleetTimeBadge standby">
+        <Clock size={13} className="timeIcon"/>
+        <span className="timeLabel">Calculating ETA...</span>
+       </span>
+      )
+     ) : isIdle ? (
+      <span className="fleetTimeBadge idle" title="Printer is idle">
+       <Clock size={12} className="timeIcon"/>
+       <span className="timeLabel">Idle Time:</span>
+       <strong className="timeValue">{p.idleSec > 0 ? fmtDuration(p.idleSec) : 'Just Now'}</strong>
+      </span>
+     ) : (
+      <span className="fleetTimeBadge standby">
+       <Clock size={12} className="timeIcon"/>
+       <span className="timeLabel">Status:</span>
+       <strong className="timeValue">{effectiveStatus}</strong>
+      </span>
+     )}
+    </div>
+
+    {/* 4. Action Bar: Control, Web UI / Remote UI, and More Details Toggle */}
+    <div className="fleetMobActionBar">
+     <div className="fleetMobActionButtons">
+      {isAdmin&&isShutdown&&(
+       <button 
+        className="fleetBtn restart" 
+        onClick={()=>onFirmwareRestart&&onFirmwareRestart(p)}
+        title="Send FIRMWARE_RESTART"
+       >
+        <RotateCcw size={13}/>
+        <span>Restart</span>
+       </button>
+      )}
+      {isAdmin&&isDone&&(
+       <button 
+        className="fleetBtn clearBedTop" 
+        onClick={()=>onClearBed&&onClearBed(p)} 
+        title="Clear Bed"
+       >
+        <CheckCircle2 size={13}/>
+        <span>Clear Bed</span>
+       </button>
+      )}
+      {p.enabled&&(
+       <button 
+        className="fleetBtn control" 
+        onClick={()=>onOpenControl(p)}
+        title="Remote controls and tools"
+       >
+        <Sliders size={13}/>
+        <span>Control</span>
+       </button>
+      )}
+      {printerUrl&&(
+       isLocal ? (
+        <a 
+         href={printerUrl} 
+         target="_blank" 
+         rel="noreferrer" 
+         className="fleetBtn webui"
+         title={`Open Fluidd (${p.host})`}
+        >
+         <ExternalLink size={13}/>
+         <span>Web UI</span>
+        </a>
+       ) : (
+        <button
+         type="button"
+         className="fleetBtn webui remote"
+         onClick={()=>onOpenControl(p)}
+         title="Remote UI"
+        >
+         <Layers size={13}/>
+         <span>Remote UI</span>
+        </button>
+       )
+      )}
+     </div>
+
+     {/* More Info / Less Info Toggle Button */}
+     <button
+      type="button"
+      className={`fleetMobMoreToggleBtn ${showMore ? 'active' : ''}`}
+      onClick={()=>setShowMore(prev=>!prev)}
+      aria-expanded={showMore}
+      title="Toggle extra timers, nozzle/bed temperatures and details"
+     >
+      <span>{showMore ? 'Less Details' : 'More Details'}</span>
+      {showMore ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+     </button>
+    </div>
+
+    {/* 5. Expandable "More Details" Drawer (Smooth slide-down) */}
+    {showMore && (
+     <div className="fleetMobExpandedSection">
+      {/* Secondary Print Timers */}
+      <div className="mobSecondaryTimes">
+       {p.startedAt && (
+        <div className="mobTimeItem startedAt" title={`Started at ${formatStartTime(p.startedAt)}`}>
+         <span className="mobTimeLabel"><Play size={11}/> Started:</span>
+         <strong className="mobTimeVal">{formatStartTime(p.startedAt)}</strong>
+        </div>
+       )}
+       {p.duration > 0 && (
+        <div className="mobTimeItem totalTime" title={`Total print time running: ${fmtDuration(p.duration)}`}>
+         <span className="mobTimeLabel"><Timer size={11}/> Total Time:</span>
+         <strong className="mobTimeVal">{fmtDuration(p.duration)}</strong>
+        </div>
+       )}
+       {p.remainingTime != null && (
+        <div className="mobTimeItem remaining" title={`Estimated time remaining: ${fmtDuration(p.remainingTime)}`}>
+         <span className="mobTimeLabel"><Clock size={11}/> Remaining:</span>
+         <strong className="mobTimeVal">{fmtDuration(p.remainingTime)}</strong>
+        </div>
+       )}
+       {p.jobHoldSec > 0 && (
+        <div className="mobTimeItem holdTime" title={`Filament change hold time: ${fmtDuration(p.jobHoldSec)}`}>
+         <span className="mobTimeLabel"><Pause size={11}/> Filament Change:</span>
+         <strong className="mobTimeVal">{fmtDuration(p.jobHoldSec)}</strong>
+        </div>
+       )}
+       {p.speedFactor && p.speedFactor !== 1 && (
+        <div className="mobTimeItem speedFactor" title={`Print speed: ${Math.round(p.speedFactor * 100)}%`}>
+         <span className="mobTimeLabel"><Zap size={11}/> Speed:</span>
+         <strong className="mobTimeVal">{Math.round(p.speedFactor * 100)}%</strong>
+        </div>
+       )}
+       {isDone && p.completedAt && (
+        <div className="mobTimeItem completedAt" title={`Completed at ${formatCompletedTime(p.completedAt)}`}>
+         <span className="mobTimeLabel"><CheckCircle2 size={11}/> Finished:</span>
+         <strong className="mobTimeVal">{formatCompletedTime(p.completedAt)}</strong>
+        </div>
+       )}
+      </div>
+
+      {/* Live Hardware Telemetry Grid (Nozzle, Bed, Layer, Sensor) */}
+      <div className="mobMetricsGrid">
+       <div className="mobMetricCard">
+        <div className="mobMetricHead"><Thermometer size={12}/> Nozzle</div>
+        <div className="mobMetricValue">
+         {temp(p.nozzle)}
+         {p.nozzleTarget ? <span className="mobMetricTarget"> / {p.nozzleTarget}°</span> : null}
+        </div>
+       </div>
+       <div className="mobMetricCard">
+        <div className="mobMetricHead"><Thermometer size={12}/> Bed</div>
+        <div className="mobMetricValue">
+         {temp(p.bed)}
+         {p.bedTarget ? <span className="mobMetricTarget"> / {p.bedTarget}°</span> : null}
+        </div>
+       </div>
+       <div className="mobMetricCard">
+        <div className="mobMetricHead"><Layers size={12}/> Layer</div>
+        <div className="mobMetricValue">
+         {p.layer!=null?`${p.layer}${p.totalLayers?' / '+p.totalLayers:''}`:p.z!=null?`${p.z.toFixed(1)} mm`:'—'}
+        </div>
+       </div>
+       <div className="mobMetricCard">
+        <div className="mobMetricHead"><Activity size={12}/> Sensor</div>
+        <div className="mobMetricValue" style={{fontSize:'12px',fontWeight:700,color:hasRunout?'#f97316':p.filamentSensor===false?'#f87171':'#34d399'}}>
+         {hasRunout ? 'Runout' : p.filamentSensor === false ? 'Triggered' : 'Filament OK'}
+        </div>
+       </div>
+      </div>
+     </div>
+    )}
    </div>
 
    {/* Filament Runout Banner with Step-by-Step Instructions */}

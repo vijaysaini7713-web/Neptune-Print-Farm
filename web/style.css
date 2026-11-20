@@ -2799,3 +2799,447 @@ html[data-theme="light"],
 [data-theme="light"] .ctrlFileRow:hover{background:#f1f5f9;border-color:#cbd5e1}
 [data-theme="light"] .ctrlFileName{color:#0f172a}
 [data-theme="light"] .ctrlFileMeta{color:#64748b}
+
+
+/* Desktop & Mobile Card Display Controls */
+.fleetDesktopView {
+  display: block;
+  width: 100%;
+}
+.fleetMobileCardView {
+  display: none;
+}
+
+
+/* ==========================================================================
+   MOBILE & PORTRAIT MODE OPTIMIZATIONS (<= 768px & Portrait Mode)
+   Streamlined hierarchy: Printer Name -> Progress Bar -> Only Completed By ETA -> Action Bar -> Expandable More Info Drawer
+   ========================================================================== */
+@media (max-width: 768px), (orientation: portrait) and (max-width: 900px) {
+  /* Hide multi-column desktop layout */
+  .fleetDesktopView {
+    display: none !important;
+  }
+
+  /* Show streamlined mobile card */
+  .fleetMobileCardView {
+    display: flex !important;
+    flex-direction: column;
+    gap: 9px;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* Compact padding for cards on mobile */
+  .fleetCard {
+    padding: 12px 14px !important;
+    border-radius: 12px;
+  }
+
+  /* 1. Mobile Header: Printer Name + Status Pill + IP */
+  .fleetMobHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .fleetMobIdentity {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    flex: 1;
+  }
+  .fleetMobPrinterIcon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: #131f32;
+    color: #38bdf8;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+  .fleetMobNameCol {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 1px;
+  }
+  .fleetMobPrinterName {
+    font-size: 15px;
+    font-weight: 800;
+    color: #f8fafc;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+  }
+  .fleetMobSubline {
+    font-size: 10.5px;
+    color: #64748b;
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fleetMobPillWrap {
+    flex-shrink: 0;
+  }
+
+  /* 2. Mobile Job & Progress: File Name + Full Bar + % */
+  .fleetMobJobWrap {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(30, 41, 59, 0.55);
+    border-radius: 8px;
+    padding: 7px 10px;
+  }
+  .fleetMobJobHead {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #cbd5e1;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fleetMobJobName {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fleetMobProgressRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .fleetMobBar {
+    flex: 1;
+    height: 7px;
+    background: #131d2c;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .fleetMobBarFill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width .3s ease;
+  }
+  .fleetMobBarFill.orange { background: #f97316; }
+  .fleetMobBarFill.green { background: #10b981; }
+  .fleetMobBarFill.blue { background: #3b82f6; }
+  .fleetMobBarFill.amber { background: #f59e0b; }
+  .fleetMobBarFill.red { background: #ef4444; }
+  .fleetMobBarFill.purple {
+    background: linear-gradient(90deg, #9333ea, #c084fc) !important;
+    box-shadow: 0 0 8px rgba(168, 85, 247, .6);
+  }
+  .fleetMobBarFill.teal { background: #2dd4bf; }
+  .fleetMobBarFill.gray { background: #475569; }
+  .fleetMobProgressPct {
+    font-size: 12px;
+    font-weight: 800;
+    color: #cbd5e1;
+    min-width: 32px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 3. Primary Time: ONLY "Completed by:" (ETA) directly visible */
+  .fleetMobPrimaryTimeRow {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: 1px;
+  }
+  .fleetMobPrimaryTimeRow .fleetTimeBadge {
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 7px;
+  }
+  .fleetMobPrimaryTimeRow .fleetTimeBadge .timeValue {
+    font-size: 13px;
+  }
+
+  /* 4. Action Bar: Action Buttons & "More Details" Toggle Button */
+  .fleetMobActionBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 2px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(30, 41, 59, 0.45);
+  }
+  .fleetMobActionButtons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .fleetMobActionButtons .fleetBtn {
+    padding: 5px 10px;
+    font-size: 11.5px;
+    border-radius: 6px;
+    gap: 5px;
+  }
+  .fleetMobMoreToggleBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid #1e293b;
+    color: #94a3b8;
+    padding: 5px 11px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .15s ease;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+  .fleetMobMoreToggleBtn:hover, .fleetMobMoreToggleBtn.active {
+    background: #1e293b;
+    color: #38bdf8;
+    border-color: #38bdf8;
+  }
+
+  /* 5. Expandable "More Details" Drawer (Smooth slide-down) */
+  .fleetMobExpandedSection {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #090f1a;
+    border: 1px solid #19273c;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: 4px;
+    animation: mobSlideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes mobSlideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Secondary Timers in Mobile Drawer */
+  .mobSecondaryTimes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #152236;
+  }
+  .mobTimeItem {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    color: #94a3b8;
+  }
+  .mobTimeItem .mobTimeLabel {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+    color: #64748b;
+  }
+  .mobTimeItem .mobTimeVal {
+    font-weight: 800;
+    color: #e2e8f0;
+  }
+  .mobTimeItem.totalTime .mobTimeVal { color: #818cf8; }
+  .mobTimeItem.remaining .mobTimeVal { color: #38bdf8; }
+  .mobTimeItem.holdTime .mobTimeVal { color: #fbbf24; }
+  .mobTimeItem.speedFactor .mobTimeVal { color: #facc15; }
+  .mobTimeItem.startedAt .mobTimeVal { color: #7dd3fc; }
+  .mobTimeItem.completedAt .mobTimeVal { color: #34d399; }
+
+  /* Live Hardware Telemetry Grid (Nozzle, Bed, Layer, Sensor) */
+  .mobMetricsGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+  .mobMetricCard {
+    background: #0c1524;
+    border: 1px solid #18283e;
+    border-radius: 6px;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: center;
+  }
+  .mobMetricHead {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .mobMetricValue {
+    font-size: 12px;
+    font-weight: 800;
+    color: #f1f5f9;
+  }
+  .mobMetricTarget {
+    font-size: 10px;
+    color: #718298;
+    font-weight: 500;
+  }
+
+  /* Responsive header & topbar */
+  header {
+    height: auto !important;
+    min-height: 48px;
+    padding: 6px 0;
+    margin-bottom: 12px;
+  }
+  .headerLeftGroup {
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    width: 100%;
+  }
+  .headerTime {
+    font-size: 11px;
+  }
+
+  /* Responsive Control Modal */
+  .modalCard.controlModal {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    max-height: 94vh;
+    margin: 0 auto;
+  }
+  .ctrlTabsBar {
+    padding: 10px 12px 0;
+  }
+  .ctrlTabBtn {
+    padding: 7px 10px;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+  .ctrlTabContent {
+    padding: 12px 14px;
+  }
+}
+
+/* Extra small mobile screens (<= 480px) */
+@media (max-width: 480px) {
+  .mobMetricsGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  .fleetMobActionBar {
+    flex-wrap: wrap;
+  }
+  .fleetMobMoreToggleBtn {
+    width: 100%;
+    justify-content: center;
+    margin-left: 0;
+    margin-top: 4px;
+  }
+  .fleetPageHeader {
+    margin-bottom: 14px;
+  }
+  .fleetMainTitle {
+    font-size: 20px;
+  }
+  .fleetSubtitle {
+    font-size: 12px;
+  }
+}
+
+/* ==========================================================================
+   LIGHT THEME SUPPORT FOR MOBILE COMPONENTS
+   ========================================================================== */
+[data-theme="light"] .fleetMobPrinterIcon {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #0284c7;
+}
+[data-theme="light"] .fleetMobPrinterName {
+  color: #0f172a;
+}
+[data-theme="light"] .fleetMobSubline {
+  color: #64748b;
+}
+[data-theme="light"] .fleetMobJobWrap {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+[data-theme="light"] .fleetMobJobHead {
+  color: #1e293b;
+}
+[data-theme="light"] .fleetMobBar {
+  background: #e2e8f0;
+}
+[data-theme="light"] .fleetMobProgressPct {
+  color: #334155;
+}
+[data-theme="light"] .fleetMobMoreToggleBtn {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+[data-theme="light"] .fleetMobMoreToggleBtn:hover,
+[data-theme="light"] .fleetMobMoreToggleBtn.active {
+  background: #ffffff;
+  border-color: #0284c7;
+  color: #0284c7;
+}
+[data-theme="light"] .fleetMobExpandedSection {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+[data-theme="light"] .mobSecondaryTimes {
+  border-bottom-color: #e2e8f0;
+}
+[data-theme="light"] .mobTimeItem .mobTimeLabel {
+  color: #64748b;
+}
+[data-theme="light"] .mobTimeItem .mobTimeVal {
+  color: #0f172a;
+}
+[data-theme="light"] .mobTimeItem.totalTime .mobTimeVal {
+  color: #4f46e5;
+}
+[data-theme="light"] .mobTimeItem.remaining .mobTimeVal {
+  color: #0284c7;
+}
+[data-theme="light"] .mobTimeItem.holdTime .mobTimeVal {
+  color: #b45309;
+}
+[data-theme="light"] .mobTimeItem.speedFactor .mobTimeVal {
+  color: #a16207;
+}
+[data-theme="light"] .mobTimeItem.startedAt .mobTimeVal {
+  color: #0369a1;
+}
+[data-theme="light"] .mobTimeItem.completedAt .mobTimeVal {
+  color: #047857;
+}
+[data-theme="light"] .mobMetricCard {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+[data-theme="light"] .mobMetricHead {
+  color: #64748b;
+}
+[data-theme="light"] .mobMetricValue {
+  color: #0f172a;
+}
+[data-theme="light"] .mobMetricTarget {
+  color: #64748b;
+}
