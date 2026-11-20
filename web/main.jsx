@@ -1,7 +1,7 @@
 
 import React,{useEffect,useState} from 'react';
 import{createRoot}from'react-dom/client';
-import{Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Timer,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap,Key,Lock,Copy,Check,Cpu,HardDrive,Users,UserPlus,Eye,Shield,Mail}from'lucide-react';
+import{Folder,FileText,Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Timer,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap,Key,Lock,Copy,Check,Cpu,HardDrive,Users,UserPlus,Eye,Shield,Mail}from'lucide-react';
 import './style.css';
 
 function urlBase64ToUint8Array(base64String) {
@@ -1559,7 +1559,60 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
  const [sending,setSending]=useState(false);
  const [feedback,setFeedback]=useState(null);
  const [autoScroll,setAutoScroll]=useState(true);
- const [modalTab,setModalTab]=useState(()=>hasRunout ? 'fan' : 'jog'); // 'jog' | 'temp' | 'fan' | 'terminal'
+ const [modalTab,setModalTab]=useState(()=>hasRunout ? 'fan' : 'jog'); // 'jog' | 'temp' | 'fan' | 'files' | 'terminal'
+ const [files,setFiles]=useState([]);
+ const [loadingFiles,setLoadingFiles]=useState(false);
+ const [filesError,setFilesError]=useState(null);
+ const [fileSearch,setFileSearch]=useState('');
+ const [startingPrint,setStartingPrint]=useState(false);
+
+ async function loadFiles(){
+  setLoadingFiles(true);
+  setFilesError(null);
+  try{
+   const r=await api(`/printers/${p.id}/files`);
+   if(r.ok&&Array.isArray(r.files)){
+    setFiles(r.files);
+   }else{
+    setFilesError(r.error||'Failed to load printer files');
+   }
+  }catch(err){
+   setFilesError(err.message);
+  }finally{
+   setLoadingFiles(false);
+  }
+ }
+
+ useEffect(()=>{
+  if(modalTab==='files'){
+   loadFiles();
+  }
+ },[modalTab,p.id]);
+
+ async function handleStartPrint(filename){
+  if(!isAdmin){
+   setFeedback({type:'error',text:'Guest View-Only Mode: Starting print jobs is restricted to Admins.'});
+   return;
+  }
+  if(!window.confirm(`Start printing "${filename}" on ${p.name}?`))return;
+  setStartingPrint(true);
+  setFeedback(null);
+  try{
+   const r=await api(`/printers/${p.id}/print-file`,{
+    method:'POST',
+    body:JSON.stringify({filename})
+   });
+   setFeedback({type:'success',text:`Print job started for: ${filename}`});
+   setTimeout(onRefresh,1000);
+   setTimeout(loadFiles,1500);
+  }catch(err){
+   setFeedback({type:'error',text:err.message});
+  }finally{
+   setStartingPrint(false);
+  }
+ }
+
+ const filteredFiles = files.filter(f => (f.filename || '').toLowerCase().includes(fileSearch.trim().toLowerCase()));
  const [jogStep,setJogStep]=useState(10); // 0.1 | 1 | 10 | 50 | 100
  const [customNozzle,setCustomNozzle]=useState(210);
  const [customBed,setCustomBed]=useState(60);
@@ -1732,6 +1785,9 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
      </button>
      <button className={'ctrlTabBtn '+(modalTab==='fan'?'active':'')} onClick={()=>setModalTab('fan')}>
       <Wind size={14}/> Extruder & Fan
+     </button>
+     <button className={'ctrlTabBtn '+(modalTab==='files'?'active':'')} onClick={()=>{setModalTab('files');loadFiles();}}>
+      <Folder size={14}/> Jobs & Files{files.length > 0 ? ` (${files.length})` : ''}
      </button>
      <button className={'ctrlTabBtn '+(modalTab==='terminal'?'active':'')} onClick={()=>setModalTab('terminal')}>
       <Terminal size={14}/> Console Terminal
@@ -2019,6 +2075,167 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
          <Play size={12}/> Resume Print
         </button>
        </div>
+      </div>
+     </div>
+    )}
+
+    {/* TAB: JOBS & FILES */}
+    {modalTab==='files'&&(
+     <div className="ctrlTabContent ctrlFilesTab">
+      {/* 1. Active Print Job Status */}
+      <div className="ctrlActiveJobSection">
+       <div className="ctrlActiveJobHeader">
+        <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+         <Activity size={15} className={p.status==='printing' ? 'spin' : ''} style={{color: p.status==='printing' ? '#38bdf8' : '#94a3b8'}}/>
+         <strong style={{fontSize:'13px',color:'#f8fafc'}}>
+          {p.status==='printing' ? 'Active Print Job' : p.status==='paused' ? 'Job Paused' : p.status==='completed' ? 'Finished Job' : 'Current Job Status'}
+         </strong>
+        </div>
+        <span className={'pill '+(hasRunout ? 'orange' : color(s))} style={{fontSize:'10px',padding:'2px 8px'}}>
+         <i/>{hasRunout ? 'Filament Runout' : s}
+        </span>
+       </div>
+
+       {p.file ? (
+        <div className="ctrlActiveJobBody">
+         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'10px',flexWrap:'wrap'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'8px',minWidth:0}}>
+           <FileText size={17} style={{color:'#38bdf8',flexShrink:0}}/>
+           <span className="ctrlActiveFileName" title={p.file}>{p.file}</span>
+          </div>
+          <span style={{fontSize:'13px',fontWeight:800,color:'#38bdf8'}}>{p.progress ?? 0}%</span>
+         </div>
+
+         <div className="fleetBar" style={{margin:'8px 0',height:'7px'}}>
+          <div className={'fleetBarFill '+(hasRunout ? 'orange' : color(s))} style={{width:`${p.progress??0}%`}}/>
+         </div>
+
+         <div className="ctrlActiveJobMeta">
+          {p.startedAt && <span><Play size={11}/> Started: <b>{formatStartTime(p.startedAt)}</b></span>}
+          {p.duration > 0 && <span><Timer size={11}/> Elapsed: <b>{fmtDuration(p.duration)}</b></span>}
+          {p.remainingTime != null && <span><Clock size={11}/> Remaining: <b>{fmtDuration(p.remainingTime)}</b></span>}
+          {p.eta && <span><CheckCircle2 size={11}/> Complete by: <b>{formatFinishTime(p.eta)}</b></span>}
+         </div>
+
+         {isAdmin && (p.status==='printing' || p.status==='paused' || hasRunout) && (
+          <div className="ctrlActiveJobActions">
+           {p.status==='printing' ? (
+            <button className="chipBtn" disabled={sending} onClick={()=>sendCommand('pause')}>
+             <Pause size={12}/> Pause Print
+            </button>
+           ) : (
+            <button className="ctrlBtn resume" disabled={sending} onClick={()=>sendCommand('resume')}>
+             <Play size={12}/> Resume Print
+            </button>
+           )}
+           <button className="chipBtn danger" disabled={sending} onClick={()=>sendCommand('cancel',null,'Cancel the active print job immediately?')}>
+            <Square size={12}/> Cancel Job
+           </button>
+          </div>
+         )}
+        </div>
+       ) : (
+        <div className="ctrlNoJobBox">
+         <FileText size={22} style={{color:'#475569',margin:'0 auto 6px',display:'block'}}/>
+         <span>No file is currently printing. Select a G-code file below to start.</span>
+        </div>
+       )}
+      </div>
+
+      {/* 2. Printer G-Code Storage List */}
+      <div className="ctrlFilesListSection">
+       <div className="ctrlFilesHeader">
+        <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+         <Folder size={16} style={{color:'#a855f7'}}/>
+         <strong style={{fontSize:'13px',color:'#f8fafc'}}>Files Stored on {p.name}</strong>
+         <span className="ctrlFilesCount">{filteredFiles.length} {filteredFiles.length===1?'file':'files'}</span>
+        </div>
+        <button className="textButton" style={{display:'inline-flex',alignItems:'center',gap:'5px',fontSize:'12px'}} onClick={loadFiles} disabled={loadingFiles}>
+         <RefreshCw size={12} className={loadingFiles?'spin':''}/> Refresh
+        </button>
+       </div>
+
+       {/* Search Bar */}
+       <div className="ctrlFilesSearchBar">
+        <Search size={14} style={{color:'#64748b',flexShrink:0}}/>
+        <input 
+         type="text" 
+         placeholder="Search G-code files on this printer..." 
+         value={fileSearch} 
+         onChange={e=>setFileSearch(e.target.value)}
+        />
+        {fileSearch && (
+         <button className="clearSearchBtn" onClick={()=>setFileSearch('')} title="Clear filter">
+          <X size={12}/>
+         </button>
+        )}
+       </div>
+
+       {/* Files List */}
+       {loadingFiles && files.length===0 ? (
+        <div className="ctrlFilesLoading">
+         <RefreshCw size={18} className="spin" style={{color:'#38bdf8',margin:'0 auto 8px',display:'block'}}/>
+         <span>Loading files list from printer...</span>
+        </div>
+       ) : filesError ? (
+        <div className="ctrlFilesError">
+         <AlertTriangle size={15}/> <span>{filesError}</span>
+         <button className="chipBtn" style={{marginTop:'6px',fontSize:'11px'}} onClick={loadFiles}>Retry</button>
+        </div>
+       ) : filteredFiles.length===0 ? (
+        <div className="ctrlFilesEmpty">
+         <span>{fileSearch ? 'No files match your search filter.' : 'No G-code files found on this printer.'}</span>
+        </div>
+       ) : (
+        <div className="ctrlFilesScrollList">
+         {filteredFiles.map((f, idx)=>{
+          const isCurrent = (p.file === f.filename);
+          const isPrinterBusy = (p.status === 'printing' || p.status === 'paused');
+          const sizeMb = f.size ? (f.size / (1024 * 1024)).toFixed(1) : '—';
+          const dateStr = f.modified ? new Date(f.modified).toLocaleString([], { dateStyle:'medium', timeStyle:'short' }) : '—';
+
+          return (
+           <div key={f.filename || idx} className={'ctrlFileRow '+(isCurrent ? 'activeFile' : '')}>
+            <div className="ctrlFileIcon">
+             <FileText size={18} style={{color: isCurrent ? '#38bdf8' : '#94a3b8'}}/>
+            </div>
+            <div className="ctrlFileInfo">
+             <strong className="ctrlFileName" title={f.filename}>{f.filename}</strong>
+             <div className="ctrlFileMeta">
+              <span>{sizeMb} MB</span>
+              <span>•</span>
+              <span>{dateStr}</span>
+             </div>
+            </div>
+            <div className="ctrlFileAction">
+             {isCurrent && isPrinterBusy ? (
+              <span className="fileStatusBadge running">
+               <Activity size={11} className="spin"/> Active
+              </span>
+             ) : isPrinterBusy ? (
+              <span className="fileStatusBadge busy" title="Printer is busy printing another file">
+               Busy
+              </span>
+             ) : (
+              isAdmin ? (
+               <button 
+                className="chipBtn printFileBtn"
+                disabled={startingPrint}
+                onClick={()=>handleStartPrint(f.filename)}
+                title={`Start printing ${f.filename}`}
+               >
+                <Play size={11}/> Print File
+               </button>
+              ) : (
+               <span className="fileStatusBadge ready">Ready</span>
+              )
+             )}
+            </div>
+           </div>
+          );
+         })}
+        </div>
+       )}
       </div>
      </div>
     )}

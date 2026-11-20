@@ -86,6 +86,7 @@ let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),a
 const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map(),recentCommands=new Map();
 const offlineSince=new Map(),offlineAlertSent=new Map();
 const idleSince=new Map(),errorSince=new Map(),pauseSince=new Map();
+const etaSmoothed=new Map();
 const secret=process.env.JWT_SECRET,password=process.env.ADMIN_PASSWORD;
 if(!secret||secret.length<32||!password||password.startsWith('replace-with')||password.startsWith('change-this')){console.error('Set ADMIN_PASSWORD and a 32+ character JWT_SECRET in .env');process.exit(1)}
 const passwordHash=bcrypt.hashSync(password,11);
@@ -292,72 +293,6 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJo
   ?Number(gm.speed_factor.toFixed(2))
   :1.0;
 
- if((state==='printing'||state==='paused')&&!isShutdown){
-  if(progressRatio>=0.999){
-   remainingTime=0;
-   totalDuration=duration;
-   eta=new Date().toISOString();
-  }else{
-   const remainingRatio=Math.max(0,1-progressRatio);
-   const slicerEst=(typeof meta?.estimated_time==='number'&&meta.estimated_time>0)?meta.estimated_time:null;
-
-   // 1. Slicer remaining adjusted immediately by current real-time speed factor
-   let slicerRemaining=null;
-   if(slicerEst){
-    slicerRemaining=Math.max(0,Math.round((slicerEst*remainingRatio)/speedFactor));
-   }
-
-   // 2. Rolling velocity from recent samples (last 20-90 seconds)
-   const now=Date.now();
-   let samples=progressSamples.get(p.id)||[];
-   if(samples.length&&(samples[samples.length-1].file!==ps.filename||progressRatio<samples[samples.length-1].progress-0.05)){
-    samples=[];
-   }
-   samples.push({time:now,progress:progressRatio,duration,file:ps.filename});
-   samples=samples.filter(s=>now-s.time<=90000);
-   progressSamples.set(p.id,samples);
-
-   let rollingRemaining=null;
-   if(samples.length>=3){
-    const oldest=samples[0];
-    const deltaTime=(now-oldest.time)/1000;
-    const deltaProgress=progressRatio-oldest.progress;
-    if(deltaTime>=15&&deltaProgress>0.0002){
-     const progressPerSec=deltaProgress/deltaTime;
-     if(progressPerSec>0){
-      rollingRemaining=Math.max(0,Math.round(remainingRatio/progressPerSec));
-     }
-    }
-   }
-
-   // 3. Cumulative progress estimate (adjusted by speed factor)
-   let cumulativeRemaining=null;
-   if(progressRatio>0.01&&duration>20){
-    const secPerRatio=duration/progressRatio;
-    cumulativeRemaining=Math.max(0,Math.round((secPerRatio*remainingRatio)/speedFactor));
-   }
-
-   // 4. Blend to compute accurate remainingTime
-   if(slicerRemaining!=null){
-    if(rollingRemaining!=null&&rollingRemaining>15&&rollingRemaining<slicerRemaining*2.5&&rollingRemaining>slicerRemaining*0.35){
-     const weight=Math.min(0.65,0.3+progressRatio*0.35);
-     remainingTime=Math.round(slicerRemaining*(1-weight)+rollingRemaining*weight);
-    }else{
-     remainingTime=slicerRemaining;
-    }
-   }else if(rollingRemaining!=null&&rollingRemaining>15){
-    remainingTime=rollingRemaining;
-   }else if(cumulativeRemaining!=null){
-    remainingTime=cumulativeRemaining;
-   }
-
-   if(remainingTime!=null&&remainingTime>=0){
-    totalDuration=Math.round(duration+remainingTime);
-    eta=new Date(now+remainingTime*1000).toISOString();
-   }
-  }
- }
-
   let computedStatus = statuses[state]||'unknown';
   if(isShutdown){
    computedStatus = 'error';
@@ -468,6 +403,51 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJo
  } else if (computedStatus === 'completed' && compInfo?.completedAt && finalDuration) {
   jobStartedAt = new Date(new Date(compInfo.completedAt).getTime() - Math.round(finalDuration * 1000)).toISOString();
  }
+
+ // Rock-solid Fluidd-compatible ETA calculation (matches local printer IP interface)
+ if ((state === 'printing' || state === 'paused') && !isShutdown) {
+  if (progressRatio >= 0.999) {
+   remainingTime = 0;
+   totalDuration = duration;
+   eta = new Date().toISOString();
+   etaSmoothed.delete(p.id);
+  } else {
+   const startMs = jobStartedAt ? new Date(jobStartedAt).getTime() : (Date.now() - duration * 1000);
+   const slicerEst = (typeof meta?.estimated_time === 'number' && meta.estimated_time > 30) ? meta.estimated_time : null;
+
+   if (slicerEst) {
+    const projectedTotal = Math.round(slicerEst / speedFactor);
+    if (duration > projectedTotal && progressRatio >= 0.05) {
+     const fileTotal = Math.max(duration + 30, Math.round((duration / progressRatio) / speedFactor));
+     remainingTime = Math.max(0, fileTotal - duration);
+     totalDuration = fileTotal;
+     eta = new Date(startMs + fileTotal * 1000).toISOString();
+    } else {
+     remainingTime = Math.max(0, Math.round((slicerEst - duration) / speedFactor));
+     totalDuration = projectedTotal;
+     eta = new Date(startMs + projectedTotal * 1000).toISOString();
+    }
+   } else if (progressRatio >= 0.005 && duration > 10) {
+    const rawTotal = Math.round((duration / progressRatio) / speedFactor);
+    const prevSmoothed = etaSmoothed.get(p.id);
+    let totalSec = rawTotal;
+    if (prevSmoothed && Math.abs(prevSmoothed - rawTotal) < 1800) {
+     totalSec = Math.round(prevSmoothed * 0.92 + rawTotal * 0.08);
+    }
+    etaSmoothed.set(p.id, totalSec);
+    remainingTime = Math.max(0, Math.round(totalSec - (duration / speedFactor)));
+    totalDuration = totalSec;
+    eta = new Date(startMs + totalSec * 1000).toISOString();
+   } else {
+    remainingTime = null;
+    totalDuration = duration;
+    eta = null;
+   }
+  }
+ } else {
+  etaSmoothed.delete(p.id);
+ }
+ finalTotalDuration = (computedStatus === 'completed') ? finalDuration : (totalDuration || finalDuration);
 
  return {
   ...p,
@@ -671,6 +651,7 @@ async function scan(p){
     save(jobHoldFile, jobHoldStats);
     delete runoutState[p.id];
     save(runoutFile, runoutState);
+    etaSmoothed.delete(p.id);
    } else if (jobHoldStats[p.id] && jobHoldStats[p.id].file && jobHoldStats[p.id].file !== next.file) {
     delete jobHoldStats[p.id];
     save(jobHoldFile, jobHoldStats);
@@ -1081,6 +1062,61 @@ app.post(['/api/printers/:id/command', '/api/printers/:id/control'],auth,async(r
   res.json({ok:true,result:data?.result||'ok'});
  }catch(err){
   res.status(502).json({error:'Failed to communicate with printer '+p.host+': '+err.message});
+ }
+});
+
+app.get('/api/printers/:id/files',auth,async(req,res)=>{
+ const p=printers.find(x=>x.id===req.params.id);
+ if(!p||!p.enabled||!validHost(p.host))return res.status(404).json({error:'Printer not found or disabled'});
+ try{
+  const r=await fetch(`http://${p.host}:${p.port}/server/files/list?root=gcodes`,{signal:AbortSignal.timeout(6000)});
+  if(!r.ok)return res.status(r.status).json({error:'Moonraker HTTP '+r.status});
+  const data=await r.json();
+  const rawList=data?.result||[];
+  const files=rawList.map(f=>({
+   filename:f.path,
+   size:f.size||0,
+   modified:f.modified?new Date(f.modified*1000).toISOString():null,
+   permissions:f.permissions||'rw'
+  }));
+  files.sort((a,b)=>new Date(b.modified||0)-new Date(a.modified||0));
+  res.json({ok:true,files,count:files.length});
+ }catch(err){
+  res.status(502).json({error:'Failed to fetch files from printer '+p.host+': '+err.message});
+ }
+});
+
+app.post('/api/printers/:id/print-file',auth,async(req,res)=>{
+ const p=printers.find(x=>x.id===req.params.id);
+ if(!p||!p.enabled||!validHost(p.host))return res.status(404).json({error:'Printer not found or disabled'});
+ if(req.user?.role==='guest')return res.status(403).json({error:'Guest accounts have view-only access'});
+
+ const cur=current.get(p.id);
+ if(cur&&(cur.status==='printing'||cur.status==='paused')){
+  return res.status(400).json({error:'Cannot start new print: printer is currently printing or paused'});
+ }
+
+ const {filename}=req.body||{};
+ if(typeof filename!=='string'||!filename.trim()){
+  return res.status(400).json({error:'Filename is required'});
+ }
+
+ try{
+  const endpoint=`http://${p.host}:${p.port}`;
+  const r=await fetch(`${endpoint}/printer/print/start?filename=${encodeURIComponent(filename.trim())}`,{
+   method:'POST',
+   headers:{'content-type':'application/json'},
+   signal:AbortSignal.timeout(9000)
+  });
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok){
+   return res.status(400).json({error:data?.error?.message||`Moonraker HTTP ${r.status}`});
+  }
+  record(p.id,'command',`${p.name}: Started print job [${filename.trim()}]`);
+  void poll();
+  res.json({ok:true,result:data?.result||'ok'});
+ }catch(err){
+  res.status(502).json({error:`Failed to start print on ${p.name}: ${err.message}`});
  }
 });
 
