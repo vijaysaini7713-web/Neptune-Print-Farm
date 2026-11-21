@@ -328,3 +328,14 @@
 
 /* Machine time is neutral info, not an error */
 .layout .productionTotals .colorMetric:nth-child(5) {--metric:var(--farm-ink)}
+
+/* Keep the progress ring intact on small phones (overrides generic hero svg sizing) */
+.layout .fleetHero .fleetHeroActions .nextCompleteChip .nextRing svg {width:100%;height:100%}
+.layout .fleetHero .fleetHeroActions .nextCompleteChip {font-size:inherit}
+@media (max-width:420px){
+ .layout .fleetHero .fleetHeroActions .nextCompleteChip {min-height:40px;padding:3px 10px 3px 3px;gap:6px}
+ .layout .fleetHero .nextRing {width:34px;height:34px}
+ .layout .fleetHero .nextRing > span {font-size:9px}
+ .layout .fleetHero .nextCompleteText small {font-size:9px;letter-spacing:.04em}
+ .layout .fleetHero .nextCompleteText > span {font-size:12px}
+}
