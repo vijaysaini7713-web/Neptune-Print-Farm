@@ -83,7 +83,7 @@ async function sendPushToAll({ title, body, tag, url }) {
  }
 }
 let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{}),runoutState=read(runoutFile,{}),jobHoldStats=read(jobHoldFile,{}),jobStartTimes=read(jobStartsFile,{}),users=read(usersFile,[]);
-const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map(),recentCommands=new Map();
+const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map(),recentCommands=new Map(),pendingStops=new Map();
 const offlineSince=new Map(),offlineAlertSent=new Map();
 const idleSince=new Map(),errorSince=new Map(),pauseSince=new Map();
 const etaSmoothed=new Map();
@@ -715,6 +715,33 @@ async function scan(p){
    }
   }
 
+  // 3b. Elegoo's CANCEL_PRINT runs SDCARD_RESET_FILE, so print_stats jumps from
+  // printing straight to standby and never reports 'cancelled'. Remember the stop
+  // and let Moonraker history name the real outcome (cancelled / shutdown / completed).
+  const wasActive = prev?.connected && ['printing','paused','runout'].includes(prev.status) && prev.file;
+  if (wasActive && !['printing','paused','runout','completed','cancelled','error'].includes(next.status)) {
+   pendingStops.set(p.id, { file: prev.file, at: Date.now(), duration: prev.duration || 0 });
+  }
+  const pend = pendingStops.get(p.id);
+  if (pend) {
+   const lj = latestJob;
+   if (lj && lj.status !== 'in_progress' && lj.filename === pend.file && (lj.end_time || 0) * 1000 >= pend.at - 120000) {
+    pendingStops.delete(p.id);
+    if (lj.status !== 'completed') {
+     const ran = formatHoldDuration(Math.round(lj.print_duration || pend.duration || 0));
+     if (lj.status === 'cancelled') {
+      record(p.id, 'cancelled', `${p.name}: Print CANCELLED (stopped manually) — ${pend.file}${ran ? ` (Ran: ${ran})` : ''}`);
+     } else {
+      record(p.id, 'error', `${p.name}: Print STOPPED (${String(lj.status).replace(/_/g, ' ')}) — ${pend.file}${ran ? ` (Ran: ${ran})` : ''}`);
+     }
+     void syncPrinterHistory(p);
+    }
+   } else if ((lj && lj.status === 'in_progress' && lj.filename !== pend.file) || Date.now() - pend.at > 180000) {
+    pendingStops.delete(p.id);
+    void syncPrinterHistory(p);
+   }
+  }
+
   // 4. Status change tracking for Error, Paused, Cancelled
   if (prev?.connected && prev.status !== next.status) {
    if (next.status === 'error' || (next.status === 'paused' && !isNowRunout)) {
@@ -723,22 +750,8 @@ async function scan(p){
     record(p.id, 'cancelled', p.name + ': Print CANCELLED / STOPPED — ' + (next.file || prev?.file || 'Job stopped'));
    }
    if (['error', 'cancelled'].includes(next.status) && (next.file || prev.file)) {
-    const liveId = p.id + '_live_fail_' + Date.now();
-    allJobs.unshift({
-     id: liveId,
-     jobId: null,
-     printerId: p.id,
-     printerName: p.name,
-     file: next.file || prev.file,
-     status: next.status === 'error' ? 'error' : 'cancelled',
-     isCompleted: false,
-     isFailed: true,
-     completedAt: new Date().toISOString(),
-     duration: next.duration || prev.duration || 0,
-     filamentUsed: next.filamentUsed || prev.filamentUsed || 0
-    });
-    if (allJobs.length > 4000) allJobs = allJobs.slice(0, 4000);
-    save(jobsFile, allJobs);
+    // Moonraker history records this job (cancelled / klippy_shutdown); sync it
+    // instead of adding a separate live entry that would double-count failures.
     void syncPrinterHistory(p);
    }
   }
@@ -1207,6 +1220,10 @@ app.get('/api/completed-prints',auth,(req,res)=>{
  // Keep inferred legacy entries on disk, but omit them from production totals
  // and from the job list. Authoritative history entries are still included.
  filteredJobs=filteredJobs.filter(job=>job.status!=='completed'||isConfirmedCompletion(job));
+ const isLive=job=>String(job.id||'').startsWith(job.printerId+'_live_');
+ const synced=filteredJobs.filter(job=>!isLive(job));
+ filteredJobs=filteredJobs.filter(job=>!isLive(job)||!synced.some(h=>h.printerId===job.printerId&&(
+  (job.jobId&&h.jobId===job.jobId)||(h.file===job.file&&Math.abs(Date.parse(h.completedAt)-Date.parse(job.completedAt))<300000))));
  const summaryMap=new Map();
  for(const j of filteredJobs){
   const fn=j.file||'Unknown';
