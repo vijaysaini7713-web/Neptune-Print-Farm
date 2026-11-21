@@ -3,6 +3,8 @@ import React,{useEffect,useState} from 'react';
 import{createRoot}from'react-dom/client';
 import{Folder,FileText,Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Timer,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap,Key,Lock,Copy,Check,Cpu,HardDrive,Users,UserPlus,Eye,Shield,Mail}from'lucide-react';
 import './style.css';
+import './monitor.css';
+import './theme.css';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -121,122 +123,50 @@ const formatCompletedTime=iso=>{
  return `${dt.toLocaleDateString(undefined,{month:'short',day:'numeric'})} at ${timeStr}`;
 };
 
-function Login({done}){
- const [email,setEmail]=useState('admin@neptunemonitor.com');
+function Login({done,theme,toggleTheme}){
+ const [email,setEmail]=useState('');
  const [password,setPassword]=useState('');
  const [error,setError]=useState('');
  const [loading,setLoading]=useState(false);
  const [sys,setSys]=useState(null);
 
  useEffect(()=>{api('/system-info').then(setSys).catch(()=>{})},[]);
+ const host=window.location.hostname;
+ const isLocal=Boolean(sys?.isLocalClient||['localhost','127.0.0.1'].includes(host)||['172.16.','192.168.','10.'].some(prefix=>host.startsWith(prefix)));
+ const alternativeUrl=isLocal?(sys?.remoteUrl||'https://neptunemonitor.com'):sys?.localUrl;
 
- const isLocal = sys ? (sys.isLocalClient || ['localhost','127.0.0.1'].includes(window.location.hostname) || window.location.hostname.startsWith('172.16.') || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.')) : true;
- const localUrl = sys?.localUrl || `http://${sys?.primaryIp||'172.16.20.139'}:${sys?.port||3080}`;
- const remoteUrl = sys?.remoteUrl || 'https://neptunemonitor.com';
-
- async function submit(e){
-  e.preventDefault();
+ async function submit(event){
+  event.preventDefault();
+  if(loading)return;
   setLoading(true);
   setError('');
   try{
-   const r = await api('/login',{
-    method:'POST',
-    body:JSON.stringify({email, password})
-   });
-   done(r.user);
-  }catch(e){
-   setError(e.message);
+   const response=await api('/login',{method:'POST',body:JSON.stringify({email:email.trim(),password})});
+   done(response.user);
+  }catch(error){
+   setError(error.message);
   }finally{
    setLoading(false);
   }
  }
 
- return <main className="loginShell">
-  <form onSubmit={submit} className="login card" style={{maxWidth:'460px'}}>
-   <div className="logo"><Printer size={25}/> NEPTUNE <span>FARM</span></div>
-
-   {/* Connection Mode Links & Live Switcher */}
-   <div className="loginNetSwitcher" style={{background:'#09111e',border:'1px solid #1e293b',borderRadius:'10px',padding:'12px 14px',marginBottom:'18px',textAlign:'left'}}>
-    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'8px'}}>
-     <span style={{fontSize:'11px',fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.5px'}}>Connection Access Mode</span>
-     <span className={'netPill '+(isLocal?'local':'remote')} style={{fontSize:'11px',padding:'2px 8px',borderRadius:'12px',fontWeight:700,display:'inline-flex',alignItems:'center',gap:'4px'}}>
-      {isLocal ? <Wifi size={11}/> : <Globe size={11}/>}
-      {isLocal ? 'LAN Active' : 'Remote Active'}
-     </span>
-    </div>
-
-    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
-     <a 
-      href={localUrl} 
-      className={'loginNetCard '+(isLocal?'active':'')}
-      style={{display:'block',padding:'8px 10px',borderRadius:'8px',border:isLocal?'1.5px solid #10b981':'1px solid #1e293b',background:isLocal?'rgba(16,185,129,0.12)':'#0f172a',textDecoration:'none'}}
-      title="Click to use Local LAN Wi-Fi connection"
-     >
-      <div style={{display:'flex',alignItems:'center',gap:'6px',color:isLocal?'#34d399':'#94a3b8',fontSize:'11px',fontWeight:700}}>
-       <Wifi size={12}/> Local LAN (Wi-Fi)
-      </div>
-      <div style={{fontSize:'11.5px',color:'#cbd5e1',marginTop:'3px',fontFamily:'monospace',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-       {localUrl.replace('http://','')}
-      </div>
-     </a>
-
-     <a 
-      href={remoteUrl} 
-      className={'loginNetCard '+(!isLocal?'active':'')}
-      style={{display:'block',padding:'8px 10px',borderRadius:'8px',border:!isLocal?'1.5px solid #38bdf8':'1px solid #1e293b',background:!isLocal?'rgba(56,189,248,0.12)':'#0f172a',textDecoration:'none'}}
-      title="Click to use Remote Internet Cloud connection"
-     >
-      <div style={{display:'flex',alignItems:'center',gap:'6px',color:!isLocal?'#38bdf8':'#94a3b8',fontSize:'11px',fontWeight:700}}>
-       <Globe size={12}/> Remote Cloud
-      </div>
-      <div style={{fontSize:'11.5px',color:'#cbd5e1',marginTop:'3px',fontFamily:'monospace',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-       {remoteUrl.replace('https://','')}
-      </div>
-     </a>
-    </div>
-
-    <div style={{fontSize:'11px',color:'#64748b',marginTop:'8px',lineHeight:1.4}}>
-     {isLocal ? '✓ Connected directly to local farm network for fastest speed.' : '💡 On farm Wi-Fi? Switch to Local LAN link above for instant local speed.'}
-    </div>
+ return <main className="loginShell launchLogin">
+  <form onSubmit={submit} className="login card">
+   <div className="loginBrand">
+    <span><Printer size={20}/> Neptune Farm</span>
+    <button className="iconButton" type="button" onClick={toggleTheme} aria-label={theme==='dark'?'Use light mode':'Use dark mode'}>{theme==='dark'?<Sun size={17}/>:<Moon size={17}/>}</button>
    </div>
-
-   <h1>Welcome Back</h1>
-   <p>Sign in to monitor and manage your Neptune 3D printers.</p>
-
-   <label>Email Address</label>
-   <input 
-    type="email" 
-    value={email} 
-    onChange={e=>setEmail(e.target.value)} 
-    placeholder="admin@neptunemonitor.com" 
-    required 
-    autoFocus
-   />
-
-   <label style={{marginTop:'10px'}}>Password</label>
-   <input 
-    type="password" 
-    value={password} 
-    onChange={e=>setPassword(e.target.value)} 
-    placeholder="Enter your password" 
-    required
-   />
-
-   <button className="primary full" disabled={loading} style={{marginTop:'16px'}}>
-    {loading ? 'Signing in…' : 'Sign In to Dashboard'}
-   </button>
-
-   {error && <div className="error" style={{marginTop:'12px'}}>{error}</div>}
-
-   <div style={{marginTop:'16px',padding:'10px 12px',background:'#070d18',border:'1px solid #1e293b',borderRadius:'8px',fontSize:'11.5px',color:'#7f94b0',lineHeight:1.5,textAlign:'left'}}>
-    <div style={{display:'flex',alignItems:'center',gap:'6px',color:'#c084fc',fontWeight:700,marginBottom:'2px'}}>
-     <ShieldCheck size={12}/> Admin Account
-    </div>
-    <span>Full farm controls, G-code execution, and guest user management.</span>
-    <div style={{display:'flex',alignItems:'center',gap:'6px',color:'#38bdf8',fontWeight:700,marginTop:'6px',marginBottom:'2px'}}>
-     <Eye size={12}/> Guest Account
-    </div>
-    <span>Real-time view-only access to assigned printers. Cannot cancel or stop prints.</span>
+   <h1>Sign in</h1>
+   <p>Monitor your printers and production.</p>
+   <label htmlFor="farm-login-email">Email address</label>
+   <input id="farm-login-email" type="email" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} required/>
+   <label htmlFor="farm-login-password">Password</label>
+   <input id="farm-login-password" type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} required/>
+   {error && <div className="error" role="alert">{error}</div>}
+   <button className="primary full" disabled={loading}>{loading?'Signing in…':'Sign in'}</button>
+   <div className="loginAccess">
+    <span>{isLocal?<Wifi size={14}/>:<Globe size={14}/>} {isLocal?'Local LAN':'Remote access'}</span>
+    {alternativeUrl && <a href={alternativeUrl}>{isLocal?'Switch to Remote':'Switch to LAN'}</a>}
    </div>
   </form>
  </main>;
@@ -281,18 +211,28 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
  const isHoming=s==='homing';
  const progressVal=isDone?100:Math.max(0,Math.min(100,p.progress??0));
 
- return (
-  <article className={`fleetCard state-${effectiveStatus} ${hasRunout?'has-runout':''} ${hasIssue?'has-issue':''} ${isPrinting?'is-printing':''} ${isShutdown?'is-shutdown':''}`}>
-   {/* Transparent Battery Progress Fill Layer across entire printer bar */}
-   {(isPrinting||isDone||(isPaused&&progressVal>0))&&(
-    <div 
-     className={`fleetCardProgressFill ${isDone?'completed':''} ${isPaused?'paused':''}`} 
-     style={{width:`${progressVal}%`}}
-    >
-     <div className="batteryGlowEdge"/>
-    </div>
-   )}
+ const label = hasRunout ? 'Filament runout' : isShutdown ? 'Shutdown' : statusLabel(s).replaceAll('_', ' ');
+ const activeJob = isPrinting || isPaused || hasRunout || isDone;
+ const tone = hasRunout || isPaused ? 'amber' : hasIssue ? 'red' : isPrinting ? 'green' : isDone ? 'purple' : 'neutral';
+ const detailsId = 'printer-info-' + p.id;
 
+ return (
+  <section className={'monitorRow tone-'+tone+(activeJob&&progressVal>0?' has-charge':'')+(isDone?' charge-complete':'')} style={{'--job-charge':progressVal+'%'}}>
+   <div className="monitorSummary">
+    <div className="machineMark"><Printer size={19} aria-hidden="true"/></div>
+    <div className="machineName"><h3 title={p.name}>{p.name}</h3><span className="machineState"><i/>{label}</span></div>
+    <div className="jobBrief"><span title={p.file}>{p.file || 'No active job'}</span>
+     {activeJob && <div className="jobMeter"><i style={{width:progressVal+'%'}}/></div>}
+    </div>
+    <div className="machineTime">{activeJob && <strong>{Math.round(progressVal)}%</strong>}
+     {activeJob && !isDone && p.remainingTime != null && <small>{fmtDuration(p.remainingTime)} left</small>}
+    </div>
+    <button className="infoButton" aria-label={(showMore?'Less info for ':'More info for ')+p.name} aria-expanded={showMore} aria-controls={detailsId} onClick={()=>setShowMore(v=>!v)}>
+     {showMore?'Less info':'More info'}{showMore?<ChevronUp size={14}/>:<ChevronDown size={14}/>}
+    </button>
+   </div>
+   <div id={detailsId} className={'monitorDetails'+(showMore?' is-expanded':'')}>
+   <article className={`fleetCard state-${effectiveStatus} ${hasRunout?'has-runout':''} ${hasIssue?'has-issue':''} ${isPrinting?'is-printing':''} ${isShutdown?'is-shutdown':''}`}>
    {/* Orange Alert Fill for Filament Runout */}
    {hasRunout&&(
     <div className="fleetCardRunoutFill"/>
@@ -315,7 +255,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
       <div className="fleetPillWrap">
        <span className={'fleetPill '+(hasRunout ? 'orange' : color(effectiveStatus))}>
         <i/>
-        {hasRunout ? 'Filament Runout' : isShutdown ? 'Printer Shutdown' : effectiveStatus==='completed'?'Print Completed':effectiveStatus==='offline'?'Offline':effectiveStatus==='error'?'Printer Shutdown':effectiveStatus==='printing'?'Printing':effectiveStatus==='paused'?'Paused':effectiveStatus==='cancelled'?'Cancelled':effectiveStatus==='leveling'?'Leveling Bed':effectiveStatus==='homing'?'Homing Axes':effectiveStatus==='idle'?'Idle':effectiveStatus}
+        {hasRunout ? 'Filament Runout' : isShutdown ? 'Printer Shutdown' : effectiveStatus==='completed'?'Print Completed':effectiveStatus==='offline'?'Offline':effectiveStatus==='error'?'Printer error':effectiveStatus==='printing'?'Printing':effectiveStatus==='paused'?'Paused':effectiveStatus==='cancelled'?'Cancelled':effectiveStatus==='leveling'?'Leveling Bed':effectiveStatus==='homing'?'Homing Axes':effectiveStatus==='idle'?'Idle':effectiveStatus}
        </span>
       </div>
       <h3 className="fleetPrinterName" title={p.name}>{p.name}</h3>
@@ -333,48 +273,43 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
        {p.file||(isDone?'Print Finished':'No active G-code job')}
       </span>
      </div>
-     <div className="fleetProgressWrap">
+     {activeJob && <div className="fleetProgressWrap">
       <div className="fleetBar">
        <div 
         className={'fleetBarFill '+(hasRunout ? 'orange' : color(s))} 
-        style={{width:`${p.progress??0}%`}} 
+        style={{width:`${progressVal}%`}}
        />
       </div>
-      <span className="fleetProgressPct">{p.progress??0}%</span>
-     </div>
+      <span className="fleetProgressPct">{Math.round(progressVal)}%</span>
+     </div>}
      <div className="fleetJobFoot">
        {hasRunout ? (
         <div className="fleetTimeRow">
          {p.startedAt && (
           <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
-           <Play size={12} className="timeIcon"/>
-           <span className="timeLabel">Started:</span>
+           <span className="timeLabel"><Play size={12} className="timeIcon"/>Started</span>
            <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
           </span>
          )}
          <span className="fleetTimeBadge runout" title="Filament sensor triggered — spool is empty">
-          <AlertTriangle size={13} className="timeIcon"/>
-          <span className="timeLabel">Filament Runout:</span>
+          <span className="timeLabel"><AlertTriangle size={13} className="timeIcon"/>Filament Runout:</span>
           <strong className="timeValue">{p.runoutHoldSec ? `Change needed · Paused ${fmtDuration(p.runoutHoldSec)}` : 'Replace spool'}</strong>
          </span>
          {p.remainingTime != null && (
           <span className="fleetTimeBadge remaining" title="Estimated time left once resumed">
-           <Clock size={13} className="timeIcon"/>
-           <span className="timeLabel">Remaining:</span>
+           <span className="timeLabel"><Clock size={13} className="timeIcon"/>Remaining</span>
            <strong className="timeValue">{fmtDuration(p.remainingTime)}</strong>
           </span>
          )}
          {p.duration > 0 && (
           <span className="fleetTimeBadge totalTime" title={`Time this file has been running: ${fmtDuration(p.duration)}`}>
-           <Timer size={12} className="timeIcon"/>
-           <span className="timeLabel">Total Time:</span>
+           <span className="timeLabel"><Timer size={12} className="timeIcon"/>Total time</span>
            <strong className="timeValue">{fmtDuration(p.duration)}</strong>
           </span>
          )}
          {p.jobHoldSec > 0 && (
           <span className="fleetTimeBadge holdTime" title={`Filament change hold time: ${fmtDuration(p.jobHoldSec)}`}>
-           <Pause size={13} className="timeIcon"/>
-           <span className="timeLabel">Filament Change:</span>
+           <span className="timeLabel"><Pause size={13} className="timeIcon"/>Filament Change:</span>
            <strong className="timeValue">{fmtDuration(p.jobHoldSec)}</strong>
           </span>
          )}
@@ -383,21 +318,18 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
         <div className="fleetTimeRow errorRow">
          {p.startedAt && p.file && (
           <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
-           <Play size={12} className="timeIcon"/>
-           <span className="timeLabel">Started:</span>
+           <span className="timeLabel"><Play size={12} className="timeIcon"/>Started</span>
            <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
           </span>
          )}
          {p.duration > 0 && p.file && (
           <span className="fleetTimeBadge totalTime" title={`Elapsed print time before error: ${fmtDuration(p.duration)}`}>
-           <Timer size={12} className="timeIcon"/>
-           <span className="timeLabel">Total Time:</span>
+           <span className="timeLabel"><Timer size={12} className="timeIcon"/>Total time</span>
            <strong className="timeValue">{fmtDuration(p.duration)}</strong>
           </span>
          )}
          <span className="fleetTimeBadge errorTime" title={`Error active for ${p.errorSec > 0 ? fmtDuration(p.errorSec) : 'just now'}: ${p.shutdownReason || p.error || 'Printer error'}`}>
-          <AlertTriangle size={13} className="timeIcon"/>
-          <span className="timeLabel">{isShutdown ? 'Shutdown Time:' : 'Error Time:'}</span>
+          <span className="timeLabel"><AlertTriangle size={13} className="timeIcon"/>{isShutdown ? 'Shutdown Time:' : 'Error Time:'}</span>
           <strong className="timeValue">{p.errorSec > 0 ? fmtDuration(p.errorSec) : 'Active'}</strong>
          </span>
         </div>
@@ -405,46 +337,40 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
         <div className="fleetTimeRow">
          {p.startedAt && (
           <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
-           <Play size={12} className="timeIcon"/>
-           <span className="timeLabel">Started:</span>
+           <span className="timeLabel"><Play size={12} className="timeIcon"/>Started</span>
            <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
           </span>
          )}
 
          <span className="fleetTimeBadge remaining" title="Estimated time left">
-          <Clock size={13} className="timeIcon"/>
-          <span className="timeLabel">Remaining:</span>
+          <span className="timeLabel"><Clock size={13} className="timeIcon"/>Remaining</span>
           <strong className="timeValue">{p.remainingTime != null ? fmtDuration(p.remainingTime) : '—'}</strong>
          </span>
 
          {p.eta && (
           <span className="fleetTimeBadge completedBy" title="Estimated completion time">
-           <CheckCircle2 size={13} className="timeIcon"/>
-           <span className="timeLabel">Completed by:</span>
+           <span className="timeLabel"><CheckCircle2 size={13} className="timeIcon"/>Estimated finish</span>
            <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
           </span>
          )}
 
          {p.duration > 0 && (
           <span className="fleetTimeBadge totalTime" title={`Time this file has been running: ${fmtDuration(p.duration)}`}>
-           <Timer size={12} className="timeIcon"/>
-           <span className="timeLabel">Total Time:</span>
+           <span className="timeLabel"><Timer size={12} className="timeIcon"/>Total time</span>
            <strong className="timeValue">{fmtDuration(p.duration)}</strong>
           </span>
          )}
 
          {p.jobHoldSec > 0 && (
           <span className="fleetTimeBadge holdTime" title={`Filament change hold time: ${fmtDuration(p.jobHoldSec)}`}>
-           <Pause size={13} className="timeIcon"/>
-           <span className="timeLabel">Filament Change:</span>
+           <span className="timeLabel"><Pause size={13} className="timeIcon"/>Filament Change:</span>
            <strong className="timeValue">{fmtDuration(p.jobHoldSec)}</strong>
           </span>
          )}
 
          {p.speedFactor && p.speedFactor !== 1 && (
           <span className="fleetTimeBadge speedFactor" title={`Printing speed override: ${Math.round(p.speedFactor * 100)}%`}>
-           <Zap size={13} className="timeIcon"/>
-           <span className="timeLabel">Speed:</span>
+           <span className="timeLabel"><Zap size={13} className="timeIcon"/>Speed:</span>
            <strong className="timeValue">{Math.round(p.speedFactor * 100)}%</strong>
           </span>
          )}
@@ -453,24 +379,21 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
         <div className="fleetTimeRow completedRow">
          {p.startedAt && (
           <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
-           <Play size={12} className="timeIcon"/>
-           <span className="timeLabel">Started:</span>
+           <span className="timeLabel"><Play size={12} className="timeIcon"/>Started</span>
            <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
           </span>
          )}
 
          {p.completedAt && (
           <span className="fleetTimeBadge completedAt" title={`Print finished at ${formatCompletedTime(p.completedAt)}`}>
-           <CheckCircle2 size={13} className="timeIcon"/>
-           <span className="timeLabel">Completed:</span>
+           <span className="timeLabel"><CheckCircle2 size={13} className="timeIcon"/>Completed:</span>
            <strong className="timeValue">{formatCompletedTime(p.completedAt)}</strong>
           </span>
          )}
 
          {p.duration > 0 && (
           <span className="fleetTimeBadge totalTime" title={`Total print time taken: ${fmtDuration(p.duration)}`}>
-           <Timer size={12} className="timeIcon"/>
-           <span className="timeLabel">Total Time:</span>
+           <span className="timeLabel"><Timer size={12} className="timeIcon"/>Total time</span>
            <strong className="timeValue">{fmtDuration(p.duration)}</strong>
           </span>
          )}
@@ -489,8 +412,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
        ) : isIdle ? (
         <div className="fleetTimeRow">
          <span className="fleetTimeBadge idle" title={p.idleSec ? `Printer has been idle for ${fmtDuration(p.idleSec)}` : 'Printer is idle and ready'}>
-          <Clock size={12} className="timeIcon"/>
-          <span className="timeLabel">Idle Time:</span>
+          <span className="timeLabel"><Clock size={12} className="timeIcon"/>Idle Time:</span>
           <strong className="timeValue">{p.idleSec > 0 ? fmtDuration(p.idleSec) : 'Just Now'}</strong>
          </span>
          <span className="fleetTimeBadge idleReady">
@@ -501,54 +423,47 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
         <div className="fleetTimeRow">
          {p.startedAt && (
           <span className="fleetTimeBadge startedAt" title={`Print job started at ${formatStartTime(p.startedAt)}`}>
-           <Play size={12} className="timeIcon"/>
-           <span className="timeLabel">Started:</span>
+           <span className="timeLabel"><Play size={12} className="timeIcon"/>Started</span>
            <strong className="timeValue">{formatStartTime(p.startedAt)}</strong>
           </span>
          )}
 
          <span className="fleetTimeBadge paused">
-          <Pause size={13} className="timeIcon"/>
-          <span className="timeLabel">Paused ·</span>
+          <span className="timeLabel"><Pause size={13} className="timeIcon"/>Paused ·</span>
           <strong className="timeValue">{p.remainingTime != null ? fmtDuration(p.remainingTime) : '—'} left</strong>
          </span>
 
          {p.pausedSec > 0 && (
           <span className="fleetTimeBadge pausedTime" title={`Paused for ${fmtDuration(p.pausedSec)}`}>
-           <Clock size={12} className="timeIcon"/>
-           <span className="timeLabel">Paused Time:</span>
+           <span className="timeLabel"><Clock size={12} className="timeIcon"/>Paused Time:</span>
            <strong className="timeValue">{fmtDuration(p.pausedSec)}</strong>
           </span>
          )}
 
          {p.eta && (
           <span className="fleetTimeBadge completedBy">
-           <CheckCircle2 size={13} className="timeIcon"/>
-           <span className="timeLabel">Completed by:</span>
+           <span className="timeLabel"><CheckCircle2 size={13} className="timeIcon"/>Estimated finish</span>
            <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
           </span>
          )}
 
          {p.duration > 0 && (
           <span className="fleetTimeBadge totalTime" title={`Time this file has been running: ${fmtDuration(p.duration)}`}>
-           <Timer size={12} className="timeIcon"/>
-           <span className="timeLabel">Total Time:</span>
+           <span className="timeLabel"><Timer size={12} className="timeIcon"/>Total time</span>
            <strong className="timeValue">{fmtDuration(p.duration)}</strong>
           </span>
          )}
 
          {p.jobHoldSec > 0 && (
           <span className="fleetTimeBadge holdTime" title={`Filament change hold time: ${fmtDuration(p.jobHoldSec)}`}>
-           <Pause size={13} className="timeIcon"/>
-           <span className="timeLabel">Filament Change:</span>
+           <span className="timeLabel"><Pause size={13} className="timeIcon"/>Filament Change:</span>
            <strong className="timeValue">{fmtDuration(p.jobHoldSec)}</strong>
           </span>
          )}
 
          {p.speedFactor && p.speedFactor !== 1 && (
           <span className="fleetTimeBadge speedFactor" title={`Printing speed override: ${Math.round(p.speedFactor * 100)}%`}>
-           <Zap size={13} className="timeIcon"/>
-           <span className="timeLabel">Speed:</span>
+           <span className="timeLabel"><Zap size={13} className="timeIcon"/>Speed:</span>
            <strong className="timeValue">{Math.round(p.speedFactor * 100)}%</strong>
           </span>
          )}
@@ -556,8 +471,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
        ) : (
         <div className="fleetTimeRow">
          <span className="fleetTimeBadge standby" title={p.idleSec ? `Standby for ${fmtDuration(p.idleSec)}` : 'Printer on standby'}>
-          <Clock size={12} className="timeIcon"/>
-          <span className="timeLabel">Standby:</span>
+          <span className="timeLabel"><Clock size={12} className="timeIcon"/>Standby:</span>
           <strong className="timeValue">{p.idleSec > 0 ? fmtDuration(p.idleSec) : 'Ready'}</strong>
          </span>
         </div>
@@ -565,30 +479,30 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
       </div>
     </div>
 
-    {/* Col 3: Telemetry Metrics */}
-    <div className="fleetCol metrics">
-     <div className="fleetMetricItem">
-      <div className="fleetMetricLabel"><Thermometer size={11}/> Nozzle</div>
-      <div className="fleetMetricVal">
-       {temp(p.nozzle)}{p.nozzleTarget?` / ${p.nozzleTarget}°`:''}
-      </div>
-     </div>
-     <div className="fleetMetricItem">
-      <div className="fleetMetricLabel"><Thermometer size={11}/> Bed</div>
-      <div className="fleetMetricVal">
-       {temp(p.bed)}{p.bedTarget?` / ${p.bedTarget}°`:''}
-      </div>
-     </div>
-     <div className="fleetMetricItem">
-      <div className="fleetMetricLabel"><Layers size={11}/> Layer</div>
-      <div className="fleetMetricVal">
-       {p.layer!=null?`${p.layer}${p.totalLayers?' / '+p.totalLayers:''}`:p.z!=null?`${p.z.toFixed(1)} mm`:'—'}
-      </div>
-     </div>
-    </div>
-
-    {/* Col 4: Badges & Action Buttons */}
     <div className="fleetCol actions">
+     <details className="fleetReadings">
+      <summary aria-label={p.name+' printer readings'}><Thermometer size={13}/> Readings <ChevronDown size={12} className="readingsChevron"/></summary>
+      <div className="fleetCol metrics">
+       <div className="fleetMetricItem">
+        <div className="fleetMetricLabel"><Thermometer size={11}/> Nozzle</div>
+        <div className="fleetMetricVal">
+         {temp(p.nozzle)}{p.nozzleTarget?` / ${p.nozzleTarget}°`:''}
+        </div>
+       </div>
+       <div className="fleetMetricItem">
+        <div className="fleetMetricLabel"><Thermometer size={11}/> Bed</div>
+        <div className="fleetMetricVal">
+         {temp(p.bed)}{p.bedTarget?` / ${p.bedTarget}°`:''}
+        </div>
+       </div>
+       <div className="fleetMetricItem">
+        <div className="fleetMetricLabel"><Layers size={11}/> Layer</div>
+        <div className="fleetMetricVal">
+         {p.layer!=null?`${p.layer}${p.totalLayers?' / '+p.totalLayers:''}`:p.z!=null?`${p.z.toFixed(1)} mm`:'—'}
+        </div>
+       </div>
+      </div>
+     </details>
      {isAdmin&&isShutdown&&(
       <button 
        className="fleetBtn restart" 
@@ -619,12 +533,11 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
        title="Remote controls, emergency actions & terminal console"
       >
        <Sliders size={13}/>
-       <span>Control</span>
+       <span>{isLocal?'Control':'Remote control'}</span>
       </button>
      )}
-     {printerUrl&&(
-      isLocal ? (
-       <a 
+     {isLocal&&printerUrl&&(
+       <a
         href={printerUrl} 
         target="_blank" 
         rel="noreferrer" 
@@ -634,18 +547,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
         <ExternalLink size={13}/>
         <span>Web UI</span>
        </a>
-      ) : (
-       <button
-        type="button"
-        className="fleetBtn webui remote"
-        onClick={()=>onOpenControl(p)}
-        title={`Remote Access: Open ${p.name} live elements & controls (Fluidd direct link requires local farm Wi-Fi)`}
-       >
-        <Layers size={13}/>
-        <span>Remote UI</span>
-       </button>
-      )
-     )}
+      )}
     </div>
    </div>
    </div>
@@ -666,7 +568,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
      <div className="fleetMobPillWrap">
       <span className={'fleetPill '+(hasRunout ? 'orange' : color(effectiveStatus))}>
        <i/>
-       {hasRunout ? 'Filament Runout' : isShutdown ? 'Printer Shutdown' : effectiveStatus==='completed'?'Print Completed':effectiveStatus==='offline'?'Offline':effectiveStatus==='error'?'Printer Shutdown':effectiveStatus==='printing'?'Printing':effectiveStatus==='paused'?'Paused':effectiveStatus==='cancelled'?'Cancelled':effectiveStatus==='leveling'?'Leveling':effectiveStatus==='homing'?'Homing':effectiveStatus==='idle'?'Idle':effectiveStatus}
+       {hasRunout ? 'Filament Runout' : isShutdown ? 'Printer Shutdown' : effectiveStatus==='completed'?'Print Completed':effectiveStatus==='offline'?'Offline':effectiveStatus==='error'?'Printer error':effectiveStatus==='printing'?'Printing':effectiveStatus==='paused'?'Paused':effectiveStatus==='cancelled'?'Cancelled':effectiveStatus==='leveling'?'Leveling':effectiveStatus==='homing'?'Homing':effectiveStatus==='idle'?'Idle':effectiveStatus}
       </span>
      </div>
     </div>
@@ -683,70 +585,48 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
       <div className="fleetMobBar">
        <div 
         className={'fleetMobBarFill '+(hasRunout ? 'orange' : color(s))} 
-        style={{width:`${progressVal}%`}} 
+        style={{width:`${progressVal}%`}}
        />
       </div>
       <span className="fleetMobProgressPct">{Math.round(progressVal)}%</span>
      </div>
     </div>
 
-    {/* 3. Primary Time: ONLY Completed by time (ETA) directly visible */}
-    <div className="fleetMobPrimaryTimeRow">
-     {hasRunout ? (
-      <span className="fleetTimeBadge runout" title="Filament sensor triggered">
-       <AlertTriangle size={13} className="timeIcon"/>
-       <span className="timeLabel">Filament Runout:</span>
-       <strong className="timeValue">{p.runoutHoldSec ? `Paused ${fmtDuration(p.runoutHoldSec)}` : 'Spool empty'}</strong>
-      </span>
-     ) : (isShutdown || isError) ? (
-      <span className="fleetTimeBadge errorTime" title={p.shutdownReason || p.error || 'Printer error'}>
-       <AlertTriangle size={13} className="timeIcon"/>
-       <span className="timeLabel">{isShutdown ? 'Shutdown:' : 'Error:'}</span>
-       <strong className="timeValue">{p.errorSec > 0 ? fmtDuration(p.errorSec) : 'Active'}</strong>
-      </span>
-     ) : isDone ? (
-      <span className="fleetTimeBadge completedAt" title="Print completed">
-       <CheckCircle2 size={13} className="timeIcon"/>
-       <span className="timeLabel">Completed:</span>
-       <strong className="timeValue">{p.completedAt ? formatCompletedTime(p.completedAt) : 'Done'}</strong>
-      </span>
-     ) : (isPrinting || isPaused) ? (
-      p.eta ? (
-       <span className="fleetTimeBadge completedBy" title="Estimated finish time">
-        <CheckCircle2 size={13} className="timeIcon"/>
-        <span className="timeLabel">Completed by:</span>
-        <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
-       </span>
-      ) : p.remainingTime != null ? (
-       <span className="fleetTimeBadge remaining" title="Estimated time left">
-        <Clock size={13} className="timeIcon"/>
-        <span className="timeLabel">Remaining:</span>
-        <strong className="timeValue">{fmtDuration(p.remainingTime)}</strong>
-       </span>
-      ) : (
-       <span className="fleetTimeBadge standby">
-        <Clock size={13} className="timeIcon"/>
-        <span className="timeLabel">Calculating ETA...</span>
-       </span>
-      )
-     ) : isIdle ? (
-      <span className="fleetTimeBadge idle" title="Printer is idle">
-       <Clock size={12} className="timeIcon"/>
-       <span className="timeLabel">Idle Time:</span>
-       <strong className="timeValue">{p.idleSec > 0 ? fmtDuration(p.idleSec) : 'Just Now'}</strong>
-      </span>
-     ) : (
-      <span className="fleetTimeBadge standby">
-       <Clock size={12} className="timeIcon"/>
-       <span className="timeLabel">Status:</span>
-       <strong className="timeValue">{effectiveStatus}</strong>
-      </span>
-     )}
-    </div>
-
     {/* 4. Action Bar: Control, Web UI / Remote UI, and More Details Toggle */}
     <div className="fleetMobActionBar">
      <div className="fleetMobActionButtons">
+      <details className="fleetReadings mobileReadings" key={String(showMore)}>
+       <summary aria-label={p.name+' printer readings'}><Thermometer size={13}/> Readings <ChevronDown size={12} className="readingsChevron"/></summary>
+       <small className="mobileReadingsConnection">{p.host||'Unknown host'} · Port {p.port||80}</small>
+       <div className="mobMetricsGrid">
+        <div className="mobMetricCard">
+         <div className="mobMetricHead"><Thermometer size={12}/> Nozzle</div>
+         <div className="mobMetricValue">
+          {temp(p.nozzle)}
+          {p.nozzleTarget ? <span className="mobMetricTarget"> / {p.nozzleTarget}°</span> : null}
+         </div>
+        </div>
+        <div className="mobMetricCard">
+         <div className="mobMetricHead"><Thermometer size={12}/> Bed</div>
+         <div className="mobMetricValue">
+          {temp(p.bed)}
+          {p.bedTarget ? <span className="mobMetricTarget"> / {p.bedTarget}°</span> : null}
+         </div>
+        </div>
+        <div className="mobMetricCard">
+         <div className="mobMetricHead"><Layers size={12}/> Layer</div>
+         <div className="mobMetricValue">
+          {p.layer!=null?`${p.layer}${p.totalLayers?' / '+p.totalLayers:''}`:p.z!=null?`${p.z.toFixed(1)} mm`:'—'}
+         </div>
+        </div>
+        <div className="mobMetricCard">
+         <div className="mobMetricHead"><Activity size={12}/> Sensor</div>
+         <div className="mobMetricValue" style={{fontSize:'12px',fontWeight:700,color:hasRunout?'#f97316':p.filamentSensor===false?'#f87171':'#34d399'}}>
+          {hasRunout ? 'Runout' : p.filamentSensor === false ? 'Triggered' : p.filamentSensor === true ? 'Filament OK' : 'Unknown'}
+         </div>
+        </div>
+       </div>
+      </details>
       {isAdmin&&isShutdown&&(
        <button 
         className="fleetBtn restart" 
@@ -774,12 +654,11 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
         title="Remote controls and tools"
        >
         <Sliders size={13}/>
-        <span>Control</span>
+        <span>{isLocal?'Control':'Remote control'}</span>
        </button>
       )}
-      {printerUrl&&(
-       isLocal ? (
-        <a 
+      {isLocal&&printerUrl&&(
+       <a
          href={printerUrl} 
          target="_blank" 
          rel="noreferrer" 
@@ -789,38 +668,66 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
          <ExternalLink size={13}/>
          <span>Web UI</span>
         </a>
-       ) : (
-        <button
-         type="button"
-         className="fleetBtn webui remote"
-         onClick={()=>onOpenControl(p)}
-         title="Remote UI"
-        >
-         <Layers size={13}/>
-         <span>Remote UI</span>
-        </button>
-       )
       )}
      </div>
 
-     {/* More Info / Less Info Toggle Button */}
-     <button
-      type="button"
-      className={`fleetMobMoreToggleBtn ${showMore ? 'active' : ''}`}
-      onClick={()=>setShowMore(prev=>!prev)}
-      aria-expanded={showMore}
-      title="Toggle extra timers, nozzle/bed temperatures and details"
-     >
-      <span>{showMore ? 'Less Details' : 'More Details'}</span>
-      {showMore ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
-     </button>
     </div>
 
-    {/* 5. Expandable "More Details" Drawer (Smooth slide-down) */}
-    {showMore && (
-     <div className="fleetMobExpandedSection">
+    <div className="fleetMobExpandedSection">
       {/* Secondary Print Timers */}
       <div className="mobSecondaryTimes">
+       <div className="fleetMobPrimaryTimeRow">
+        {hasRunout ? (
+         <span className="fleetTimeBadge runout" title="Filament sensor triggered">
+          <AlertTriangle size={13} className="timeIcon"/>
+          <span className="timeLabel">Filament Runout:</span>
+          <strong className="timeValue">{p.runoutHoldSec ? `Paused ${fmtDuration(p.runoutHoldSec)}` : 'Spool empty'}</strong>
+         </span>
+        ) : (isShutdown || isError) ? (
+         <span className="fleetTimeBadge errorTime" title={p.shutdownReason || p.error || 'Printer error'}>
+          <AlertTriangle size={13} className="timeIcon"/>
+          <span className="timeLabel">{isShutdown ? 'Shutdown:' : 'Error:'}</span>
+          <strong className="timeValue">{p.errorSec > 0 ? fmtDuration(p.errorSec) : 'Active'}</strong>
+         </span>
+        ) : isDone ? (
+         <span className="fleetTimeBadge completedAt" title="Print completed">
+          <CheckCircle2 size={13} className="timeIcon"/>
+          <span className="timeLabel">Completed:</span>
+          <strong className="timeValue">{p.completedAt ? formatCompletedTime(p.completedAt) : 'Done'}</strong>
+         </span>
+        ) : (isPrinting || isPaused) ? (
+         p.eta ? (
+          <span className="fleetTimeBadge completedBy" title="Estimated finish time">
+           <CheckCircle2 size={13} className="timeIcon"/>
+           <span className="timeLabel">Estimated finish</span>
+           <strong className="timeValue">{formatFinishTime(p.eta)}</strong>
+          </span>
+         ) : p.remainingTime != null ? (
+          <span className="fleetTimeBadge remaining" title="Estimated time left">
+           <Clock size={13} className="timeIcon"/>
+           <span className="timeLabel">Remaining</span>
+           <strong className="timeValue">{fmtDuration(p.remainingTime)}</strong>
+          </span>
+         ) : (
+          <span className="fleetTimeBadge standby">
+           <Clock size={13} className="timeIcon"/>
+           <span className="timeLabel">Calculating ETA...</span>
+          </span>
+         )
+        ) : isIdle ? (
+         <span className="fleetTimeBadge idle" title="Printer is idle">
+          <Clock size={12} className="timeIcon"/>
+          <span className="timeLabel">Idle Time:</span>
+          <strong className="timeValue">{p.idleSec > 0 ? fmtDuration(p.idleSec) : 'Just Now'}</strong>
+         </span>
+        ) : (
+         <span className="fleetTimeBadge standby">
+          <Clock size={12} className="timeIcon"/>
+          <span className="timeLabel">Status:</span>
+          <strong className="timeValue">{effectiveStatus}</strong>
+         </span>
+        )}
+       </div>
        {p.startedAt && (
         <div className="mobTimeItem startedAt" title={`Started at ${formatStartTime(p.startedAt)}`}>
          <span className="mobTimeLabel"><Play size={11}/> Started:</span>
@@ -833,7 +740,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
          <strong className="mobTimeVal">{fmtDuration(p.duration)}</strong>
         </div>
        )}
-       {p.remainingTime != null && (
+       {p.remainingTime != null && (!((isPrinting||isPaused)&&!p.eta)) && (
         <div className="mobTimeItem remaining" title={`Estimated time remaining: ${fmtDuration(p.remainingTime)}`}>
          <span className="mobTimeLabel"><Clock size={11}/> Remaining:</span>
          <strong className="mobTimeVal">{fmtDuration(p.remainingTime)}</strong>
@@ -851,45 +758,9 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
          <strong className="mobTimeVal">{Math.round(p.speedFactor * 100)}%</strong>
         </div>
        )}
-       {isDone && p.completedAt && (
-        <div className="mobTimeItem completedAt" title={`Completed at ${formatCompletedTime(p.completedAt)}`}>
-         <span className="mobTimeLabel"><CheckCircle2 size={11}/> Finished:</span>
-         <strong className="mobTimeVal">{formatCompletedTime(p.completedAt)}</strong>
-        </div>
-       )}
       </div>
 
-      {/* Live Hardware Telemetry Grid (Nozzle, Bed, Layer, Sensor) */}
-      <div className="mobMetricsGrid">
-       <div className="mobMetricCard">
-        <div className="mobMetricHead"><Thermometer size={12}/> Nozzle</div>
-        <div className="mobMetricValue">
-         {temp(p.nozzle)}
-         {p.nozzleTarget ? <span className="mobMetricTarget"> / {p.nozzleTarget}°</span> : null}
-        </div>
-       </div>
-       <div className="mobMetricCard">
-        <div className="mobMetricHead"><Thermometer size={12}/> Bed</div>
-        <div className="mobMetricValue">
-         {temp(p.bed)}
-         {p.bedTarget ? <span className="mobMetricTarget"> / {p.bedTarget}°</span> : null}
-        </div>
-       </div>
-       <div className="mobMetricCard">
-        <div className="mobMetricHead"><Layers size={12}/> Layer</div>
-        <div className="mobMetricValue">
-         {p.layer!=null?`${p.layer}${p.totalLayers?' / '+p.totalLayers:''}`:p.z!=null?`${p.z.toFixed(1)} mm`:'—'}
-        </div>
-       </div>
-       <div className="mobMetricCard">
-        <div className="mobMetricHead"><Activity size={12}/> Sensor</div>
-        <div className="mobMetricValue" style={{fontSize:'12px',fontWeight:700,color:hasRunout?'#f97316':p.filamentSensor===false?'#f87171':'#34d399'}}>
-         {hasRunout ? 'Runout' : p.filamentSensor === false ? 'Triggered' : 'Filament OK'}
-        </div>
-       </div>
-      </div>
-     </div>
-    )}
+    </div>
    </div>
 
    {/* Filament Runout Banner with Step-by-Step Instructions */}
@@ -1017,6 +888,8 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
     </div>
    )}
   </article>
+   </div>
+  </section>
  );
 }
 
@@ -1429,7 +1302,7 @@ function UsersManager({printers = [], currentUser}){
   <div className="usersManagerWrap">
    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px',flexWrap:'wrap',gap:'10px'}}>
     <div>
-     <h3 style={{fontSize:'16px',fontWeight:700,color:'#f8fafc',margin:0}}>User & Guest Accounts</h3>
+     <h3 style={{fontSize:'16px',fontWeight:700,color:'var(--farm-ink)',margin:0}}>User & Guest Accounts</h3>
      <p style={{fontSize:'12.5px',color:'#8fa2bc',margin:'2px 0 0'}}>
       Manage user logins, Admin privileges, and Guest view-only printer assignments.
      </p>
@@ -1445,7 +1318,7 @@ function UsersManager({printers = [], currentUser}){
    {error && <div className="tgFeedback error" style={{marginBottom:'14px'}}>{error}</div>}
 
    {showAddForm && (
-    <form onSubmit={handleSave} className="card" style={{background:'#0c1424',border:'1px solid #1e3a5f',borderRadius:'10px',padding:'16px 18px',marginBottom:'18px'}}>
+    <form onSubmit={handleSave} className="card" style={{background:'var(--farm-panel)',border:'1px solid #1e3a5f',borderRadius:'10px',padding:'16px 18px',marginBottom:'18px'}}>
      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px',borderBottom:'1px solid #1a273e',paddingBottom:'8px'}}>
       <strong style={{fontSize:'14px',color:'#38bdf8',display:'flex',alignItems:'center',gap:'6px'}}>
        {editingUser ? <Users size={16}/> : <UserPlus size={16}/>}
@@ -1463,7 +1336,7 @@ function UsersManager({printers = [], currentUser}){
         onChange={e=>setFormEmail(e.target.value)} 
         placeholder="guest@example.com" 
         required 
-        style={{background:'#080e18',border:'1px solid #1e2c40',padding:'8px 10px',borderRadius:'6px',color:'#fff',fontSize:'13px'}}
+        style={{background:'var(--farm-canvas)',border:'1px solid #1e2c40',padding:'8px 10px',borderRadius:'6px',color:'var(--farm-ink)',fontSize:'13px'}}
        />
       </label>
 
@@ -1474,7 +1347,7 @@ function UsersManager({printers = [], currentUser}){
         value={formName} 
         onChange={e=>setFormName(e.target.value)} 
         placeholder="e.g. Workshop Guest" 
-        style={{background:'#080e18',border:'1px solid #1e2c40',padding:'8px 10px',borderRadius:'6px',color:'#fff',fontSize:'13px'}}
+        style={{background:'var(--farm-canvas)',border:'1px solid #1e2c40',padding:'8px 10px',borderRadius:'6px',color:'var(--farm-ink)',fontSize:'13px'}}
        />
       </label>
 
@@ -1487,7 +1360,7 @@ function UsersManager({printers = [], currentUser}){
         placeholder={editingUser ? '•••••••• (unchanged)' : 'Min 6 characters'} 
         required={!editingUser}
         minLength={formPassword ? 6 : undefined}
-        style={{background:'#080e18',border:'1px solid #1e2c40',padding:'8px 10px',borderRadius:'6px',color:'#fff',fontSize:'13px'}}
+        style={{background:'var(--farm-canvas)',border:'1px solid #1e2c40',padding:'8px 10px',borderRadius:'6px',color:'var(--farm-ink)',fontSize:'13px'}}
        />
       </label>
 
@@ -1496,7 +1369,7 @@ function UsersManager({printers = [], currentUser}){
        <select 
         value={formRole} 
         onChange={e=>setFormRole(e.target.value)}
-        style={{background:'#080e18',border:'1px solid #1e2c40',padding:'8px 10px',borderRadius:'6px',color:'#fff',fontSize:'13px'}}
+        style={{background:'var(--farm-canvas)',border:'1px solid #1e2c40',padding:'8px 10px',borderRadius:'6px',color:'var(--farm-ink)',fontSize:'13px'}}
        >
         <option value="guest">Guest (View Only — No Stops or Controls)</option>
         <option value="admin">Admin (Full Control + Management)</option>
@@ -1505,9 +1378,9 @@ function UsersManager({printers = [], currentUser}){
      </div>
 
      {/* Printer Assignment Selection */}
-     <div style={{background:'#070d18',border:'1px solid #162438',borderRadius:'8px',padding:'12px 14px',marginBottom:'14px'}}>
+     <div style={{background:'var(--farm-canvas)',border:'1px solid #162438',borderRadius:'8px',padding:'12px 14px',marginBottom:'14px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
-       <span style={{fontSize:'12px',fontWeight:700,color:'#cbd5e1'}}>Assigned Printers Access</span>
+       <span style={{fontSize:'12px',fontWeight:700,color:'var(--farm-muted)'}}>Assigned Printers Access</span>
        <span style={{fontSize:'11px',color:'#64748b'}}>
         {formPrinters.includes('*') ? 'Can view all printers' : `Assigned to ${formPrinters.length} printer(s)`}
        </span>
@@ -1550,18 +1423,18 @@ function UsersManager({printers = [], currentUser}){
    )}
 
    {/* Users Table */}
-   <div className="card" style={{padding:0,overflow:'hidden',background:'#0c1322',border:'1px solid #162032'}}>
-    <table style={{width:'100%',borderCollapse:'collapse',textAlign:'left',fontSize:'12.5px'}}>
-     <thead>
-      <tr style={{background:'#080e18',borderBottom:'1px solid #162032',color:'#64748b',fontSize:'11px',textTransform:'uppercase',letterSpacing:'0.5px'}}>
-       <th style={{padding:'10px 14px'}}>User / Email</th>
-       <th style={{padding:'10px 14px'}}>Name</th>
-       <th style={{padding:'10px 14px'}}>Role</th>
-       <th style={{padding:'10px 14px'}}>Assigned Printers</th>
-       <th style={{padding:'10px 14px',textAlign:'right'}}>Actions</th>
+   <div className="card" style={{padding:0,overflow:'hidden',background:'var(--farm-panel)',border:'1px solid #162032'}}>
+    <table className="settingsUsersTable" role="table" style={{width:'100%',borderCollapse:'collapse',textAlign:'left',fontSize:'12.5px'}}>
+     <thead role="rowgroup">
+      <tr role="row" style={{background:'var(--farm-canvas)',borderBottom:'1px solid #162032',color:'#64748b',fontSize:'11px',textTransform:'uppercase',letterSpacing:'0.5px'}}>
+       <th role="columnheader" style={{padding:'10px 14px'}}>User / Email</th>
+       <th role="columnheader" style={{padding:'10px 14px'}}>Name</th>
+       <th role="columnheader" style={{padding:'10px 14px'}}>Role</th>
+       <th role="columnheader" style={{padding:'10px 14px'}}>Assigned Printers</th>
+       <th role="columnheader" style={{padding:'10px 14px',textAlign:'right'}}>Actions</th>
       </tr>
      </thead>
-     <tbody>
+     <tbody role="rowgroup">
       {users.map(u => {
        const isCurrent = u.id === currentUser?.id || u.email === currentUser?.email;
        const assignedNames = u.assignedPrinters?.includes('*') 
@@ -1572,25 +1445,26 @@ function UsersManager({printers = [], currentUser}){
           }).join(', ') || 'None';
 
        return (
-        <tr key={u.id} style={{borderBottom:'1px solid #141e2e'}}>
-         <td style={{padding:'12px 14px'}}>
+        <tr role="row" key={u.id} style={{borderBottom:'1px solid #141e2e'}}>
+         <td role="cell" style={{padding:'12px 14px'}}>
           <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
            <Mail size={14} color="#64748b"/>
-           <strong style={{color:'#f8fafc'}}>{u.email}</strong>
+           <strong style={{color:'var(--farm-ink)'}}>{u.email}</strong>
            {isCurrent && <span style={{fontSize:'10px',background:'#1e293b',color:'#94a3b8',padding:'1px 5px',borderRadius:'4px'}}>You</span>}
           </div>
          </td>
-         <td style={{padding:'12px 14px',color:'#cbd5e1'}}>{u.name || '—'}</td>
-         <td style={{padding:'12px 14px'}}>
+         <td role="cell" style={{padding:'12px 14px',color:'var(--farm-muted)'}}>{u.name || '—'}</td>
+         <td role="cell" style={{padding:'12px 14px'}}>
           <span className={'roleBadge ' + (u.role === 'admin' ? 'admin' : 'guest')}>
            {u.role === 'admin' ? <ShieldCheck size={12}/> : <Eye size={12}/>}
            {u.role === 'admin' ? 'Admin' : 'Guest (View Only)'}
           </span>
          </td>
-         <td style={{padding:'12px 14px',color:'#94a3b8',fontSize:'12px'}}>
+         <td role="cell" className="settingsUserPrinters" style={{padding:'12px 14px',color:'#94a3b8',fontSize:'12px'}}>
+          <span className="settingsCellLabel">Assigned printers</span>
           {assignedNames}
          </td>
-         <td style={{padding:'12px 14px',textAlign:'right'}}>
+         <td role="cell" style={{padding:'12px 14px',textAlign:'right'}}>
           <div style={{display:'inline-flex',gap:'6px'}}>
            <button className="iconButton" onClick={()=>startEdit(u)} title="Edit user">
             <Sliders size={13}/>
@@ -1805,7 +1679,7 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
  const [sending,setSending]=useState(false);
  const [feedback,setFeedback]=useState(null);
  const [autoScroll,setAutoScroll]=useState(true);
- const [modalTab,setModalTab]=useState(()=>hasRunout ? 'fan' : 'jog'); // 'jog' | 'temp' | 'fan' | 'files' | 'terminal'
+ const [modalTab,setModalTab]=useState('job');
  const [files,setFiles]=useState([]);
  const [loadingFiles,setLoadingFiles]=useState(false);
  const [filesError,setFilesError]=useState(null);
@@ -1874,10 +1748,11 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
  }
 
  useEffect(()=>{
+  if(modalTab!=='terminal')return;
   loadLogs();
   const iv=setInterval(loadLogs,3000);
   return ()=>clearInterval(iv);
- },[p.id]);
+ },[p.id,modalTab]);
 
  useEffect(()=>{
   if(autoScroll&&logBoxRef.current){
@@ -1900,7 +1775,7 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
    });
    setFeedback({type:'success',text:`Command executed: ${action||gcode} (${r.result||'ok'})`});
    if(action==='gcode')setCmd('');
-   setTimeout(loadLogs,500);
+   if(modalTab==='terminal')setTimeout(loadLogs,500);
    setTimeout(onRefresh,800);
   }catch(err){
    setFeedback({type:'error',text:err.message});
@@ -1910,11 +1785,18 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
  }
 
  const s=p.status||'connecting';
+ const isIdle=s==='idle'||s==='standby';
+ const isShutdown=Boolean(p.isShutdown||p.shutdownReason||s==='shutdown');
+ const isError=s==='offline'||s==='error';
+ const canResume=s==='paused'||hasRunout;
+ const canPause=s==='printing'&&!hasRunout;
+ const advancedTabs=[['fan','Filament & fan',Wind],['jog','Motion',Compass],['terminal','Console',Terminal],['elements','Diagnostics',Activity]];
+ const primaryTabs=[['job','Current job',Activity],['files','Files',Folder],...(isAdmin?[['temp','Heat',Flame]]:[])];
  const printerUrl=p.host?`http://${p.host}${p.port&&p.port!==80?':'+p.port:''}`:null;
 
  return (
   <div className="modalBackdrop" onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
-   <div className="modalCard controlModal">
+   <div className="modalCard controlModal printerWorkspace" role="dialog" aria-modal="true" aria-label={p.name+' controls'}>
     {/* Header */}
     <div className="modalHeader">
      <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
@@ -1923,16 +1805,16 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
       </div>
       <div>
        <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-        <h2 style={{fontSize:'18px',margin:0,color:'#fff',fontWeight:800}}>{p.name}</h2>
+        <h2 style={{fontSize:'18px',margin:0,color:'var(--farm-ink)',fontWeight:800}}>{p.name}</h2>
         <span className={'pill '+(hasRunout ? 'orange' : color(s))} style={{fontSize:'10px',padding:'2px 8px'}}><i/>{hasRunout ? 'Filament Runout' : s === 'cancelled' ? 'Cancelled' : s === 'leveling' ? 'Leveling Bed' : s === 'homing' ? 'Homing' : s === 'completed' ? 'Completed' : s}</span>
        </div>
-       <div style={{fontSize:'11.5px',color:'#7f94b0',marginTop:'2px'}}>
-        {p.host}:{p.port||80} · {isLocal?'Direct LAN Link':'Relayed via Farm Host'} · Fluidd / Klipper
+       <div style={{fontSize:'11.5px',color:'var(--farm-muted)',marginTop:'2px'}}>
+        {isLocal?'Local connection':'Remote connection'} · {isLocal?'Direct LAN Link':'Relayed via Farm Host'} · Fluidd / Klipper
        </div>
       </div>
      </div>
      <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-      {printerUrl&&(
+      {isLocal&&printerUrl&&(
        <a href={printerUrl} target="_blank" rel="noreferrer" className="outline" style={{padding:'5px 10px',fontSize:'11.5px',gap:'5px'}} title="Open Fluidd Web Interface">
         <ExternalLink size={13}/> Web UI
        </a>
@@ -1941,45 +1823,11 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
      </div>
     </div>
 
-    {/* Guest View-Only Notice Banner */}
-    {!isAdmin&&(
-     <div style={{background:'rgba(56,189,248,0.12)',border:'1px solid rgba(56,189,248,0.3)',borderRadius:'8px',padding:'10px 14px',margin:'10px 18px 0',display:'flex',alignItems:'center',gap:'10px',color:'#38bdf8',fontSize:'12.5px'}}>
-      <Eye size={16}/>
-      <div>
-       <strong style={{color:'#7dd3fc'}}>Guest View-Only Mode</strong>
-       <span style={{display:'block',fontSize:'11.5px',color:'#cbd5e1',marginTop:'2px'}}>You have real-time monitoring access. Motion, heating, G-code execution, and print cancellations are disabled.</span>
-      </div>
-     </div>
-    )}
-
-    {/* Live Telemetry Summary Strip */}
     <div className="controlStatsBar">
-     <div>
-      <span>Nozzle</span>
-      <strong style={{color:'#f8fafc'}}>{temp(p.nozzle)}{p.nozzleTarget?` / ${p.nozzleTarget}°C`:' (Off)'}</strong>
-     </div>
-     <div>
-      <span>Heatbed</span>
-      <strong style={{color:'#f8fafc'}}>{temp(p.bed)}{p.bedTarget?` / ${p.bedTarget}°C`:' (Off)'}</strong>
-     </div>
-     <div>
-      <span>Current Job</span>
-      <strong title={p.file||'None'} style={{maxWidth:'140px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'inline-block'}}>
-       {p.file||'No active job'}
-      </strong>
-     </div>
-     <div>
-      <span>Progress</span>
-      <strong style={{color:'#34d399'}}>{p.progress??0}%</strong>
-     </div>
-     <div>
-      <span>{p.status==='completed' ? 'Total Time' : 'Remaining'}</span>
-      <strong style={{color:'#38bdf8'}}>
-       {p.status==='completed' ? (p.duration ? fmtDuration(p.duration) : '—') : (p.remainingTime!=null?fmtDuration(p.remainingTime):'—')}
-      </strong>
-     </div>
+     <div><span>Nozzle</span><strong>{temp(p.nozzle)}{p.nozzleTarget ? ' / '+p.nozzleTarget+'°C' : ''}</strong></div>
+     <div><span>Bed</span><strong>{temp(p.bed)}{p.bedTarget ? ' / '+p.bedTarget+'°C' : ''}</strong></div>
+     <div><span>Layer</span><strong>{p.layer==null?'—':p.layer+(p.totalLayers?' / '+p.totalLayers:'')}</strong></div>
     </div>
-
     {/* Action Feedback Banner */}
     {feedback&&(
      <div className={'ctrlFeedback '+(feedback.type==='error'?'error':'success')}>
@@ -1988,59 +1836,15 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
      </div>
     )}
 
-    {/* Filament Runout Alert Banner inside Control Modal */}
-    {hasRunout&&(
-     <div style={{background:'rgba(245,158,11,0.12)',border:'1px solid rgba(245,158,11,0.35)',borderRadius:'10px',margin:'10px 18px 0',padding:'12px 14px',display:'flex',flexDirection:'column',gap:'8px'}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'8px'}}>
-       <div style={{display:'flex',alignItems:'center',gap:'8px',color:'#fbbf24',fontWeight:700,fontSize:'13px'}}>
-        <AlertTriangle size={16}/>
-        <span>Filament Runout Active — Print Paused</span>
-       </div>
-       <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
-        <button 
-         className="chipBtn" 
-         disabled={sending} 
-         onClick={()=>sendCommand('gcode','M104 S210')}
-         style={{fontSize:'11px',padding:'4px 10px'}}
-        >
-         <Flame size={12} color="#fbbf24"/> Preheat 210°C
-        </button>
-        <button 
-         className="ctrlBtn resume" 
-         disabled={sending} 
-         onClick={()=>sendCommand('resume')}
-         style={{fontSize:'11px',padding:'4px 12px'}}
-        >
-         <Play size={12}/> Resume Print
-        </button>
-       </div>
-      </div>
-      <p style={{margin:0,fontSize:'11.5px',color:'#cbd5e1',lineHeight:1.5}}>
-       Spool is empty. To replace: preheat nozzle, load fresh filament into sensor, purge nozzle in <b>Extruder & Fan</b> tab, then click Resume Print.
-      </p>
-     </div>
-    )}
-
-    {/* Modal Navigation Tabs */}
-    <div className="ctrlTabsBar">
-     <button className={'ctrlTabBtn '+(modalTab==='jog'?'active':'')} onClick={()=>setModalTab('jog')}>
-      <Compass size={14}/> Jog & Motion
-     </button>
-     <button className={'ctrlTabBtn '+(modalTab==='temp'?'active':'')} onClick={()=>setModalTab('temp')}>
-      <Flame size={14}/> Temperatures & Preheats
-     </button>
-     <button className={'ctrlTabBtn '+(modalTab==='fan'?'active':'')} onClick={()=>setModalTab('fan')}>
-      <Wind size={14}/> Extruder & Fan
-     </button>
-     <button className={'ctrlTabBtn '+(modalTab==='files'?'active':'')} onClick={()=>{setModalTab('files');loadFiles();}}>
-      <Folder size={14}/> Jobs & Files{files.length > 0 ? ` (${files.length})` : ''}
-     </button>
-     <button className={'ctrlTabBtn '+(modalTab==='terminal'?'active':'')} onClick={()=>setModalTab('terminal')}>
-      <Terminal size={14}/> Console Terminal
-     </button>
-     <button className={'ctrlTabBtn '+(modalTab==='elements'?'active':'')} onClick={()=>setModalTab('elements')}>
-      <Layers size={14}/> All Elements & Fluidd
-     </button>
+    {hasRunout && <div className="ctrlFeedback error"><AlertTriangle size={15}/><span>Filament runout. Replace the spool before resuming.</span>{isAdmin && <button className="outline" onClick={()=>setModalTab('fan')}>Filament guide</button>}</div>}
+    <div className="printerWorkspaceTabs">
+     {primaryTabs.map(([key,label,Icon])=>(
+      <button key={key} className={'ctrlTabBtn '+(modalTab===key?'active':'')} aria-pressed={modalTab===key} onClick={()=>setModalTab(key)}><Icon size={15}/>{label}</button>
+     ))}
+     <select aria-label="Advanced controls" value={advancedTabs.some(([key])=>key===modalTab)?modalTab:''} onChange={e=>setModalTab(e.target.value)}>
+      <option value="" disabled>Advanced</option>
+      {advancedTabs.filter(([key])=>isAdmin||key==='elements').map(([key,label])=><option key={key} value={key}>{label}</option>)}
+     </select>
     </div>
 
     {/* TAB 1: JOG & MOTION */}
@@ -2277,21 +2081,21 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
         </span>
        </div>
        
-       <ol style={{margin:'0 0 12px 0',paddingLeft:'18px',fontSize:'12.5px',color:'#cbd5e1',lineHeight:1.65,display:'flex',flexDirection:'column',gap:'6px'}}>
+       <ol style={{margin:'0 0 12px 0',paddingLeft:'18px',fontSize:'12.5px',color:'var(--farm-muted)',lineHeight:1.65,display:'flex',flexDirection:'column',gap:'6px'}}>
         <li>
-         <strong style={{color:'#f8fafc'}}>Step 1: Preheat Nozzle</strong> — Ensure nozzle is heated above 180°C (PLA: 205°C–215°C, PETG: 230°C–240°C). Cold extrusion is blocked by firmware safety limits.
+         <strong style={{color:'var(--farm-ink)'}}>Step 1: Preheat Nozzle</strong> — Ensure nozzle is heated above 180°C (PLA: 205°C–215°C, PETG: 230°C–240°C). Cold extrusion is blocked by firmware safety limits.
         </li>
         <li>
-         <strong style={{color:'#f8fafc'}}>Step 2: Unload Old Filament</strong> — Press the extruder release tension lever and gently pull remaining filament strand out of the PTFE tube and runout sensor.
+         <strong style={{color:'var(--farm-ink)'}}>Step 2: Unload Old Filament</strong> — Press the extruder release tension lever and gently pull remaining filament strand out of the PTFE tube and runout sensor.
         </li>
         <li>
-         <strong style={{color:'#f8fafc'}}>Step 3: Insert New Spool</strong> — Snip the new filament tip cleanly at a 45° angle. Feed through the runout sensor until it engages into the extruder drive gears.
+         <strong style={{color:'var(--farm-ink)'}}>Step 3: Insert New Spool</strong> — Snip the new filament tip cleanly at a 45° angle. Feed through the runout sensor until it engages into the extruder drive gears.
         </li>
         <li>
-         <strong style={{color:'#f8fafc'}}>Step 4: Purge Old Color</strong> — Click <b>Extrude 25mm</b> once or twice above until new filament flows cleanly from the nozzle tip with consistent solid color.
+         <strong style={{color:'var(--farm-ink)'}}>Step 4: Purge Old Color</strong> — Click <b>Extrude 25mm</b> once or twice above until new filament flows cleanly from the nozzle tip with consistent solid color.
         </li>
         <li>
-         <strong style={{color:'#f8fafc'}}>Step 5: Resume Printing</strong> — Remove any purged plastic from the nozzle tip and click <b>Resume Print</b> to seamlessly continue your print job!
+         <strong style={{color:'var(--farm-ink)'}}>Step 5: Resume Printing</strong> — Remove any purged plastic from the nozzle tip and click <b>Resume Print</b> to seamlessly continue your print job!
         </li>
        </ol>
 
@@ -2326,14 +2130,13 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
     )}
 
     {/* TAB: JOBS & FILES */}
-    {modalTab==='files'&&(
+    {modalTab==='job'&&(
      <div className="ctrlTabContent ctrlFilesTab">
-      {/* 1. Active Print Job Status */}
       <div className="ctrlActiveJobSection">
        <div className="ctrlActiveJobHeader">
         <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
          <Activity size={15} className={p.status==='printing' ? 'spin' : ''} style={{color: p.status==='printing' ? '#38bdf8' : '#94a3b8'}}/>
-         <strong style={{fontSize:'13px',color:'#f8fafc'}}>
+         <strong style={{fontSize:'13px',color:'var(--farm-ink)'}}>
           {p.status==='printing' ? 'Active Print Job' : p.status==='paused' ? 'Job Paused' : p.status==='completed' ? 'Finished Job' : 'Current Job Status'}
          </strong>
         </div>
@@ -2363,37 +2166,25 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
           {p.eta && <span><CheckCircle2 size={11}/> Complete by: <b>{formatFinishTime(p.eta)}</b></span>}
          </div>
 
-         {isAdmin && (p.status==='printing' || p.status==='paused' || hasRunout) && (
-          <div className="ctrlActiveJobActions">
-           {p.status==='printing' ? (
-            <button className="chipBtn" disabled={sending} onClick={()=>sendCommand('pause')}>
-             <Pause size={12}/> Pause Print
-            </button>
-           ) : (
-            <button className="ctrlBtn resume" disabled={sending} onClick={()=>sendCommand('resume')}>
-             <Play size={12}/> Resume Print
-            </button>
-           )}
-           <button className="chipBtn danger" disabled={sending} onClick={()=>sendCommand('cancel',null,'Cancel the active print job immediately?')}>
-            <Square size={12}/> Cancel Job
-           </button>
-          </div>
-         )}
+
         </div>
        ) : (
         <div className="ctrlNoJobBox">
          <FileText size={22} style={{color:'#475569',margin:'0 auto 6px',display:'block'}}/>
-         <span>No file is currently printing. Select a G-code file below to start.</span>
+         <span>No active print job.</span>
         </div>
        )}
       </div>
 
-      {/* 2. Printer G-Code Storage List */}
+     </div>
+    )}
+    {modalTab==='files'&&(
+     <div className="ctrlTabContent ctrlFilesTab">
       <div className="ctrlFilesListSection">
        <div className="ctrlFilesHeader">
         <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
          <Folder size={16} style={{color:'#a855f7'}}/>
-         <strong style={{fontSize:'13px',color:'#f8fafc'}}>Files Stored on {p.name}</strong>
+         <strong style={{fontSize:'13px',color:'var(--farm-ink)'}}>Files Stored on {p.name}</strong>
          <span className="ctrlFilesCount">{filteredFiles.length} {filteredFiles.length===1?'file':'files'}</span>
         </div>
         <button className="textButton" style={{display:'inline-flex',alignItems:'center',gap:'5px',fontSize:'12px'}} onClick={loadFiles} disabled={loadingFiles}>
@@ -2490,7 +2281,7 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
     {modalTab==='terminal'&&(
      <div className="ctrlTabContent" style={{padding:'0 18px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',margin:'12px 0 6px'}}>
-       <span style={{fontSize:'12px',fontWeight:700,color:'#cbd5e1'}}>Live Moonraker G-Code Console</span>
+       <span style={{fontSize:'12px',fontWeight:700,color:'var(--farm-muted)'}}>Live Moonraker G-Code Console</span>
        <button className="textButton" style={{fontSize:'11.5px'}} onClick={loadLogs}>Refresh</button>
       </div>
 
@@ -2638,14 +2429,14 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
        {isLocal ? (
         <div style={{display:'flex',alignItems:'center',gap:'10px',marginTop:'8px'}}>
          <span style={{fontSize:'12px',color:'#34d399',fontWeight:600}}>✓ Connected to local farm Wi-Fi:</span>
-         {printerUrl && (
+         {isLocal && printerUrl && (
           <a href={printerUrl} target="_blank" rel="noreferrer" className="primary" style={{padding:'5px 14px',fontSize:'12px',display:'inline-flex',alignItems:'center',gap:'6px'}}>
            <ExternalLink size={13}/> Open Native Fluidd Web UI
           </a>
          )}
         </div>
        ) : (
-        <div style={{fontSize:'12px',color:'#cbd5e1',lineHeight:1.6,marginTop:'6px',background:'rgba(15,23,42,0.6)',padding:'10px 12px',borderRadius:'8px',border:'1px solid #1e293b'}}>
+        <div style={{fontSize:'12px',color:'var(--farm-muted)',lineHeight:1.6,marginTop:'6px',background:'rgba(15,23,42,0.6)',padding:'10px 12px',borderRadius:'8px',border:'1px solid #1e293b'}}>
          <span>🔒 <b>Remote Internet Access:</b> When accessing the farm remotely over <code>https://neptunemonitor.com</code>, all Klipper elements, telemetry, axis controls, temperatures, filament commands, and console terminal logs are relayed live through this dashboard. Native Fluidd direct links require opening your browser on the local farm Wi-Fi network.</span>
         </div>
        )}
@@ -2657,49 +2448,56 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
     {isAdmin ? (
      <div className="modalFooterActions">
       <div className="actionGroupLeft">
-       <button className="ctrlBtn pause" disabled={sending} onClick={()=>sendCommand('pause')}>
-        <Pause size={14}/> Pause
-       </button>
-       <button className="ctrlBtn resume" disabled={sending} onClick={()=>sendCommand('resume')}>
-        <Play size={14}/> Resume
-       </button>
-       <button className="ctrlBtn cancel" disabled={sending} onClick={()=>sendCommand('cancel',null,`Are you sure you want to CANCEL the print on ${p.name}?`)}>
-        <Square size={14}/> Cancel Print
-       </button>
+       {canPause && <button className="ctrlBtn pause" disabled={sending} onClick={()=>sendCommand('pause')}><Pause size={14}/> Pause</button>}
+       {canResume && <button className="ctrlBtn resume" disabled={sending} onClick={()=>sendCommand('resume')}><Play size={14}/> Resume</button>}
+       {(canPause||canResume) && <button className="ctrlBtn cancel" disabled={sending} onClick={()=>sendCommand('cancel',null,`Cancel the print on ${p.name}?`)}><Square size={14}/> Cancel print</button>}
       </div>
       <div className="actionGroupRight">
        <button className="ctrlBtn emergency" disabled={sending} onClick={()=>sendCommand('emergency_stop',null,`EMERGENCY STOP (M112): Immediately halt all motors and heaters on ${p.name}. Confirm?`)}>
-        <ShieldAlert size={15}/> EMERGENCY STOP (M112)
+        <ShieldAlert size={15}/> Emergency stop
        </button>
       </div>
      </div>
     ) : (
-     <div style={{background:'#09111e',borderTop:'1px solid #1a273b',padding:'12px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:'12px',color:'#7f94b0'}}>
-      <div style={{display:'flex',alignItems:'center',gap:'6px',color:'#38bdf8',fontWeight:600}}>
-       <Eye size={14}/> <span>Guest Account (View-Only Mode)</span>
-      </div>
-      <span>Manual controls, axis jogging & print cancellations are restricted to Admins.</span>
-     </div>
+     <div className="printerGuestNote"><Eye size={14}/> View-only access</div>
     )}
    </div>
   </div>
  );
 }
 
-function CompletedPage({data, onSync, printers=[]}){
+function CompletedPage({data, onSync, isAdmin}){
  const [search, setSearch] = useState('');
  const [datePreset, setDatePreset] = useState('all'); // 'all' | 'today' | 'yesterday' | 'last7' | 'custom'
  const [customDate, setCustomDate] = useState('');
  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'completed' | 'failed'
  const [viewTab, setViewTab] = useState('by_file'); // 'by_file' | 'log'
  const [syncing, setSyncing] = useState(false);
+ const [syncError,setSyncError]=useState('');
 
- const allJobs = data?.jobs || [];
+ const allJobs=(data?.jobs||[])
+  .filter(job=>job.status!=='completed'||!String(job.id||'').startsWith(job.printerId+'_live_'))
+  .map(job=>({...job,isCompleted:job.status==='completed',isFailed:job.status!=='completed'}));
  const todayStr = getLocalDateStr(new Date());
  const yDate = new Date(); yDate.setDate(yDate.getDate() - 1);
  const yesterdayStr = getLocalDateStr(yDate);
- const last7Date = new Date(); last7Date.setDate(last7Date.getDate() - 7);
+ const last7Date = new Date(); last7Date.setDate(last7Date.getDate() - 6);
  const last7Str = getLocalDateStr(last7Date);
+
+ const completedByDay=new Map();
+ for(const job of allJobs){
+  if(!job.isCompleted)continue;
+  const day=getLocalDateStr(job.completedAt);
+  if(day>=last7Str&&day<=todayStr)completedByDay.set(day,(completedByDay.get(day)||0)+1);
+ }
+ const outputDays=Array.from({length:7},(_,index)=>{
+  const date=new Date(last7Date);
+  date.setDate(date.getDate()+index);
+  const key=getLocalDateStr(date);
+  return {key,label:date.toLocaleDateString([],{weekday:'short'}),count:completedByDay.get(key)||0};
+ });
+ const outputPeak=Math.max(1,...outputDays.map(day=>day.count));
+ const weeklyOutput=outputDays.reduce((sum,day)=>sum+day.count,0);
 
  // Top Summary Metrics (Unmistakable piece counts!)
  const todayJobs = allJobs.filter(j => j.isCompleted && getLocalDateStr(j.completedAt) === todayStr);
@@ -2708,8 +2506,6 @@ function CompletedPage({data, onSync, printers=[]}){
  const yesterdayJobs = allJobs.filter(j => j.isCompleted && getLocalDateStr(j.completedAt) === yesterdayStr);
  const yesterdayPieces = yesterdayJobs.length;
 
- const last7Jobs = allJobs.filter(j => j.isCompleted && getLocalDateStr(j.completedAt) >= last7Str);
- const last7Pieces = last7Jobs.length;
 
  const totalCompletedPieces = allJobs.filter(j => j.isCompleted).length;
  const totalFailedJobs = allJobs.filter(j => j.isFailed).length;
@@ -2720,7 +2516,7 @@ function CompletedPage({data, onSync, printers=[]}){
   const dStr = getLocalDateStr(j.completedAt);
   if (datePreset === 'today' && dStr !== todayStr) return false;
   if (datePreset === 'yesterday' && dStr !== yesterdayStr) return false;
-  if (datePreset === 'last7' && dStr < last7Str) return false;
+  if (datePreset === 'last7' && (dStr < last7Str || dStr > todayStr)) return false;
   if (datePreset === 'custom' && customDate && dStr !== customDate) return false;
   if (statusFilter === 'completed' && !j.isCompleted) return false;
   if (statusFilter === 'failed' && !j.isFailed) return false;
@@ -2743,7 +2539,7 @@ function CompletedPage({data, onSync, printers=[]}){
     totalDuration: 0,
     lastCompletedAt: null,
     printers: new Set(),
-    completionTimestamps: []
+    batches: 0
    });
   }
   const item = fileSummaryMap.get(fn);
@@ -2753,7 +2549,7 @@ function CompletedPage({data, onSync, printers=[]}){
    if (!item.lastCompletedAt || new Date(j.completedAt) > new Date(item.lastCompletedAt)) {
     item.lastCompletedAt = j.completedAt;
    }
-   item.completionTimestamps.push(j.completedAt);
+   item.batches += 1;
   } else {
    item.failedPieces += 1;
   }
@@ -2763,13 +2559,13 @@ function CompletedPage({data, onSync, printers=[]}){
  const fileSummaryList = Array.from(fileSummaryMap.values()).map(x => ({
   ...x,
   printers: Array.from(x.printers),
-  avgDuration: x.completedPieces > 0 ? Math.round(x.totalDuration / x.completedPieces) : 0,
-  completionTimestamps: x.completionTimestamps.sort((a,b) => new Date(b) - new Date(a))
+  avgDuration: x.completedPieces > 0 ? Math.round(x.totalDuration / x.completedPieces) : 0
  })).sort((a,b) => b.completedPieces - a.completedPieces || b.totalDuration - a.totalDuration);
 
  async function triggerSync(){
   setSyncing(true);
-  try { await onSync(); } finally { setSyncing(false); }
+  setSyncError('');
+  try { await onSync(); } catch(error) {setSyncError(error.message);} finally { setSyncing(false); }
  }
 
  function resetFilters(){
@@ -2779,404 +2575,96 @@ function CompletedPage({data, onSync, printers=[]}){
   setSearch('');
  }
 
+ const isByFile=viewTab==='by_file';
+ const results=isByFile?fileSummaryList:filteredJobs;
+ const hasFilters=datePreset!=='all'||statusFilter!=='all'||Boolean(search);
+ const dateTime=value=>{
+  if(!value)return '—';
+  const date=new Date(value);
+  return Number.isNaN(date.getTime())?'—':date.toLocaleString([],{dateStyle:'medium',timeStyle:'short'});
+ };
+
  return (
-  <div className="completedPage">
-   {/* Header */}
-   <div className="fleetPageHeader">
-    <div className="fleetTitleWrap">
-     <span className="fleetCategoryTag">PRODUCTION MANAGEMENT</span>
-     <h1 className="fleetMainTitle">Production & Completed Prints</h1>
-     <p className="fleetSubtitle">
-      Track completed pieces, exact completion times, and output quantity by G-code file.
-     </p>
-    </div>
-    <div className="fleetHeaderActions">
-     <button className="fleetRefreshBtn" onClick={triggerSync} disabled={syncing} title="Sync printer history from Moonraker">
-      <RefreshCw size={15} className={syncing ? 'spin' : ''}/> {syncing ? 'Syncing…' : 'Sync History'}
-     </button>
-    </div>
+  <div className="productionPage">
+   <div className="monitorTitle">
+    <div><h1>Production</h1><p>Completed prints and job history</p></div>
+    {isAdmin && <div className="monitorActions"><button onClick={triggerSync} disabled={syncing}><RefreshCw size={15} className={syncing?'spin':''}/>{syncing?'Syncing…':'Sync history'}</button></div>}
    </div>
-
-   {/* 4 Clean, High-Impact Summary KPI Cards */}
-   <div className="prodSummaryStrip">
-    <div className="prodSummaryCard today">
-     <div className="summaryCardIcon"><PackageCheck size={24}/></div>
-     <div className="summaryCardBody">
-      <span className="summaryCardLabel">TODAY'S OUTPUT</span>
-      <strong className="summaryCardValue">{todayPieces} <span className="unit">pieces</span></strong>
-      <small className="summaryCardSub">Finished today ({formatLocalDate(todayStr)})</small>
-     </div>
+   {syncError && <p className="banner" role="alert">{syncError}</p>}
+   <section className="productionTotals" aria-label="Production totals">
+    {[[PackageCheck,'Today',todayPieces],[Calendar,'Yesterday',yesterdayPieces],[CheckCircle2,'Total completed',totalCompletedPieces],[AlertTriangle,'Failed / cancelled',totalFailedJobs],[Clock,'Machine time',fmtDuration(totalProductionSec)]].map(([Icon,label,value])=>(
+     <div key={label} className="colorMetric"><Icon size={16}/><strong>{value}</strong><span>{label}</span></div>
+    ))}
+   </section>
+   <section className="outputChart" aria-labelledby="weekly-output-heading">
+    <div className="outputChartTitle">
+     <h2 id="weekly-output-heading">7-day output</h2>
+     <p><strong>{weeklyOutput}</strong> completed prints</p>
     </div>
-
-    <div className="prodSummaryCard yesterday">
-     <div className="summaryCardIcon"><Calendar size={24}/></div>
-     <div className="summaryCardBody">
-      <span className="summaryCardLabel">YESTERDAY</span>
-      <strong className="summaryCardValue">{yesterdayPieces} <span className="unit">pieces</span></strong>
-      <small className="summaryCardSub">Finished yesterday</small>
-     </div>
+    <div className="outputChartDays">
+     {outputDays.map(day=>(
+      <button key={day.key} type="button" className="outputDay"
+       aria-label={formatLocalDate(day.key)+', '+day.count+' completed prints'}
+       aria-pressed={datePreset==='custom'&&customDate===day.key}
+       onClick={()=>{setDatePreset('custom');setCustomDate(day.key);setStatusFilter('completed');}}>
+       <span className="outputBarTrack"><span style={{height:(day.count/outputPeak*100)+'%'}}/></span>
+       <span className="outputDayLabel">{day.label} <strong>{day.count}</strong></span>
+      </button>
+     ))}
     </div>
-
-    <div className="prodSummaryCard total">
-     <div className="summaryCardIcon"><CheckCircle2 size={24}/></div>
-     <div className="summaryCardBody">
-      <span className="summaryCardLabel">TOTAL COMPLETED</span>
-      <strong className="summaryCardValue">{totalCompletedPieces} <span className="unit">pieces</span></strong>
-      <small className="summaryCardSub">{totalFailedJobs > 0 ? `${totalFailedJobs} failed / cancelled` : 'All prints successful'}</small>
-     </div>
+   </section>
+   <section className="productionToolbar" aria-label="Filter print history">
+    <div className="prodViewToggle">
+     <button className={'prodViewBtn '+(isByFile?'active':'')} aria-pressed={isByFile} onClick={()=>setViewTab('by_file')}><Layers size={15}/> By file</button>
+     <button className={'prodViewBtn '+(!isByFile?'active':'')} aria-pressed={!isByFile} onClick={()=>setViewTab('log')}><Clock size={15}/> Job log</button>
     </div>
-
-    <div className="prodSummaryCard time">
-     <div className="summaryCardIcon"><Gauge size={24}/></div>
-     <div className="summaryCardBody">
-      <span className="summaryCardLabel">TOTAL MACHINE RUNTIME</span>
-      <strong className="summaryCardValue">{fmtDuration(totalProductionSec)}</strong>
-      <small className="summaryCardSub">Active successful print duration</small>
-     </div>
+    <label className="productionSearch"><Search size={15}/><input type="search" aria-label="Search G-code files" placeholder="Search G-code files" value={search} onChange={e=>setSearch(e.target.value)}/></label>
+    <div className="productionFilters">
+     <select aria-label="Period" value={datePreset} onChange={e=>{setDatePreset(e.target.value);setCustomDate('')}}>
+      <option value="all">All time</option><option value="today">Today</option><option value="yesterday">Yesterday</option><option value="last7">Last 7 days</option><option value="custom">Specific date</option>
+     </select>
+     <select aria-label="Print status" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
+      <option value="all">All results</option><option value="completed">Completed</option><option value="failed">Failed / cancelled</option>
+     </select>
+     {datePreset==='custom' && <input type="date" aria-label="Print date" value={customDate} onChange={e=>setCustomDate(e.target.value)}/>}
     </div>
+   </section>
+   <div className="productionResultCount">
+    <span>{results.length} {isByFile?'files':'jobs'} · {filteredCompletedCount} completed{filteredFailedCount>0?' · '+filteredFailedCount+' failed / cancelled':''}</span>
+    {hasFilters && <button className="prodClearLink" onClick={resetFilters}>Reset filters</button>}
    </div>
-
-   {/* Filter & View Mode Controls Bar */}
-   <div className="prodControlCard card">
-    <div className="prodControlRow">
-     {/* View Toggle */}
-     <div className="prodViewToggle">
-      <button 
-       className={'prodViewBtn ' + (viewTab === 'by_file' ? 'active' : '')} 
-       onClick={() => setViewTab('by_file')}
-       title="View total completed pieces summarized by each G-code file"
-      >
-       <Layers size={15}/>
-       <span>Pieces by File ({fileSummaryList.length})</span>
-      </button>
-      <button 
-       className={'prodViewBtn ' + (viewTab === 'log' ? 'active' : '')} 
-       onClick={() => setViewTab('log')}
-       title="Chronological timeline of all completed jobs with exact date and time"
-      >
-       <Clock size={15}/>
-       <span>Completed Log ({filteredJobs.length})</span>
-      </button>
-     </div>
-
-     {/* Search Box */}
-     <div className="prodSearchBox">
-      <Search size={15}/>
-      <input 
-       type="text" 
-       placeholder="Search G-code file name…" 
-       value={search} 
-       onChange={e => setSearch(e.target.value)}
-      />
-      {search && (
-       <button className="prodClearInputBtn" onClick={() => setSearch('')} title="Clear search">
-        <X size={13}/>
-       </button>
-      )}
-     </div>
-    </div>
-
-    {/* Date & Status Filter Pills */}
-    <div className="prodFilterPillsRow">
-     <div className="filterGroup">
-      <span className="filterGroupLabel"><Calendar size={13}/> Period:</span>
-      <button 
-       className={'filterPill ' + (datePreset === 'all' && !customDate ? 'active' : '')} 
-       onClick={() => { setDatePreset('all'); setCustomDate(''); }}
-      >
-       All Time ({totalCompletedPieces})
-      </button>
-      <button 
-       className={'filterPill ' + (datePreset === 'today' ? 'active' : '')} 
-       onClick={() => { setDatePreset('today'); setCustomDate(''); }}
-      >
-       Today ({todayPieces})
-      </button>
-      <button 
-       className={'filterPill ' + (datePreset === 'yesterday' ? 'active' : '')} 
-       onClick={() => { setDatePreset('yesterday'); setCustomDate(''); }}
-      >
-       Yesterday ({yesterdayPieces})
-      </button>
-      <button 
-       className={'filterPill ' + (datePreset === 'last7' ? 'active' : '')} 
-       onClick={() => { setDatePreset('last7'); setCustomDate(''); }}
-      >
-       Last 7 Days ({last7Pieces})
-      </button>
-      <input
-       type="date"
-       className="prodDateInput"
-       value={customDate}
-       onChange={e => {
-        if(e.target.value){
-         setCustomDate(e.target.value);
-         setDatePreset('custom');
-        } else {
-         setDatePreset('all');
-         setCustomDate('');
-        }
-       }}
-       title="Pick specific date"
-      />
-     </div>
-
-     <div className="filterGroup statusGroup">
-      <span className="filterGroupLabel">Status:</span>
-      <button 
-       className={'filterPill ' + (statusFilter === 'all' ? 'active' : '')} 
-       onClick={() => setStatusFilter('all')}
-      >
-       All
-      </button>
-      <button 
-       className={'filterPill success ' + (statusFilter === 'completed' ? 'active' : '')} 
-       onClick={() => setStatusFilter('completed')}
-      >
-       Completed ({allJobs.filter(j=>j.isCompleted).length})
-      </button>
-      {totalFailedJobs > 0 && (
-       <button 
-        className={'filterPill danger ' + (statusFilter === 'failed' ? 'active' : '')} 
-        onClick={() => setStatusFilter('failed')}
-       >
-        Failed ({totalFailedJobs})
-       </button>
-      )}
-      {(datePreset !== 'all' || customDate || statusFilter !== 'all' || search) && (
-       <button className="prodResetBtn" onClick={resetFilters}>
-        <RotateCcw size={12}/> Reset Filters
-       </button>
-      )}
-     </div>
-    </div>
-   </div>
-
-   {/* Active Filter Summary Bar */}
-   {(datePreset !== 'all' || customDate || statusFilter !== 'all' || search) && (
-    <div className="prodActiveNotice">
-     <span>
-      Filtered Output: <b>{filteredCompletedCount} pieces completed</b>
-      {filteredFailedCount > 0 && <span style={{color:'#f87171'}}> · {filteredFailedCount} failed</span>}
-      {' '}for <b>
-       {datePreset === 'today' ? `Today (${formatLocalDate(todayStr)})` :
-        datePreset === 'yesterday' ? `Yesterday (${formatLocalDate(yesterdayStr)})` :
-        datePreset === 'last7' ? 'Last 7 Days' :
-        customDate ? formatLocalDate(customDate) : 'Selected Criteria'}
-      </b>
-     </span>
-     <button className="prodClearLink" onClick={resetFilters}>Show All Time</button>
-    </div>
-   )}
-
-   {/* VIEW 1: PIECES BY FILE */}
-   {viewTab === 'by_file' && (
-    <div className="card prodTableCard">
-     <div className="prodTableHeader">
-      <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-       <Layers size={17} style={{color:'#38bdf8'}}/>
-       <h3 style={{margin:0,fontSize:'15px',fontWeight:800,color:'#f8fafc'}}>
-        Pieces Completed by File Name
-       </h3>
-      </div>
-      <span style={{fontSize:'12px',color:'#7f94b0'}}>
-       Total distinct G-code models: <b>{fileSummaryList.length}</b> · Completed: <b>{filteredCompletedCount} pcs</b>
-      </span>
-     </div>
-
-     <div className="tableWrapper">
-      <table className="prodCleanTable">
-       <thead>
-        <tr>
-         <th style={{minWidth:'260px'}}>G-Code File Name</th>
-         <th style={{textAlign:'center',width:'140px'}}>Pieces Completed</th>
-         <th style={{minWidth:'170px'}}>When Completed (Last Finished)</th>
-         <th style={{minWidth:'120px'}}>Avg Time / Piece</th>
-         <th style={{minWidth:'130px'}}>Total Machine Time</th>
-         <th style={{minWidth:'160px'}}>Printers Used</th>
-         <th style={{textAlign:'center',width:'100px'}}>Status</th>
-        </tr>
-       </thead>
-       <tbody>
-        {fileSummaryList.length > 0 ? fileSummaryList.map(item => (
-         <tr key={item.file}>
-          {/* File Name */}
-          <td>
-           <div className="prodFileNameWrap">
-            <span className="prodFileIcon">📄</span>
-            <strong className="prodFileName" title={item.file}>{item.file}</strong>
-           </div>
-          </td>
-
-          {/* Pieces Completed */}
-          <td style={{textAlign:'center'}}>
-           {item.completedPieces > 0 ? (
-            <span className="prodPiecePill">
-             <CheckCircle2 size={13}/>
-             <strong>{item.completedPieces} pcs</strong>
-            </span>
-           ) : (
-            <span style={{color:'#64748b'}}>0 pcs</span>
-           )}
-          </td>
-
-          {/* When Completed */}
-          <td>
-           {item.lastCompletedAt ? (
-            <div>
-             <span className="prodFinishTime">
-              {new Date(item.lastCompletedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
-             </span>
-             {item.completionTimestamps.length > 1 && (
-              <small className="prodFinishSub">
-               ({item.completionTimestamps.length} total batches finished)
-              </small>
-             )}
-            </div>
-           ) : (
-            <span style={{color:'#64748b'}}>—</span>
-           )}
-          </td>
-
-          {/* Avg Duration */}
-          <td>
-           <span className="prodTimeVal">{item.avgDuration > 0 ? fmtDuration(item.avgDuration) : '—'}</span>
-          </td>
-
-          {/* Total Duration */}
-          <td>
-           <span className="prodTimeVal bold">{fmtDuration(item.totalDuration)}</span>
-          </td>
-
-          {/* Printers Used */}
-          <td>
-           <div className="prodPrinterPillsWrap">
-            {item.printers.map(pr => (
-             <span key={pr} className="prodPrinterBadge">{pr}</span>
-            ))}
-           </div>
-          </td>
-
-          {/* Result / Failure */}
-          <td style={{textAlign:'center'}}>
-           {item.failedPieces > 0 ? (
-            <span className="prodFailTag">{item.failedPieces} failed</span>
-           ) : (
-            <span className="prodSuccessTag">100% OK</span>
-           )}
-          </td>
-         </tr>
-        )) : (
-         <tr>
-          <td colSpan="7" className="prodEmptyCell">
-           <PackageCheck size={28} style={{color:'#475569',margin:'0 auto 8px',display:'block'}}/>
-           <strong>No completed prints found matching your filter.</strong>
-           <span>Try selecting "All Time" or resetting the search filter.</span>
-          </td>
-         </tr>
-        )}
-       </tbody>
-      </table>
-     </div>
-    </div>
-   )}
-
-   {/* VIEW 2: COMPLETED PRINTS TIMELINE LOG */}
-   {viewTab === 'log' && (
-    <div className="card prodTableCard">
-     <div className="prodTableHeader">
-      <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-       <Clock size={17} style={{color:'#34d399'}}/>
-       <h3 style={{margin:0,fontSize:'15px',fontWeight:800,color:'#f8fafc'}}>
-        Completed Prints Chronological Log
-       </h3>
-      </div>
-      <span style={{fontSize:'12px',color:'#7f94b0'}}>
-       Showing <b>{filteredJobs.length}</b> print events in chronological order
-      </span>
-     </div>
-
-     <div className="tableWrapper">
-      <table className="prodCleanTable">
-       <thead>
-        <tr>
-         <th style={{minWidth:'170px'}}>Completed Date & Time</th>
-         <th style={{minWidth:'240px'}}>File Name</th>
-         <th style={{minWidth:'150px'}}>Printer</th>
-         <th style={{minWidth:'120px'}}>Duration</th>
-         <th style={{minWidth:'110px'}}>Filament</th>
-         <th style={{textAlign:'center',width:'110px'}}>Result</th>
-        </tr>
-       </thead>
-       <tbody>
-        {filteredJobs.length > 0 ? filteredJobs.map((j, idx) => (
-         <tr key={j.id || idx}>
-          {/* Completed Timestamp */}
-          <td>
-           <div className="prodLogTimeWrap">
-            <Calendar size={13} style={{color:'#60a5fa',flexShrink:0}}/>
-            <div>
-             <strong className="prodLogTime">
-              {new Date(j.completedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
-             </strong>
-             {(j.startedAt || (j.completedAt && j.duration)) && (
-              <div style={{fontSize:'11.5px',color:'#7f94b0',marginTop:'3px',display:'flex',alignItems:'center',gap:'4px'}}>
-               <Play size={10} style={{color:'#34d399',flexShrink:0}}/>
-               <span>Started: <b>{formatStartTime(j.startedAt || new Date(new Date(j.completedAt).getTime() - (j.duration * 1000)).toISOString())}</b></span>
-              </div>
-             )}
-            </div>
-           </div>
-          </td>
-
-          {/* File Name */}
-          <td>
-           <strong className="prodFileName" title={j.file}>{j.file}</strong>
-          </td>
-
-          {/* Printer */}
-          <td>
-           <span className="prodPrinterBadge">{j.printerName || 'Printer'}</span>
-          </td>
-
-          {/* Duration */}
-          <td>
-           <span className="prodTimeVal bold" title="Total print duration">{fmtDuration(j.duration || j.totalDuration)}</span>
-          </td>
-
-          {/* Filament */}
-          <td>
-           <span style={{color:'#94a3b8',fontSize:'12.5px'}}>
-            {j.filamentUsed ? `${Math.round(j.filamentUsed)} mm` : '—'}
-           </span>
-          </td>
-
-          {/* Status */}
-          <td style={{textAlign:'center'}}>
-           {j.isCompleted ? (
-            <span className="prodStatusPill completed">
-             <CheckCircle2 size={12}/> Completed
-            </span>
-           ) : (
-            <span className="prodStatusPill failed">
-             <XCircle size={12}/> {statusLabel(j.status)}
-            </span>
-           )}
-          </td>
-         </tr>
-        )) : (
-         <tr>
-          <td colSpan="6" className="prodEmptyCell">
-           <Clock size={28} style={{color:'#475569',margin:'0 auto 8px',display:'block'}}/>
-           <strong>No log events recorded for this period.</strong>
-          </td>
-         </tr>
-        )}
-       </tbody>
-      </table>
-     </div>
-    </div>
-   )}
+   <section className="productionResults" aria-label={isByFile?'Prints by file':'Print job log'}>
+    {results.map((result,index)=>{
+     const {file}=result;
+     const meta=isByFile ? dateTime(result.lastCompletedAt) : [result.printerName,dateTime(result.completedAt)].filter(Boolean).join(' · ');
+     const badge=isByFile ? result.completedPieces+' completed' : result.isCompleted?'Completed':statusLabel(result.status);
+     const failed=isByFile ? result.failedPieces : !result.isCompleted;
+     const startedAt=result.startedAt || (result.completedAt&&result.duration ? new Date(new Date(result.completedAt).getTime()-result.duration*1000) : null);
+     return (
+      <details className="productionRecord" key={isByFile?file:result.id||index}>
+       <summary>
+        <FileText size={17} className="productionFileIcon"/>
+        <span className="productionRecordName"><strong>{file||'Unknown file'}</strong><small>{meta}</small></span>
+        <span className="productionRecordStatus"><b className={!isByFile&&failed?'failed':''}>{badge}</b>{isByFile&&failed>0&&<small>{failed} failed</small>}</span>
+        <ChevronDown size={15} className="productionRecordChevron"/>
+       </summary>
+       <dl>
+        {(isByFile ? [
+         ['Print batches',result.batches],
+         ['Average time',fmtDuration(result.avgDuration)],
+         ['Machine time',fmtDuration(result.totalDuration)],
+         ['Printers',result.printers.join(', ')||'—']
+        ] : [
+         ['Started',dateTime(startedAt)],
+         ['Duration',fmtDuration(result.duration||result.totalDuration)],
+         ['Filament',result.filamentUsed?Math.round(result.filamentUsed)+' mm':'—']
+        ]).map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+       </dl>
+      </details>
+     );
+    })}
+    {!results.length && <p className="productionEmpty">No print history matches these filters.</p>}
+   </section>
   </div>
  );
 }
@@ -3404,41 +2892,43 @@ function SettingsPage({list,reload,systemInfo}){
    <div className="settingsHeader">
     <div className="titleRow" style={{marginBottom:'16px'}}>
      <div>
-      <span className="fleetCategoryTag">CONFIGURATION & SYSTEM</span>
       <h1 className="fleetMainTitle" style={{marginTop:'4px'}}>Farm Settings & Host Setup</h1>
       <p className="fleetSubtitle">Configure your 3D printers, Host network bridge, remote tunnel, and alert integrations.</p>
      </div>
     </div>
 
     {/* Sub Navigation Tabs */}
-    <div className="settingsSubTabs">
+    <nav className="settingsSubTabs" aria-label="Settings sections">
      <button 
       className={'settingsSubTab ' + (settingsTab==='printers'?'active':'')}
+      aria-current={settingsTab==='printers'?'page':undefined}
       onClick={()=>setSettingsTab('printers')}
      >
-      <Printer size={15}/> <span>Printer Fleet ({items.length})</span>
+      <Printer size={15}/> <span>Printers ({items.length})</span>
      </button>
      <button 
       className={'settingsSubTab ' + (settingsTab==='users'?'active':'')}
+      aria-current={settingsTab==='users'?'page':undefined}
       onClick={()=>setSettingsTab('users')}
      >
       <Users size={15}/> <span>Users & Guests</span>
      </button>
      <button 
       className={'settingsSubTab ' + (settingsTab==='host'?'active':'')}
+      aria-current={settingsTab==='host'?'page':undefined}
       onClick={()=>setSettingsTab('host')}
      >
-      <Server size={15}/> <span>Farm Host Setup</span>
+      <Server size={15}/> <span>Farm host</span>
       <span className="hostStatusDot active" title="Host bridge online"/>
      </button>
-    </div>
+    </nav>
    </div>
 
    {settingsTab==='printers' ? (
     <>
      <div className="titleRow" style={{marginTop:'12px',marginBottom:'14px'}}>
       <div>
-       <h2 style={{fontSize:'16px',fontWeight:700,color:'#f8fafc',margin:0}}>3D Printer Fleet ({items.length} configured)</h2>
+       <h2 className="settingsSectionTitle">3D Printer Fleet ({items.length} configured)</h2>
        <p style={{fontSize:'12.5px',color:'#8fa2bc',margin:'3px 0 0'}}>Neptune 4 uses port <b>80</b>; standard Klipper uses <b>7125</b>.</p>
       </div>
       <button className="outline" onClick={()=>setItems(a=>[...a,{id:'printer-'+Date.now(),name:'New Neptune 4',host:'172.16.20.xxx',port:80,enabled:true}])}>
@@ -3450,19 +2940,19 @@ function SettingsPage({list,reload,systemInfo}){
       {items.map((p,i)=>(
        <div key={p.id} className="settingRow">
         <div className="settingNum">{String(i+1).padStart(2,'0')}</div>
-        <label>
+        <label className="settingName">
          Printer name
          <input value={p.name} onChange={e=>edit(i,'name',e.target.value)} placeholder="e.g. P1 - Neptune 4 Max"/>
         </label>
-        <label>
+        <label className="settingHost">
          IP / Host
          <input value={p.host} onChange={e=>edit(i,'host',e.target.value)} placeholder="e.g. 172.16.20.125"/>
         </label>
-        <label>
+        <label className="settingPort">
          Port
          <input type="number" min="1" max="65535" value={p.port} onChange={e=>edit(i,'port',Number(e.target.value))}/>
         </label>
-        <label style={{minWidth:'170px'}}>
+        <label className="settingEmail">
          Assigned Email
          <input 
           value={p.ownerEmail||''} 
@@ -3701,7 +3191,7 @@ function SettingsPage({list,reload,systemInfo}){
           <div className="tgEmptyChats">No chats connected yet. Auto-detect or paste one below.</div>
          )}
 
-         <div style={{display:'flex',gap:'8px',marginTop:'4px'}}>
+         <div className="tgChatControls">
           <input
            className="hostInput mono"
            value={newChatInput}
@@ -3951,8 +3441,52 @@ function SettingsPage({list,reload,systemInfo}){
  );
 }
 
+function AlertsPage({events}){
+ const [filter,setFilter]=useState('all');
+ const relevant=events.filter(event=>filter==='all'||(filter==='issue'?['error','offline','runout','paused','failed','shutdown'].includes(event.type):event.type===filter));
+ return <section className="alertsPage">
+  <div className="monitorTitle">
+   <div><h1>Alerts</h1><p>Printer events and status changes</p></div>
+   <select aria-label="Filter alerts" value={filter} onChange={e=>setFilter(e.target.value)}>
+    <option value="all">All events</option><option value="issue">Printer issues</option><option value="completed">Completed</option>
+   </select>
+  </div>
+  <div className="alertRecords">
+   {relevant.map(event=>{
+    const isIssue=['error','offline','runout','paused','failed','shutdown'].includes(event.type);
+    const isComplete=event.type==='completed';
+    const Icon=isIssue?AlertTriangle:isComplete?PackageCheck:Activity;
+    const date=new Date(event.time);
+    return <article key={event.id} className={'alertRecord '+(isIssue?'is-issue':isComplete?'is-complete':'')}>
+     <span className="alertIcon"><Icon size={17}/></span>
+     <div><strong>{event.message}</strong><small>{String(event.type||'event').replaceAll('_',' ')}{!Number.isNaN(date.getTime())&&' · '+date.toLocaleString([],{dateStyle:'medium',timeStyle:'short'})}</small></div>
+    </article>;
+   })}
+   {!relevant.length&&<p className="productionEmpty">{events.length?'No events match this filter.':'No printer events yet.'}</p>}
+  </div>
+ </section>;
+}
+
+const fleetViews = [
+ ['auto','Auto'],['list','List'],['tiles','Tiles'],['large','Large'],['extra-large','Extra large']
+];
+
 function App(){
  const[authed,setAuthed]=useState(null),[currentUser,setCurrentUser]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[systemInfo,setSystemInfo]=useState(null),[controlPrinter,setControlPrinter]=useState(null),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);
+ const[fleetFilter,setFleetFilter]=useState('all');
+ const[fleetSearch,setFleetSearch]=useState('');
+ const[fleetView,setFleetView]=useState(()=>{
+  try{
+   const saved=localStorage.getItem('farm_fleet_view');
+   return fleetViews.some(([key])=>key===saved)?saved:'auto';
+  }catch{
+   return 'auto';
+  }
+ });
+ function changeFleetView(view){
+  setFleetView(view);
+  try{localStorage.setItem('farm_fleet_view',view)}catch{}
+ }
  const[pushActive,setPushActive]=useState(typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted');
  const[showHostStatusModal,setShowHostStatusModal]=useState(false);
  const[showSetupGuideModal,setShowSetupGuideModal]=useState(false);
@@ -3985,7 +3519,7 @@ function App(){
   try{
    const [p,e,c,s]=await Promise.all([api('/printers'),api('/events'),api('/completed-prints'),api('/system-info')]);
    setPrinters(p);setEvents(e);setCompleted(c);setSystemInfo(s);setError('');setRefreshed(new Date());
-   setControlPrinter(curr=>curr?p.find(x=>x.id===curr.id)||curr:null);
+   setControlPrinter(curr=>curr?p.find(x=>x.id===curr.id)||null:null);
   }catch(e){
    if(e.message==='Login required')setAuthed(false);else setError(e.message);
   }
@@ -4023,7 +3557,15 @@ function App(){
    setPage('overview');
   });
  },[]);
- useEffect(()=>{if(!authed)return;refresh();loadConfig();const t=setInterval(refresh,5000);return()=>clearInterval(t)},[authed]);
+ useEffect(()=>{
+  if(!authed)return;
+  refresh();
+  const timer=setInterval(refresh,5000);
+  return()=>clearInterval(timer);
+ },[authed]);
+ useEffect(()=>{
+  if(authed&&currentUser?.role==='admin')loadConfig();
+ },[authed,currentUser?.role]);
 
  useEffect(()=>{
   // Force first page to 'overview' (Printer status) on any login or user change
@@ -4033,7 +3575,6 @@ function App(){
  }, [authed, currentUser?.id]);
 
  const isAdmin = currentUser?.role === 'admin';
- const isGuest = currentUser?.role === 'guest';
 
  useEffect(()=>{
   if (authed && !isAdmin && page === 'settings') {
@@ -4042,7 +3583,7 @@ function App(){
  }, [authed, isAdmin, page]);
 
  if(authed===null)return <div className="boot">Loading Neptune Print Farm…</div>;
- if(!authed)return <Login done={(u)=>{setAuthed(true);setCurrentUser(u);setPage('overview');refresh();loadConfig();}}/>;
+ if(!authed)return <Login theme={theme} toggleTheme={toggleTheme} done={u=>{setCurrentUser(u);setAuthed(true);setPage('overview');}}/>;
 
  const isLocal = Boolean(
   window.location.hostname === 'localhost' ||
@@ -4064,28 +3605,34 @@ function App(){
   p.status !== 'homing' &&
   !p.isShutdown
  );
+ const isPrinting=p=>p.connected&&(p.status==='printing'||p.rawState==='printing')&&!isPrinterRunout(p)&&!p.isShutdown;
+ const isComplete=p=>p.status==='completed'&&p.rawState!=='cancelled';
+ const hasIssue=p=>!isComplete(p)&&(isPrinterRunout(p)||['paused','error'].includes(p.status)||p.isShutdown||p.shutdownReason||
+  (p.connected&&p.error&&!/timeout|offline/i.test(p.error)));
  const total=printers.length;
  const online=printers.filter(p=>p.connected).length;
- const printing=printers.filter(p=>p.connected&&(p.status==='printing'||p.rawState==='printing')&&!isPrinterRunout(p)&&!p.isShutdown).length;
- const completedPrinters=printers.filter(p=>p.status==='completed'||p.isDone).length;
- const issues=printers.filter(p=>(
-  isPrinterRunout(p)||
-  p.status==='paused'||
-  p.status==='error'||
-  p.isShutdown||
-  p.shutdownReason||
-  (p.connected&&p.error&&!p.error.toLowerCase().includes('timeout')&&!p.error.toLowerCase().includes('offline'))
- )&&p.status!=='completed').length;
- const offline=Math.max(0,total-online);
- const sortedPrinters=[...printers].sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{numeric:true,sensitivity:'base'}));
+ const fleetMetrics=[
+  {key:'all',label:'All printers',icon:Printer,count:total,matches:()=>true},
+  {key:'printing',label:'Printing',icon:Play,count:printers.filter(isPrinting).length,matches:isPrinting},
+  {key:'complete',label:'Complete',icon:CheckCheck,count:printers.filter(isComplete).length,matches:isComplete},
+  {key:'issues',label:'Issues',icon:AlertTriangle,count:printers.filter(hasIssue).length,matches:hasIssue},
+  {key:'offline',label:'Offline',icon:WifiOff,count:printers.filter(p=>p.enabled&&!p.connected&&p.status!=='connecting').length,matches:p=>p.enabled&&!p.connected&&p.status!=='connecting'}
+ ];
+ const finishQueue=printers.filter(printer=>isPrinting(printer)&&Number.isFinite(Date.parse(printer.eta)))
+  .sort((a,b)=>Date.parse(a.eta)-Date.parse(b.eta))
+  .slice(0,5);
+ const activeMetric=fleetMetrics.find(metric=>metric.key===fleetFilter);
+ const printerQuery=fleetSearch.trim().toLowerCase();
+ const sortedPrinters=printers.filter(printer=>activeMetric.matches(printer)&&
+  (!printerQuery||[printer.name,printer.file].some(value=>value?.toLowerCase().includes(printerQuery))))
+  .sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{numeric:true,sensitivity:'base'}));
 
  return <div className={`layout theme-${theme}`}>
   <aside>
-   <div className="logo" onClick={()=>setPage('overview')} style={{cursor:'pointer'}} title="Go to Printer Status">
-    <div className="logoIconBox"><Printer size={20}/></div>
-    <div className="logoTitle">NEPTUNE <span>FARM</span></div>
-   </div>
-   <div className="asideLabel">FARM</div>
+   <button className="fleetBrand" onClick={()=>{setFleetFilter('all');setPage('overview')}}>
+    <span className="logoIconBox"><Layers size={21}/></span>
+    <span>Neptune <strong>Farm</strong></span>
+   </button>
    <button className={'nav '+(page==='overview'?'active':'')} onClick={()=>setPage('overview')}>
     <Activity size={17}/> <span>Printer status</span>
    </button>
@@ -4094,7 +3641,6 @@ function App(){
    </button>
    <button className={'nav '+(page==='alerts'?'active':'')} onClick={()=>setPage('alerts')}>
     <Bell size={17}/> <span>Alerts & events</span>
-    {events.length>0&&<span className="asideBadge">{events.length>9?'9+':events.length}</span>}
    </button>
    {isAdmin && (
     <button className={'nav '+(page==='settings'?'active':'')} onClick={()=>setPage('settings')}>
@@ -4102,258 +3648,118 @@ function App(){
     </button>
    )}
    <div className="asideFoot">
-    {/* Current user badge in sidebar */}
-    <div className="asideUserCard" style={{padding:'8px 10px',background:'#080e18',border:'1px solid #142030',borderRadius:'8px',marginBottom:'8px'}}>
-     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'2px'}}>
-      <span style={{fontSize:'11.5px',fontWeight:700,color:'#cbd5e1',maxWidth:'120px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-       {currentUser?.name || currentUser?.email || 'User'}
-      </span>
-      <span className={'roleBadge ' + (isAdmin ? 'admin' : 'guest')} style={{fontSize:'9px',padding:'1px 5px'}}>
-       {isAdmin ? 'Admin' : 'Guest'}
-      </span>
-     </div>
-     <div style={{fontSize:'10px',color:'#64748b',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-      {currentUser?.email}
-     </div>
-    </div>
-
-    <div className="hostStatusBox" onClick={()=>setShowHostStatusModal(true)} style={{cursor:'pointer'}} title="Click to view Host System Status">
-     <div className="hostStatusHead">
-      <span className="liveDot green"/>
-      <span>Farm host connected</span>
-     </div>
-     <div className="hostStatusSub">HOST: {systemInfo?.primaryIp||'172.16.20.139'}</div>
-    </div>
-    <button className="nav signout" onClick={async()=>{await api('/logout',{method:'POST'});setAuthed(false);setCurrentUser(null);setPage('overview');}}>
-     <LogOut size={16}/> <span>Sign out</span>
+    <button className="fleetHostShortcut" onClick={()=>setShowHostStatusModal(true)}>
+     <Server size={17}/><span><strong>Farm host</strong><small>{error?'Update delayed':systemInfo?'Connected':'Connecting…'}</small></span>
+     <i className={'hostConnectionDot '+(!error&&systemInfo?'connected':'')}/>
     </button>
    </div>
   </aside>
 
   <main className="main">
-   <header>
-    <div className="headerLeftGroup">
-     <div 
-      className={'netBadge '+(isLocal?'local':'remote')} 
-      onClick={()=>setShowConnectionModal(true)}
-      style={{cursor:'pointer'}}
-      title={isLocal?`Connected via Local Farm LAN (${systemInfo?.primaryIp||'172.16.20.139'}). Click to change network mode.`:`Remote Access: Relayed continuously from Host PC. Click to change network mode.`}
-     >
-      <span className="liveDot green"/>
-      <span>{isLocal?'LAN connected':'Remote connected'}</span>
-     </div>
-
-     {/* 1-Click Quick Switch Link */}
-     {isLocal ? (
-      <a 
-       href={systemInfo?.remoteUrl || 'https://neptunemonitor.com'} 
-       className="headerQuickSwitchBtn remote" 
-       title="Click to switch to Remote Cloud connection"
-      >
-       <Globe size={12}/> Switch to Remote
-      </a>
-     ) : (
-      <a 
-       href={systemInfo?.localUrl || `http://${systemInfo?.primaryIp||'172.16.20.139'}:${systemInfo?.port||3080}`} 
-       className="headerQuickSwitchBtn local" 
-       title="On farm Wi-Fi? Switch to Local LAN link for faster speed"
-      >
-       <Wifi size={12}/> Switch to Local LAN
-      </a>
-     )}
-
-     <span className="headerTime">Updated {refreshed?refreshed.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true}):'--:--'}</span>
-     <button 
-      className="pushHeaderBtn" 
-      onClick={async()=>{
-       try {
-        await subscribeToWebPush(true);
-        setPushActive(true);
-        alert('🔔 Test push notification sent to your phone!');
-       } catch(e) {
-        alert('Push notification alert: ' + (e.message || e));
-       }
-      }}
-      title="Enable or test real-time phone push notifications"
-     >
-      <Bell size={13}/> <span>{pushActive ? 'Push Active (Test)' : 'Enable Alerts'}</span>
-     </button>
-     <button className="themeToggleBtn" onClick={()=>setShowHostStatusModal(true)} title="Host PC Status">
-      <HardDrive size={13}/> Host Status
-     </button>
-     <button className="themeToggleBtn" onClick={()=>setShowSetupGuideModal(true)} title="How to Setup Neptune Farm">
-      <Sparkles size={13}/> How to Setup
-     </button>
-
-     {/* Admin Only: Users & Guests Management Button */}
-     {isAdmin && (
-      <button 
-       className="headerUsersBtn" 
-       onClick={()=>setShowUsersModal(true)} 
-       title="Manage User & Guest Accounts"
-      >
-       <Users size={13}/> Users & Guests
-      </button>
-     )}
-
-     {/* User Role & Identity Badge */}
-     <div className="headerUserPill">
-      <span className={'roleBadge ' + (isAdmin ? 'admin' : 'guest')} style={{fontSize:'10px',padding:'2px 6px'}}>
-       {isAdmin ? <ShieldCheck size={11}/> : <Eye size={11}/>}
-       {isAdmin ? 'Admin' : 'Guest'}
-      </span>
-      <span className="userEmailText" title={currentUser?.email}>{currentUser?.name || currentUser?.email || 'User'}</span>
-     </div>
-
-     <button className="themeToggleBtn" onClick={toggleTheme} title={`Switch to ${theme==='dark'?'Light':'Dark'} mode`}>
-      {theme==='dark'?(
-       <><Sun size={13}/> Light</>
-      ):(
-       <><Moon size={13}/> Dark</>
-      )}
-     </button>
-     <button className="iconButton" title="Refresh telemetry" onClick={refresh}>
-      <RefreshCw size={15}/>
-     </button>
-    </div>
+   <header className="monitorHeader">
+    <span className="monitorBrand"><span><Layers size={17}/></span>Neptune Farm</span>
+    <nav className="farmHeaderMenus" aria-label="Farm shortcuts" onClick={event=>{
+     const action=event.target.closest('.farmMenuPanel button, .farmMenuPanel a');
+     if(action) action.closest('details').open=false;
+    }} onKeyDown={event=>{
+     const menu=event.target.closest('details[open]');
+     if(event.key==='Escape' && menu){
+      menu.open=false;
+      menu.querySelector('summary').focus();
+     }
+    }}>
+     <details className="farmMenu" name="farm-header">
+      <summary aria-label="Connection"><Wifi size={15}/> <span>Connection</span></summary>
+      <div className="farmMenuPanel">
+       <div className="farmMenuHeading"><span className="liveDot green"/>{isLocal?'Local LAN':'Remote access'}</div>
+       <button onClick={()=>setShowConnectionModal(true)}><Radio size={15}/> Connection details</button>
+       {isLocal ? (
+        <a href={systemInfo?.remoteUrl || 'https://neptunemonitor.com'}><Globe size={15}/> Switch to Remote</a>
+       ) : (
+        <a href={systemInfo?.localUrl || `http://${systemInfo?.primaryIp||'172.16.20.139'}:${systemInfo?.port||3080}`}><Wifi size={15}/> Switch to Local LAN</a>
+       )}
+       <div className="farmMenuDivider"/>
+       <button onClick={()=>setShowHostStatusModal(true)}><HardDrive size={15}/> Host status</button>
+       <button onClick={()=>setShowSetupGuideModal(true)}><FileText size={15}/> Setup guide</button>
+      </div>
+     </details>
+     <details className="farmMenu" name="farm-header">
+      <summary aria-label="Preferences"><Sliders size={15}/> <span className="farmPreferencesLabel">Preferences</span></summary>
+      <div className="farmMenuPanel">
+       <button onClick={toggleTheme}>
+        {theme==='dark'?<Sun size={15}/>:<Moon size={15}/>} {theme==='dark'?'Use light mode':'Use dark mode'}
+       </button>
+       <button onClick={async()=>{
+        try {
+         await subscribeToWebPush(true);
+         setPushActive(true);
+         alert('Test push notification sent to your phone.');
+        } catch(e) {
+         alert('Push notification alert: ' + (e.message || e));
+        }
+       }}><Bell size={15}/> {pushActive?'Test push alerts':'Enable push alerts'}</button>
+      </div>
+     </details>
+     <details className="farmMenu" name="farm-header">
+      <summary aria-label="Account"><Users size={15}/> <span>Account</span></summary>
+      <div className="farmMenuPanel">
+       <div className="farmMenuIdentity">
+        <strong>{currentUser?.name || currentUser?.email || 'User'}</strong>
+        {currentUser?.name && currentUser?.email && <small>{currentUser.email}</small>}
+        <span className={'roleBadge '+(isAdmin?'admin':'guest')}>{isAdmin?'Admin':'Guest'}</span>
+       </div>
+       <div className="farmMenuDivider"/>
+       {isAdmin && <button onClick={()=>setShowUsersModal(true)}><Users size={15}/> Manage users & guests</button>}
+       <button className="farmMenuSignOut" onClick={async()=>{await api('/logout',{method:'POST'});setAuthed(false);setCurrentUser(null);setPage('overview')}}><LogOut size={15}/> Sign out</button>
+      </div>
+     </details>
+    </nav>
    </header>
 
    <div className="mobileNav">
-    <button onClick={()=>setPage('overview')}>Printer status</button>
-    <button onClick={()=>setPage('completed')}>Production</button>
-    <button onClick={()=>setPage('alerts')}>Alerts</button>
-    {isAdmin && <button onClick={()=>setPage('settings')}>Settings</button>}
+    {[['overview','Printers',Printer],['completed','Production',PackageCheck],['alerts','Alerts',Bell],...(isAdmin?[['settings','Settings',Settings]]:[])].map(([key,title,Icon])=>(
+     <button key={key} className={page===key?'active':''} aria-current={page===key?'page':undefined} onClick={()=>setPage(key)}><Icon size={17}/>{title}</button>
+    ))}
    </div>
 
    {error&&<div className="banner">{error}</div>}
 
    {(page==='overview' || (!isAdmin && page==='settings'))?(
     <>
-     {/* PRINTER FLEET Page Title Header */}
-     <div className="fleetPageHeader">
-      <div className="fleetTitleWrap">
-       <span className="fleetCategoryTag">PRINTER FLEET</span>
-       <h1 className="fleetMainTitle">Printer Status</h1>
-       <p className="fleetSubtitle">Monitor real-time printer status, jobs, and connection health.</p>
+     <section className="fleetHero">
+      <div className="fleetHeroText">
+       <h1>Printer fleet</h1>
+       <p><span className={'hostConnectionDot '+(!error&&online?'connected':'')}/>{error?'Updates delayed':refreshed?`${online} of ${total} printers online`:'Connecting to farm…'}{!isAdmin?' · View only':''}</p>
       </div>
-      <div className="fleetHeaderActions">
-       {isAdmin && (
-        <button className="fleetAddBtn" onClick={()=>setPage('settings')}>
-         <Plus size={15}/> Add printer
-        </button>
-       )}
-       <button className="fleetRefreshBtn" onClick={refresh} title="Refresh telemetry">
-        <RefreshCw size={14}/> Refresh
-       </button>
-      </div>
-     </div>
-
-     {/* Guest View-Only Banner */}
-     {!isAdmin && (
-      <div style={{background:'rgba(56,189,248,0.1)',border:'1px solid rgba(56,189,248,0.25)',borderRadius:'10px',padding:'12px 16px',marginBottom:'16px',display:'flex',alignItems:'center',gap:'12px',color:'#38bdf8'}}>
-       <Eye size={20} style={{flexShrink:0}}/>
-       <div style={{flex:1}}>
-        <strong style={{color:'#7dd3fc',fontSize:'13px'}}>Guest Account (View-Only Mode)</strong>
-        <p style={{margin:'2px 0 0 0',fontSize:'12px',color:'#cbd5e1'}}>
-         You are viewing printers assigned to <b>{currentUser?.email}</b>. Manual printer controls, G-code execution, and print cancellations are disabled.
-        </p>
-       </div>
-      </div>
-     )}
-
-     {/* Chrome Remote Desktop Style Host Remote Status Bar */}
-     <div className="hostRemoteBar">
-      <div className="hostRemoteLeft">
-       <div className="hostDeviceIcon">
-        <HardDrive size={22}/>
-       </div>
-       <div className="hostDeviceInfo">
-        <div className="hostDeviceTitle">
-         <strong>{systemInfo?.hostname || 'Host PC (DESKTOP-7K68NSL)'}</strong>
-         <span className={`hostLivePill ${systemInfo ? 'online' : 'offline'}`}>
-          <span className="liveDot green"/> {systemInfo ? 'Online • 24/7 Watchdog Active' : 'Connecting...'}
-         </span>
-        </div>
-        <div className="hostDeviceSub">
-         LAN: <span className="mono">{systemInfo?.primaryIp ? `${systemInfo.primaryIp}:${systemInfo.port || 3080}` : '172.16.20.139:3080'}</span> • Remote: <span className="mono">neptunemonitor.com</span> • Printers linked: <strong style={{color:'#38bdf8'}}>{online}/{total} Online</strong>
-        </div>
-       </div>
-      </div>
-      <div className="hostRemoteActions">
-       <button className="hostSetupBtn" onClick={()=>setShowHostStatusModal(true)} title="View Host machine IP, cloud domain, and 24/7 background status">
-        <HardDrive size={13}/> Host Status
-       </button>
-       <button className="hostGuideBtn" onClick={()=>setShowSetupGuideModal(true)} title="Step-by-step setup guide for remote access & adding printers">
-        <Sparkles size={13}/> How to Setup
-       </button>
-      </div>
-     </div>
-
-     {/* 6 Fleet Stat Cards */}
-     <section className="fleetStatsGrid">
-      <div className="fleetStatCard total" title="Total registered 3D printers in farm">
-       <div className="fleetStatIconBox total"><Printer size={18}/></div>
-       <div className="fleetStatInfo">
-        <span className="fleetStatLabel">Total printers</span>
-        <strong className="fleetStatVal">{total}</strong>
-       </div>
-      </div>
-
-      <div className="fleetStatCard online" title="Printers currently connected to LAN">
-       <div className="fleetStatIconBox online"><CheckCircle2 size={18}/></div>
-       <div className="fleetStatInfo">
-        <span className="fleetStatLabel">Online</span>
-        <strong className="fleetStatVal">{online}</strong>
-       </div>
-      </div>
-
-      <div className="fleetStatCard printing" title="Printers actively running print jobs">
-       <div className="fleetStatIconBox printing"><Play size={18}/></div>
-       <div className="fleetStatInfo">
-        <span className="fleetStatLabel">Printing</span>
-        <strong className="fleetStatVal">{printing}</strong>
-       </div>
-      </div>
-
-      <div className="fleetStatCard completed" title="Printers with completed print jobs (ready to clear bed)">
-       <div className="fleetStatIconBox completed"><CheckCheck size={18}/></div>
-       <div className="fleetStatInfo">
-        <span className="fleetStatLabel">Complete</span>
-        <strong className="fleetStatVal">{completedPrinters}</strong>
-       </div>
-      </div>
-
-      <div className="fleetStatCard attention" title="Printers with filament runout, pause, shutdown or errors">
-       <div className="fleetStatIconBox attention"><AlertTriangle size={18}/></div>
-       <div className="fleetStatInfo">
-        <span className="fleetStatLabel">Issue with printer</span>
-        <strong className="fleetStatVal">{issues}</strong>
-       </div>
-      </div>
-
-      <div className="fleetStatCard offline" title="Printers currently offline or disconnected">
-       <div className="fleetStatIconBox offline"><WifiOff size={18}/></div>
-       <div className="fleetStatInfo">
-        <span className="fleetStatLabel">Offline / errors</span>
-        <strong className="fleetStatVal">{offline}</strong>
-       </div>
+      <div className="fleetHeroActions">
+       <button aria-label="Refresh printer status" title="Refresh printer status" onClick={refresh}><RefreshCw size={16}/></button>
+       {isAdmin && <button onClick={()=>setPage('settings')}><Plus size={17}/> Add printer</button>}
       </div>
      </section>
-
-     {/* Printer status subheader */}
-     <div className="fleetStatusSubBar">
-      <div className="fleetStatusLeft">
-       <strong>Printer status</strong>
-       <span className="fleetStatusCount">{online} of {total} printers connected</span>
-      </div>
-      <div className="fleetStatusRight">
-       <span className="livePulseDot"/>
-       <span>Live updates: every 5 sec</span>
+     <div className="fleetFilterRail" role="group" aria-label="Filter printers by status">
+      {fleetMetrics.map(({key,label,icon:Icon,count})=>(
+       <button key={key} className={'fleetFilter metric-'+key} aria-pressed={fleetFilter===key} onClick={()=>setFleetFilter(key)}>
+        <span className="fleetFilterIcon"><Icon size={16}/></span><strong>{count}</strong><span className="fleetFilterLabel">{label}</span>
+       </button>
+      ))}
+     </div>
+     <div className="fleetWorkspace" data-view={fleetView}>
+      <div className="fleetWorkspaceMain">
+     <div className="monitorCaption fleetViewToolbar">
+      <h2>{activeMetric.label}</h2>
+      <div className="fleetViewActions">
+       <label className={'fleetSearch'+(printerQuery?' has-query':'')}><Search size={15}/><input aria-label="Find a printer or file" type="search" placeholder="Find a printer or file" value={fleetSearch} onChange={e=>setFleetSearch(e.target.value)}/></label>
+       <span className="fleetUpdateTime"><Radio size={13}/>{error?'Update failed':refreshed?'Updated '+refreshed.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'Connecting…'}</span>
+       <label className="fleetViewPicker">
+        <Layers size={14} aria-hidden="true"/>
+        <select aria-label="Printer layout" value={fleetView} onChange={e=>changeFleetView(e.target.value)}>
+         {fleetViews.map(([key,label])=><option key={key} value={key}>{label}</option>)}
+        </select>
+       </label>
       </div>
      </div>
-
-     {/* Horizontal Fleet Cards List (Sorted Alphabetically A to Z) */}
-     <section className="fleetList">
+     <section className="monitorList" data-view={fleetView}>
+      {!sortedPrinters.length && <p className="monitorEmpty">{!refreshed?'Waiting for printer status…':printerQuery?'No printers or files match your search.':fleetFilter==='all'?'No printers available.':'No printers match this status.'}</p>}
       {sortedPrinters.map(p=>(
        <PrinterCard 
         key={p.id} 
@@ -4367,17 +3773,34 @@ function App(){
        />
       ))}
      </section>
+      </div>
+      <section className="fleetSchedule" aria-labelledby="fleet-schedule-title">
+       <div className="fleetScheduleHeader">
+        <span><Clock size={17}/></span>
+        <div><h2 id="fleet-schedule-title">Next finishes</h2><p>Estimated from live jobs</p></div>
+       </div>
+       {finishQueue.length ? <div className="fleetScheduleList">
+        {finishQueue.map((printer,index)=>(
+         <button type="button" className="fleetScheduleItem" key={printer.id} onClick={()=>setControlPrinter(printer)}>
+          <span className={'fleetScheduleDot '+(index===0?'is-next':'')} aria-hidden="true"/>
+          <span className="fleetScheduleJob">
+           <span><strong>{printer.name}</strong><span className="fleetScheduleTime">{formatFinishTime(printer.eta)}</span></span>
+           <small title={printer.file}>{printer.file||'Active print job'}</small>
+          </span>
+         </button>
+        ))}
+       </div> : <p className="fleetScheduleEmpty">{error?'Printer status unavailable.':'No finish times available yet.'}</p>}
+       <div className="fleetScheduleFoot"><Radio size={13}/>{error?'Waiting for a live update':refreshed?'Updated '+refreshed.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'Connecting…'}</div>
+      </section>
+     </div>
     </>
    ):page==='completed'?(
-    <CompletedPage data={completed} printers={printers} onSync={syncHistory}/>
+    <CompletedPage data={completed} onSync={syncHistory} isAdmin={isAdmin}/>
    ):(page==='settings' && isAdmin)?(
     <SettingsPage list={config} reload={async()=>{await loadConfig();await refresh()}} systemInfo={systemInfo}/>
    ):(
     <>
-     <div className="titleRow"><div><h1>Alerts and event history</h1><p>Changes observed while this monitor was running.</p></div></div>
-     <div className="card activity">
-      {events.length?events.map(e=><div className="event" key={e.id}><span className={'dot '+(e.type==='completed'?'purple':(e.type==='resumed'?'green':(e.type==='error'||e.type==='offline'?'red':(e.type==='runout'?'orange':'amber'))))}/><div>{e.message}<small>{new Date(e.time).toLocaleString()} · {e.type}</small></div></div>):<div className="empty"><WifiOff size={22}/> No events recorded yet.</div>}
-     </div>
+     <AlertsPage events={events}/>
     </>
    )}
 

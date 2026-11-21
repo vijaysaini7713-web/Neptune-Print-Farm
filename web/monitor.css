@@ -1,0 +1,881 @@
+.layout {
+ --panel:#131d29; --canvas:#0c131d; --line:#2b3847; --muted:#a4b3c2; --ink:#edf4f6; --accent:#70dec7;
+ background:var(--canvas); color:var(--ink);
+}
+.layout.theme-light {--panel:#fff;--canvas:#f3f6f7;--line:#d4dfe2;--muted:#516571;--ink:#172e38;--accent:#076c60}
+.monitorHeader,.monitorTitle,.monitorActions,.monitorBrand,.monitorCaption,.monitorCaption span,.infoButton,.monitorActions button,.farmMenu summary {display:flex;align-items:center;gap:8px}
+.main .monitorHeader {height:56px;margin-bottom:0;justify-content:space-between;border-color:var(--line);position:relative;z-index:5}
+.monitorBrand {font-weight:750;font-size:15px;letter-spacing:-.4px}
+.monitorBrand>span,.machineMark {display:grid;place-items:center;color:var(--accent);border-radius:9px;background:color-mix(in srgb,var(--accent) 10%,var(--panel))}
+.monitorBrand>span {width:31px;height:31px}
+.farmMenu summary,.monitorActions button,.infoButton {min-height:36px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:0 11px;font-size:12px;font-weight:600;cursor:pointer}
+.farmMenu summary::-webkit-details-marker {display:none}
+.monitorTitle,.monitorCaption {justify-content:space-between}
+.monitorTitle {padding:25px 0 18px}
+.monitorTitle h1 {font-size:clamp(24px,3vw,36px);line-height:1.1;letter-spacing:-1.2px;margin:0}
+.monitorTitle p {margin:5px 0 0;font-size:13px;color:var(--muted)}
+.monitorStats {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.monitorStats>div {display:grid;grid-template-columns:20px 1fr;align-items:center;gap:3px 8px;padding:13px 16px;border-left:1px solid var(--line)}
+.monitorStats>div:first-child {border:0}
+.monitorStats svg {color:var(--accent)}
+.monitorStats strong {font-size:22px;line-height:1.1}
+.monitorStats span {grid-column:2;color:var(--muted);font-size:12px}
+.monitorCaption {margin:22px 1px 10px}
+.monitorCaption h2 {font-size:16px}
+.monitorCaption span,.machineTime small,.jobBrief {font-size:12px;color:var(--muted)}
+.monitorList {display:grid;gap:7px}
+.monitorRow {--state:var(--muted);border:1px solid var(--line);background:var(--panel);border-radius:12px;min-width:0}
+.tone-green {--state:var(--accent)}.tone-amber {--state:#e9ae49}.tone-red {--state:#fb8987}.tone-purple {--state:#bd9af9}
+.theme-light .tone-amber {--state:#8d5807}.theme-light .tone-red {--state:#aa3030}.theme-light .tone-purple {--state:#7343aa}
+.monitorSummary {display:grid;grid-template-columns:36px minmax(105px,1.1fr) minmax(90px,1.3fr) minmax(64px,.55fr) auto;gap:14px;align-items:center;padding:14px}
+.machineMark {height:36px;color:var(--state);background:color-mix(in srgb,var(--state) 9%,var(--panel))}
+.machineName,.jobBrief {min-width:0}
+.machineName h3,.jobBrief>span {display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.machineName h3 {font-size:15px;color:var(--ink)}
+.machineState {display:flex;align-items:center;gap:5px;font-size:11px;color:var(--state);text-transform:capitalize;margin-top:3px;font-weight:650}
+.machineState i {width:6px;height:6px;background:currentColor;border-radius:50%}
+.jobMeter {height:4px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:6px}
+.jobMeter i {display:block;height:100%;background:var(--state)}
+.machineTime {display:grid;gap:2px;font-variant-numeric:tabular-nums}
+.machineTime strong {font-size:14px}.infoButton {color:var(--accent)}
+.monitorRow .fleetCard {margin:0;border-radius:0 0 12px 12px}
+.monitorEmpty {padding:16px}
+@media(max-width:860px){
+ .layout aside {display:none}
+ .layout .main {width:100%;padding:0 12px calc(76px + env(safe-area-inset-bottom))}
+ .main .monitorHeader {height:44px}
+ .layout .mobileNav {display:flex;position:fixed;top:auto;bottom:0;left:0;right:0;z-index:15;margin:0;padding:4px 6px calc(4px + env(safe-area-inset-bottom));background:var(--panel);border:0;border-top:1px solid var(--line);border-radius:0}
+ .layout .mobileNav button {display:grid;justify-items:center;align-content:center;gap:3px;flex:1;height:46px;background:transparent;border:0;color:var(--muted);font-size:11px}
+ .layout .mobileNav button.active {color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--panel))}
+ .monitorTitle {padding:14px 0 11px}.monitorStats>div {padding:8px 4px;justify-content:center;grid-template-columns:auto auto;gap:1px 4px}
+ .monitorStats span {grid-column:1/-1;text-align:center;font-size:10px}.monitorStats strong {font-size:18px}.monitorStats svg {width:13px}
+ .monitorCaption {margin:13px 1px 7px}
+}
+@media(max-width:620px){
+ .monitorList {gap:5px}
+ .monitorSummary {grid-template-columns:minmax(0,1fr) auto auto;gap:3px 8px;padding:8px 10px}
+ .machineMark {display:none}.machineName {grid-row:1}.machineName h3 {font-size:14px}
+ .machineTime {grid-column:2;grid-row:1;text-align:right}.machineTime small {font-size:10px}
+ .infoButton {grid-column:3;grid-row:1;min-height:36px;padding:0 7px;gap:3px;font-size:11px}
+ .jobBrief {grid-column:1/-1;grid-row:2}.jobMeter {margin-top:3px;height:3px}
+ .monitorTitle p {font-size:12px}.monitorActions {gap:5px}
+}
+
+/* Printer settings and account management */
+.settings {padding-top:18px;overflow-wrap:anywhere}
+.settings .titleRow {flex-wrap:wrap;gap:10px}
+.settings .settingRow {grid-template-columns:24px minmax(0,1.25fr) minmax(0,1fr) minmax(60px,.45fr) minmax(0,1.25fr) auto auto}
+.settingRow label,.hostFormGroup,.hostSetupGrid>* {min-width:0}
+.settingsUsersTable {table-layout:fixed;overflow-wrap:anywhere}
+.settingsUsersTable th:first-child {width:28%}
+.settingsCellLabel {display:none}
+.tgChatControls {display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.tgChatControls .hostInput {flex:1 0 min(100%,145px)}
+.hostFormGroup input,.hostFormGroup select {min-width:0}
+.tunnelUrlRow {flex-wrap:wrap}
+.tunnelUrlRow .hostInput {flex:1 0 min(100%,145px)}
+.hostDiagGrid {grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))}
+.tunnelStatusBadgeRow {flex-wrap:wrap}
+
+@media(max-width:860px){
+ .layout .mobileNav {gap:4px;overflow:visible}
+ .layout .mobileNav button {flex:1 1 0;min-width:0;padding:3px 0}
+ .settingsSubTabs {display:grid;width:100%;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+ .settingsSubTab {justify-content:center;min-width:0;min-height:44px;gap:5px;padding:5px;font-size:12px}
+ .settingsSubTab svg {flex-shrink:0}
+ .settingsSubTab .hostStatusDot {display:none}
+ .settings .settingRow {grid-template-columns:minmax(0,1fr) minmax(0,1fr) 68px;align-items:end;gap:9px}
+ .settingNum {grid-column:1/-1;padding:0}
+ .settingName {grid-column:1/-1}
+ .settingHost,.settingEmail {grid-column:1/3}
+ .settingPort {grid-column:3}
+ .settingRow .enabled {grid-column:3;padding-bottom:6px}
+ .settingRow .deleteBtn {grid-column:3;justify-self:end}
+ .settingsUsersTable,.settingsUsersTable tbody {display:block}
+ .settingsUsersTable thead {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .settingsUsersTable tbody tr {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px 10px;padding:12px}
+ .settingsUsersTable td[role="cell"] {display:block;padding:0 !important}
+ .settingsUsersTable td:first-child,.settingsUsersTable td[colspan],.settingsUserPrinters {grid-column:1/-1}
+ .settingsUsersTable td:last-child:not([colspan]) {grid-column:2}
+ .settingsCellLabel {display:block;margin-bottom:2px}
+}
+@media(max-width:380px){
+ .settingsSubTab {flex-direction:column;gap:3px;font-size:11px}
+ .settings .hostCard {padding:12px}
+ .settings .hostFormRow {flex-direction:column}
+}
+
+/* Landscape displays show printer telemetry directly in the fleet. */
+.monitorDetails {display:none}
+.monitorDetails.is-expanded {display:block}
+@media (orientation:landscape){
+ .monitorRow {border:0;background:none}
+ .monitorRow .monitorSummary {display:none}
+ .monitorRow .monitorDetails {display:block}
+ .monitorRow .fleetCard {border-radius:12px}
+ .monitorRow .fleetCol.actions,.monitorRow .fleetCol.metrics {flex-wrap:wrap;gap:8px}
+ .monitorRow .fleetCard {overflow-wrap:anywhere}
+}
+@media (orientation:landscape) and (min-width:660px){
+ .monitorRow .fleetDesktopView {display:block !important}
+ .monitorRow .fleetMobileCardView {display:none !important}
+ .monitorRow .fleetCard {padding:10px 14px}
+ .monitorRow .fleetMainRow {
+  grid-template-columns:minmax(128px,.72fr) minmax(0,2.2fr) minmax(174px,1fr) minmax(144px,.85fr);
+  gap:12px;
+ }
+ .monitorRow .fleetCol.metrics {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+ .monitorRow .fleetMetricVal {white-space:normal}
+ .monitorRow .fleetTimeRow {gap:4px 6px}
+ .monitorRow .fleetTimeBadge {padding:3px 6px;gap:4px;white-space:normal}
+ .monitorRow .fleetTimeBadge .timeValue {font-size:12px;letter-spacing:0}
+ .monitorRow .fleetCol.actions .fleetBtn {justify-content:center;padding-inline:7px}
+}
+@media (orientation:landscape) and (max-height:780px){
+ .monitorTitle {padding:9px 0 7px}
+ .monitorTitle h1 {font-size:24px}
+ .monitorRow .fleetCard {padding-block:7px}
+ .monitorRow .fleetCol.jobProgress {gap:3px}
+ .monitorRow .fleetJobFoot {margin-top:0}
+ .monitorRow .fleetTimeBadge {padding:2px 5px}
+ .monitorRow .fleetTimeBadge .timeIcon {display:none}
+ .monitorRow .fleetTimeBadge .timeLabel {font-size:10px}
+ .monitorRow .fleetTimeBadge .timeValue {font-size:11px}
+ .monitorStats>div {padding-block:7px}
+ .monitorCaption {margin:10px 1px 7px}
+}
+
+
+.farmHeaderMenus {display:flex;align-items:center;gap:6px}
+.farmMenu {position:relative}
+.farmMenuPanel {
+ position:absolute;top:calc(100% + 6px);right:0;width:min(230px,calc(100vw - 24px));
+ display:grid;gap:2px;padding:6px;background:var(--panel);border:1px solid var(--line);
+ border-radius:12px;box-shadow:0 12px 32px #0005;
+}
+.farmMenuPanel button,.farmMenuPanel a {
+ display:flex;align-items:center;gap:9px;min-height:38px;padding:7px 9px;border-radius:6px;
+ background:transparent;color:var(--ink);font-size:13px;text-align:left;text-decoration:none;
+}
+.farmMenuPanel :is(button,a):hover,.farmMenu[open] summary {background:color-mix(in srgb,var(--accent) 13%,var(--panel))}
+.farmMenuHeading,.farmMenuIdentity {padding:8px 9px;color:var(--muted);font-size:12px}
+.farmMenuHeading {display:flex;align-items:center;gap:7px}
+.farmMenuIdentity {display:grid;justify-items:start;gap:4px;overflow-wrap:anywhere}
+.farmMenuIdentity strong {color:var(--ink);font-size:13px}
+.farmMenuDivider {height:1px;background:var(--line);margin:3px}
+.farmMenuPanel .farmMenuSignOut {color:#fb8987}
+.theme-light .farmMenuPanel .farmMenuSignOut {color:#aa3030}
+@media(max-width:580px){
+ .farmHeaderMenus {gap:4px}
+ .farmMenu {position:static}
+ .farmMenuPanel {top:calc(100% + 4px)}
+ .farmMenu summary {gap:4px;padding-inline:6px;font-size:11px}
+ .farmPreferencesLabel {display:none}
+ .monitorBrand {font-size:12px;gap:4px}
+ .monitorBrand>span {width:22px;height:24px}
+}
+
+/* Printer controls */
+.controlModal.printerWorkspace {width:min(720px,100%);max-height:92dvh}
+.printerWorkspace .modalHeader,.printerWorkspace .controlStatsBar,.printerWorkspaceTabs,.printerWorkspace .modalFooterActions {flex-shrink:0}
+.printerWorkspace .controlStatsBar {grid-template-columns:repeat(3,minmax(0,1fr))}
+.printerWorkspaceTabs {display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:4px;padding:8px 12px;background:inherit;border-bottom:1px solid #64748b40}
+.printerWorkspaceTabs .ctrlTabBtn,.printerWorkspaceTabs select {min-height:40px;min-width:0;border-radius:7px;justify-content:center}
+.printerWorkspaceTabs select {font:inherit;font-size:12px;padding:4px;color:inherit;background:transparent;border:1px solid #64748b60}
+.printerWorkspaceTabs option {color:#f4f7fb;background:#131d29}
+.printerWorkspace .ctrlTabContent {min-height:0;overflow:auto;overscroll-behavior:contain}
+.printerWorkspace .ctrlActiveFileName {overflow-wrap:anywhere;white-space:normal}
+.printerWorkspace .modalHeader>div {min-width:0}
+.printerWorkspace .modalHeader>div:first-child {overflow-wrap:anywhere}
+.printerWorkspace .modalFooterActions .ctrlBtn {min-height:36px}
+.printerWorkspace .actionGroupLeft {flex-wrap:wrap}
+.printerGuestNote {display:flex;align-items:center;gap:6px;padding:10px 16px;color:#8195ac}
+@media(max-width:580px){
+ .printerWorkspaceTabs {padding:5px 8px}
+ .printerWorkspaceTabs .ctrlTabBtn {font-size:11px;gap:4px;padding:4px}
+ .printerWorkspaceTabs .ctrlTabBtn svg {display:none}
+ .printerWorkspace .ctrlTabContent,.printerWorkspace .modalHeader,.printerWorkspace .modalFooterActions {padding:10px}
+ .printerWorkspace .modalHeader .printerIcon {display:none!important}
+ .printerWorkspace .modalFooterActions {gap:6px}
+ .printerWorkspace .modalFooterActions .ctrlBtn {font-size:11px;padding-inline:7px}
+}
+
+/* Production history */
+.productionTotals {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.productionTotals>div {display:grid;grid-template-columns:auto 1fr;align-items:center;gap:4px 7px;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:12px}
+.productionTotals svg,.productionFileIcon {color:var(--accent)}
+.productionTotals strong {font-size:18px;overflow-wrap:anywhere}
+.productionTotals span {grid-column:1/-1;font-size:11px;color:var(--muted)}
+.productionToolbar {display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:18px}
+.productionToolbar .prodViewToggle {flex-shrink:0}
+.productionSearch,.productionFilters {display:flex;gap:6px;align-items:center;min-width:0}
+.productionSearch {flex:1 1 200px;padding-inline:10px}
+.productionSearch,.productionFilters :is(select,input) {min-height:38px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-size:13px}
+.productionFilters :is(select,input) {min-width:0;padding:5px 8px}
+.productionSearch input {flex:1;min-width:0;border:0;background:transparent;color:inherit}
+.productionResultCount {margin:13px 0 7px;display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--muted);font-size:12px}
+.productionResults {display:grid;gap:5px}
+.productionRecord {min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.productionRecord summary {display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:10px 12px;cursor:pointer;list-style:none}
+.productionRecord summary::-webkit-details-marker {display:none}
+.productionRecordName,.productionRecordStatus {display:grid;gap:3px}
+.productionRecordName strong {font-size:13px;overflow-wrap:anywhere}
+.productionRecordStatus {text-align:right}
+.productionRecordStatus b {font-size:11px;color:var(--accent)}
+.productionRecordStatus b.failed {color:#fb8987}
+.theme-light .productionRecordStatus b.failed {color:#aa3030}
+.productionRecord small,.productionRecord dt {color:var(--muted)}
+.productionRecord[open] .productionRecordChevron {transform:rotate(180deg)}
+.productionRecord dl {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0;padding:10px 12px;border-top:1px solid var(--line);font-size:12px}
+.productionRecord dd {margin:2px 0 0;overflow-wrap:anywhere}
+.productionEmpty {padding:12px}
+@media(max-width:620px){
+ .productionTotals>div {display:block;padding:7px 5px;text-align:center}
+ .productionTotals>div svg {display:none}
+ .productionTotals>div strong,.productionTotals>div span {display:block}
+ .productionTotals>div strong {font-size:13px}
+ .productionTotals>div span {font-size:10px}
+ .productionToolbar {margin-top:12px}
+ .productionSearch {flex-basis:100%;order:1}
+ .productionFilters {flex-wrap:wrap;order:2;width:100%}
+ .productionFilters select {flex:1 1 0}
+ .productionRecord summary {grid-template-columns:minmax(0,1fr) auto auto;gap:6px;padding:8px}
+ .productionFileIcon {display:none}
+ .productionRecord dl {grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* Shared palette for the fleet, production and sign-in surfaces. */
+:root {
+ color-scheme:dark;
+ --farm-canvas:#101321;--farm-panel:#191e30;--farm-line:#333c55;--farm-ink:#f3f5ff;--farm-muted:#aebbd5;
+ --farm-blue:#9fafed;--farm-mint:#73dfbc;--farm-violet:#c5a8ff;--farm-amber:#f2bf71;--farm-rose:#ff9ca6;
+}
+:root[data-theme="light"] {
+ color-scheme:light;
+ --farm-canvas:#f3f5fc;--farm-panel:#fff;--farm-line:#d8deed;--farm-ink:#222946;--farm-muted:#535e7d;
+ --farm-blue:#4556a8;--farm-mint:#147960;--farm-violet:#6844af;--farm-amber:#88570a;--farm-rose:#ad3653;
+}
+.layout,.layout.theme-light {
+ --panel:var(--farm-panel);--canvas:var(--farm-canvas);--line:var(--farm-line);
+ --muted:var(--farm-muted);--ink:var(--farm-ink);--accent:var(--farm-blue);
+}
+.layout>aside {background:var(--panel);border-color:var(--line)}
+.layout .nav.active {background:color-mix(in srgb,var(--farm-blue) 14%,var(--panel));border-color:color-mix(in srgb,var(--farm-blue) 40%,var(--line));color:var(--farm-blue)}
+.layout .logoIconBox,.monitorBrand>span {background:color-mix(in srgb,var(--farm-violet) 17%,var(--panel));color:var(--farm-violet)}
+.monitorTitle h1,.settingsSectionTitle {color:var(--ink)}
+.settingsSectionTitle {font-size:16px;margin:0}
+.layout .monitorActions button:not([aria-label]),.launchLogin .primary {
+ background:var(--farm-blue);border-color:var(--farm-blue);color:var(--farm-canvas)
+}
+.productionTotals,.monitorStats {--metric:var(--farm-blue)}
+.productionTotals .colorMetric:nth-child(2),.monitorStats .metric-printing {--metric:var(--farm-mint)}
+.productionTotals .colorMetric:nth-child(3),.monitorStats .metric-complete {--metric:var(--farm-violet)}
+.productionTotals .colorMetric:nth-child(4),.monitorStats .metric-issues {--metric:var(--farm-amber)}
+.productionTotals .colorMetric:nth-child(5),.monitorStats .metric-offline {--metric:var(--farm-rose)}
+.productionTotals .colorMetric,.monitorStats .colorMetric {
+ background:color-mix(in srgb,var(--metric) 7%,var(--panel))
+}
+.colorMetric svg,.colorMetric strong {color:var(--metric)}
+.monitorRow.tone-green {--state:var(--farm-mint)}
+.monitorRow.tone-purple {--state:var(--farm-violet)}
+.monitorRow.tone-amber {--state:var(--farm-amber)}
+.monitorRow.tone-red {--state:var(--farm-rose)}
+.productionRecordStatus b {color:var(--farm-mint)}
+.productionRecordStatus b.failed {color:var(--farm-rose)}
+.layout .mobileNav button.active {color:var(--farm-blue);background:color-mix(in srgb,var(--farm-blue) 15%,var(--panel))}
+.settingsSubTab.active,.layout .prodViewBtn.active {color:var(--farm-blue);background:color-mix(in srgb,var(--farm-blue) 15%,var(--panel));border-color:var(--line)}
+.layout :is(button,a,input,select,summary):focus-visible,.launchLogin :is(button,a,input):focus-visible {
+ outline:2px solid var(--farm-blue);outline-offset:2px
+}
+.alertRecords {display:grid;gap:6px}
+.alertRecord {
+ --event-color:var(--farm-blue);display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;gap:10px;
+ padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)
+}
+.alertRecord.is-issue {--event-color:var(--farm-amber)}
+.alertRecord.is-complete {--event-color:var(--farm-violet)}
+.alertIcon {display:grid;place-items:center;height:34px;border-radius:9px;background:color-mix(in srgb,var(--event-color) 15%,var(--panel));color:var(--event-color)}
+.alertRecord strong {font-size:13px;overflow-wrap:anywhere}
+.alertRecord small {display:block;margin-top:3px;color:var(--muted);text-transform:capitalize}
+.alertsPage select {max-width:46%;padding:8px;border:1px solid var(--line);border-radius:8px;color:var(--ink);background:var(--panel)}
+.launchLogin {
+ background:radial-gradient(ellipse at 60% 8%,color-mix(in srgb,var(--farm-violet) 16%,var(--farm-canvas)),var(--farm-canvas) 62%);
+ color:var(--farm-ink);min-height:100dvh
+}
+.launchLogin .login {padding:clamp(20px,6vw,32px);border:1px solid var(--farm-line);background:var(--farm-panel);box-shadow:0 18px 60px #0b102522}
+.loginBrand,.loginBrand span,.loginAccess,.loginAccess span {display:flex;align-items:center;gap:8px}
+.loginBrand,.loginAccess {justify-content:space-between}
+.loginBrand {margin-bottom:24px;font-weight:750}
+.loginBrand svg,.loginAccess a {color:var(--farm-blue)}
+.launchLogin h1 {font-size:28px;color:var(--farm-ink)}
+.launchLogin p,.launchLogin label {color:var(--farm-muted)}
+.launchLogin label {display:block;margin-top:14px;font-size:13px;font-weight:600}
+.launchLogin input {min-height:42px;background:var(--farm-canvas);color:var(--farm-ink);border-color:var(--farm-line);font-size:16px}
+.launchLogin .error {margin-top:10px;color:var(--farm-rose)}
+.loginAccess {margin-top:17px;padding-top:14px;border-top:1px solid var(--farm-line);color:var(--farm-muted);font-size:12px;flex-wrap:wrap}
+@media(prefers-reduced-motion:reduce){
+ .layout *,.launchLogin * {animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+
+/* Fleet dashboard */
+:root {
+ --farm-canvas:#101623;--farm-panel:#192131;--farm-line:#344259;--farm-ink:#f4f7ff;--farm-muted:#aabbd1;
+ --farm-blue:#a8c5ff;--farm-mint:#76e2bd;--farm-violet:#c8aeff;
+ --hero-surface:linear-gradient(114deg,#164367,#203968 61%,#3c356f);
+ --hero-ink:#fff;--hero-muted:#d8e7fa;
+}
+:root[data-theme="light"] {
+ --farm-canvas:#eef3fa;--farm-panel:#fff;--farm-line:#d5deeb;--farm-ink:#142640;--farm-muted:#4d617b;
+ --farm-blue:#255cb0;--farm-mint:#147960;--farm-violet:#6541af;
+ --hero-surface:linear-gradient(114deg,#d5ebfd,#dce6fd 61%,#ebe1ff);
+ --hero-ink:#152e52;--hero-muted:#365476;
+}
+.layout>aside {width:206px;padding:18px 13px;gap:3px}
+.fleetBrand {display:flex;align-items:center;gap:9px;background:none;color:var(--ink);padding:3px 5px 23px;text-align:left;font-size:17px;letter-spacing:-.4px;white-space:nowrap}
+.fleetBrand .logoIconBox {width:36px;height:36px}
+.layout .nav {min-height:42px;color:var(--muted);border:1px solid transparent;margin:0}
+.layout .nav.active {color:var(--farm-blue);border-color:color-mix(in srgb,var(--farm-blue) 30%,var(--line))}
+.fleetHostShortcut {
+ display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;width:100%;padding:10px;
+ border:1px solid var(--line);background:var(--canvas);color:var(--ink);border-radius:10px;text-align:left;font-size:12px
+}
+.fleetHostShortcut small {display:block;margin-top:3px;color:var(--muted)}
+.hostConnectionDot {display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--farm-amber);flex:none}
+.hostConnectionDot.connected {background:var(--farm-mint);box-shadow:0 0 0 3px color-mix(in srgb,var(--farm-mint) 20%,transparent)}
+.fleetHero {
+ display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 10px;padding:19px 22px;
+ border-radius:16px;background:var(--hero-surface);color:var(--hero-ink)
+}
+.fleetHero h1 {margin:0;letter-spacing:-.045em;font-size:clamp(25px,3vw,39px);line-height:1.05}
+.fleetHero p {display:flex;align-items:center;gap:8px;color:var(--hero-muted);font-size:13px;margin:8px 0 0}
+.fleetHeroActions {display:flex;gap:7px;flex:none}
+.fleetHeroActions button {display:flex;align-items:center;justify-content:center;gap:6px;min-height:38px;border-radius:9px;padding:0 10px;background:#ffffff23;border:1px solid #ffffff55;color:var(--hero-ink);font-weight:700;font-size:12px}
+.fleetHeroActions button:last-child:not([aria-label]) {background:var(--hero-ink);color:var(--farm-canvas)}
+.theme-light .fleetHeroActions button:last-child:not([aria-label]) {color:#fff}
+.fleetHeroActions button:hover {filter:brightness(.92)}
+.fleetFilterRail {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+.fleetFilter {
+ --metric:var(--farm-blue);
+ display:grid;grid-template-columns:32px minmax(0,1fr);grid-template-rows:auto auto;align-items:center;column-gap:9px;
+ text-align:left;padding:9px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:11px
+}
+.fleetFilter.metric-printing {--metric:var(--farm-mint)}
+.fleetFilter.metric-complete {--metric:var(--farm-violet)}
+.fleetFilter.metric-issues {--metric:var(--farm-amber)}
+.fleetFilter.metric-offline {--metric:var(--farm-rose)}
+.fleetFilterIcon {grid-row:1/3;display:grid;place-items:center;width:32px;height:32px;border-radius:8px;color:var(--metric);background:color-mix(in srgb,var(--metric) 15%,var(--panel))}
+.fleetFilter strong {font-variant-numeric:tabular-nums;font-size:19px;line-height:1.1}
+.fleetFilterLabel {font-size:11px;color:var(--muted)}
+.fleetFilter:hover,.fleetFilter[aria-pressed="true"] {border-color:var(--metric);background:color-mix(in srgb,var(--metric) 10%,var(--panel))}
+.monitorList .monitorRow {border-left:3px solid var(--state)}
+.monitorList .fleetCardRunoutFill,.monitorList .fleetCardIssueFill {display:none}
+.monitorList .fleetCard {box-shadow:none!important}
+.monitorList .fleetCard.state-completed {background:var(--panel)!important;border:1px solid var(--line)!important}
+.monitorList .fleetCard .fleetBar {background:var(--line)}
+.monitorList .fleetPrinterIcon {background:color-mix(in srgb,var(--state) 13%,var(--panel));color:var(--state)}
+.monitorList .fleetCard {background:var(--panel);border-color:var(--line)}
+.monitorList .infoButton {background:var(--canvas)}
+.monitorList .infoButton:hover {border-color:var(--accent)}
+@media (orientation:landscape){
+ .monitorList .monitorRow {border:0}
+ .monitorList .monitorRow .fleetCard {border-inline-start:3px solid var(--state)!important}
+}
+@media(max-width:620px){
+ .fleetHero {margin:9px 0 7px;padding:10px;border-radius:11px;gap:6px}
+ .fleetHero p {margin-top:6px;font-size:11px}
+ .fleetHeroActions {gap:4px}
+ .fleetHeroActions button {padding-inline:6px;min-height:34px;font-size:11px}
+ .fleetFilterRail {gap:4px}
+ .fleetFilter {display:flex;flex-wrap:wrap;justify-content:center;gap:3px;padding:5px 2px;border-radius:8px}
+ .fleetFilterIcon {width:auto;height:auto;background:none}.fleetFilterIcon svg {width:12px}
+ .fleetFilter strong {font-size:15px}
+ .fleetFilterLabel {flex-basis:100%;text-align:center;font-size:10px;line-height:1.1}
+}
+@media(orientation:landscape) and (max-height:780px){
+ .fleetHero {margin-top:8px;padding-block:10px}
+ .fleetHero h1 {font-size:26px}
+ .fleetFilter {padding-block:5px}
+}
+@media(orientation:landscape) and (min-width:900px) and (max-height:780px){
+ .main .monitorHeader {height:48px}
+ .fleetHero {padding-block:8px;margin-bottom:8px}
+ .monitorList {gap:5px}
+ .monitorList .fleetCard {padding-block:6px}
+}
+
+/* Theme surfaces and a dedicated tile for each printer on wide displays. */
+:root {
+ --farm-canvas:#050b18;--farm-panel:#0d1b35;--farm-line:#29497c;--farm-ink:#f7faff;--farm-muted:#b5c7e5;
+ --farm-blue:#78adf0;--farm-mint:#65e7a4;--farm-violet:#be9aff;--farm-amber:#ffc247;--farm-rose:#ff839d;
+ --card-inset:#08142b;--primary-fill:#224ea8;--primary-ink:#fff;
+ --hero-surface:radial-gradient(ellipse at 85% 10%,#203e77 0%,transparent 72%),linear-gradient(115deg,#08152c,#112955);
+ --hero-ink:#fff;--hero-muted:#e6efff;
+}
+:root[data-theme="light"] {
+ --farm-canvas:#faf8f5;--farm-panel:#fff;--farm-line:#e8ded4;--farm-ink:#211a16;--farm-muted:#695950;
+ --farm-blue:#a23d0c;--farm-mint:#1b6f4a;--farm-violet:#6343a6;--farm-amber:#88570a;--farm-rose:#a93848;
+ --card-inset:#f8f3ed;--primary-fill:#bc430d;--primary-ink:#fff;
+ --hero-surface:radial-gradient(ellipse at 90% 0%,#ffd5ad 0%,transparent 68%),linear-gradient(110deg,#fff2e2,#ffe1c8);
+ --hero-ink:#3e2113;--hero-muted:#70462f;
+}
+.layout>aside {background:var(--panel)}
+.fleetBrand .logoIconBox,.monitorBrand>span {background:var(--primary-fill);color:var(--primary-ink)}
+.layout .nav.active {color:var(--farm-blue);border-color:transparent;background:color-mix(in srgb,var(--farm-blue) 12%,var(--panel))}
+.layout .nav {border-radius:10px}
+.layout .mobileNav {box-shadow:0 -5px 18px #20150a14}
+.layout .mobileNav button.active {box-shadow:none}
+.layout :is(.settingsSectionTitle,.fleetMainTitle,.fleetPrinterName,.fleetJobName,.fleetMetricVal,.fleetProgressPct) {color:var(--ink)}
+.layout :is(.fleetSubline,.fleetMetricLabel,.fleetSubtitle) {color:var(--muted)}
+.layout :is(.productionRecord,.alertRecord,.settingCard,.farmMenuPanel) {border-radius:14px}
+.layout .monitorActions button:not([aria-label]),.launchLogin .primary,
+.layout .fleetHeroActions button:last-child:not([aria-label]) {
+ background:var(--primary-fill);border-color:transparent;color:var(--primary-ink)
+}
+.layout .fleetHero {border:1px solid color-mix(in srgb,var(--hero-muted) 24%,var(--line))}
+
+
+.fleetFilterRail {gap:8px}
+.fleetFilter {border-radius:13px;box-shadow:0 2px 4px #20150a08}
+.fleetFilter[aria-pressed="true"] .fleetFilterIcon {color:var(--panel);background:var(--metric)}
+.monitorList .fleetPill {
+ max-width:100%;background:color-mix(in srgb,var(--state) 14%,var(--panel));color:var(--state);
+ border:0;box-shadow:none;padding:4px 8px;white-space:normal
+}
+.monitorList .fleetPill i {background:currentColor;box-shadow:none;flex:none}
+.monitorList .fleetBarFill {background:var(--state)}
+.monitorList .fleetBtn.control,.monitorList .infoButton {
+ box-shadow:none;background:color-mix(in srgb,var(--farm-blue) 10%,var(--panel));color:var(--farm-blue);
+ border:1px solid color-mix(in srgb,var(--farm-blue) 24%,var(--line))
+}
+.monitorList .fleetBtn.control:hover,.monitorList .infoButton:hover {background:var(--primary-fill);color:var(--primary-ink)}
+@media (orientation:landscape) and (min-width:900px){
+ .monitorList {grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:stretch}
+ .monitorList .monitorEmpty {grid-column:1/-1}
+ .monitorRow .monitorDetails,.monitorList .fleetCard {height:100%}
+ .monitorList .monitorRow .fleetCard {
+  border:1px solid var(--line)!important;border-radius:15px;padding:10px 12px;
+  background:var(--panel)!important
+ }
+ .monitorList .fleetMainRow {grid-template-columns:minmax(0,1fr);align-items:start;gap:7px}
+ .monitorList .fleetCol.identity {display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:0 8px}
+ .monitorList .fleetPrinterIcon {width:34px;height:34px;grid-row:1/3}
+ .monitorList .fleetIdentityText {display:contents}
+ .monitorList .fleetPrinterName {grid-column:2;grid-row:1;margin:0;line-height:1.2}
+ .monitorList .fleetSubline {grid-column:2;grid-row:2;overflow:hidden;text-overflow:ellipsis}
+ .monitorList .fleetPillWrap {grid-column:3;grid-row:1/3;margin:0}
+ .monitorList .fleetCol.jobProgress {gap:4px;padding-top:2px}
+ .monitorList .fleetJobFoot {margin-top:0}
+ .monitorList .fleetTimeRow {gap:3px 10px}
+ .monitorList .fleetTimeBadge {
+  background:none;border:0;box-shadow:none;padding:0;gap:3px;line-height:1.2;color:var(--muted)
+ }
+ .monitorList .fleetTimeBadge .timeIcon {display:none}
+ .monitorList .fleetTimeBadge .timeLabel {font-size:10px;color:var(--muted);margin:0}
+ .monitorList .fleetTimeBadge .timeValue {color:var(--ink);font-size:11px;text-shadow:none}
+ .monitorList .fleetCol.metrics {background:var(--card-inset);border-radius:9px;padding:6px 8px}
+ .monitorList .fleetMetricVal {font-size:12px}
+ .monitorList .fleetCol.actions {justify-content:flex-start;gap:5px}
+ .monitorList .fleetCol.actions .fleetBtn {padding:4px 7px;min-height:28px;font-size:11px}
+ .monitorList :is(.fleetErrorBanner,.fleetCompletedBanner,.fleetFilamentBanner,.fleetLevelingBanner,.fleetCancelledBanner) {
+  flex-wrap:wrap;margin-inline:0!important
+ }
+ .monitorList :is(.fleetErrorContent,.fleetFilamentContent,.fleetCompletedContent) {min-width:0;overflow-wrap:anywhere}
+}
+@media (orientation:landscape) and (min-width:1100px){
+ .monitorList {grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:620px){
+
+ .fleetFilterRail {gap:4px}
+ .fleetFilter {border-radius:9px}
+ .fleetFilter[aria-pressed="true"] .fleetFilterIcon {color:var(--metric);background:none}
+ .monitorList .monitorRow {border-left-width:2px}
+}
+@media (orientation:landscape) and (min-width:900px){
+ .monitorList .fleetProgressPct {font-size:14px;min-width:3.1em;text-align:right}
+ .layout .monitorList .fleetTimeRow .fleetTimeBadge .timeLabel {color:var(--muted)}
+ .layout .monitorList .fleetTimeRow .fleetTimeBadge .timeValue {color:var(--ink);text-shadow:none}
+ .layout .monitorList .fleetTimeRow .fleetTimeBadge.remaining .timeValue {color:var(--state)}
+}
+
+/* Full-card battery fill follows the same progress as the narrow status bar. */
+.monitorRow.has-charge :is(.monitorSummary,.fleetCard) {position:relative;isolation:isolate}
+.monitorRow.has-charge .monitorSummary {border-radius:inherit}
+.monitorRow.has-charge :is(.monitorSummary,.fleetCard)::before {
+ content:"";
+ position:absolute;inset:0 auto 0 0;width:var(--job-charge);
+ z-index:-1;pointer-events:none;box-sizing:border-box;
+ border-radius:inherit;border-start-end-radius:0;border-end-end-radius:0;
+ background:color-mix(in srgb,var(--charge-color,var(--state)) 15%,transparent);
+ border-inline-end:2px solid color-mix(in srgb,var(--charge-color,var(--state)) 74%,transparent);
+ box-shadow:3px 0 12px color-mix(in srgb,var(--charge-color,var(--state)) 18%,transparent);
+ transition:width .55s ease-out;
+}
+.monitorRow.charge-complete :is(.monitorSummary,.fleetCard)::before {
+ border-radius:inherit;border-inline-end:0;box-shadow:none
+}
+@media(prefers-reduced-motion:reduce){
+ .monitorRow.has-charge :is(.monitorSummary,.fleetCard)::before {transition:none}
+}
+
+/* Printer view modes change density while keeping the same telemetry and actions. */
+.fleetViewActions,.fleetViewPicker {display:flex;align-items:center;gap:8px}
+.fleetViewPicker {
+ gap:5px;padding:0 5px 0 8px;border:1px solid var(--line);border-radius:8px;color:var(--accent);background:var(--panel)
+}
+.fleetViewPicker select {min-height:32px;max-width:100%;border:0;background:transparent;color:var(--ink);font:inherit;font-size:12px;cursor:pointer}
+.fleetViewPicker option {background:var(--panel);color:var(--ink)}
+.monitorList[data-view="list"],.monitorList[data-view="extra-large"] {grid-template-columns:minmax(0,1fr)}
+.monitorList[data-view="large"] {gap:12px}
+.monitorList[data-view="extra-large"] {gap:14px}
+@media(orientation:landscape) and (min-width:900px){
+ .monitorList[data-view="large"] {grid-template-columns:repeat(2,minmax(0,1fr))}
+ .monitorList[data-view="list"] .fleetMainRow {
+  grid-template-columns:minmax(128px,.8fr) minmax(0,2.1fr) minmax(174px,1fr) minmax(128px,.85fr);
+  align-items:center;gap:10px
+ }
+ .monitorList[data-view="list"] .fleetCol.identity {grid-template-columns:34px minmax(0,1fr);row-gap:2px}
+ .monitorList[data-view="list"] .fleetPillWrap {grid-column:2;grid-row:3}
+ .monitorList[data-view="list"] .fleetCol.actions {justify-content:flex-end}
+ .monitorList:is([data-view="large"],[data-view="extra-large"]) .fleetCard {padding:15px 17px}
+ .monitorList:is([data-view="large"],[data-view="extra-large"]) .fleetPrinterName {font-size:19px}
+ .monitorList:is([data-view="large"],[data-view="extra-large"]) .fleetMainRow {gap:10px}
+ .monitorList[data-view="extra-large"] .fleetMainRow {grid-template-columns:minmax(0,1.6fr) minmax(225px,1fr);column-gap:20px}
+ .monitorList[data-view="extra-large"] .identity {grid-column:1/-1}
+ .monitorList[data-view="extra-large"] .fleetCol.actions {grid-column:1/-1}
+ .monitorList[data-view="extra-large"] .fleetJobName {font-size:15px}
+}
+@media (orientation:portrait){
+ .monitorList:is([data-view="large"],[data-view="extra-large"]) .monitorSummary {padding:12px}
+ .monitorList:is([data-view="large"],[data-view="extra-large"]) .machineName h3 {font-size:17px}
+ .monitorList[data-view="extra-large"] .monitorSummary {padding:17px 12px}
+ .monitorList[data-view="extra-large"] .machineName h3,.monitorList[data-view="extra-large"] .machineTime strong {font-size:21px}
+}
+@media (orientation:portrait) and (min-width:360px){
+ .monitorList[data-view="tiles"] {grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+ .monitorList[data-view="tiles"] .monitorSummary {grid-template-columns:minmax(0,1fr) auto;gap:5px 6px;padding:9px}
+ .monitorList[data-view="tiles"] .machineMark {display:none}
+ .monitorList[data-view="tiles"] .machineName {grid-column:1;grid-row:1}
+ .monitorList[data-view="tiles"] .machineTime {grid-column:2;grid-row:1;text-align:right}
+ .monitorList[data-view="tiles"] .jobBrief {grid-column:1/-1;grid-row:2}
+ .monitorList[data-view="tiles"] .infoButton {grid-column:1/-1;grid-row:3;justify-content:center}
+ .monitorList[data-view="tiles"] .monitorRow :is(.fleetCard,.fleetMobCardHeader) {min-width:0}
+ .monitorList[data-view="tiles"] .monitorRow :is(.fleetMobExpandedSection,.fleetMobileCardView) {overflow-wrap:anywhere}
+ .monitorList[data-view="tiles"] .monitorRow:has(.monitorDetails.is-expanded) {grid-column:1/-1}
+}
+@media(max-width:380px){
+ .fleetViewActions {gap:5px}
+ .fleetViewActions .fleetUpdateTime svg,.fleetViewPicker svg {display:none}
+ .fleetViewActions .fleetUpdateTime {font-size:10px}
+}
+
+/* High-contrast accents on dark surfaces. */
+.theme-dark .fleetHero {border-color:#2b4d83}
+
+.theme-dark .nav.active,.theme-dark .mobileNav button.active {
+ background:#153775;border-color:#356bd2;color:#e9f3ff
+}
+.theme-dark .fleetFilter[aria-pressed="true"] {background:color-mix(in srgb,var(--metric) 18%,var(--panel))}
+.theme-dark .fleetFilter[aria-pressed="true"] .fleetFilterIcon {color:#061831}
+.theme-dark .monitorRow.has-charge :is(.monitorSummary,.fleetCard)::before {
+ background:linear-gradient(90deg,color-mix(in srgb,var(--charge-color,var(--state)) 10%,transparent),color-mix(in srgb,var(--charge-color,var(--state)) 23%,transparent));
+ border-inline-end-color:var(--charge-color,var(--state))
+}
+.theme-dark .monitorList .fleetBtn.control,.theme-dark .monitorList .infoButton {background:#112e62;color:#d9ebff;border-color:#3667b3}
+.theme-dark .monitorList .fleetBtn.control:hover,.theme-dark .monitorList .infoButton:hover {background:var(--primary-fill);color:var(--primary-ink)}
+@media(max-width:620px){
+ .theme-dark .fleetFilter[aria-pressed="true"] .fleetFilterIcon {color:var(--metric)}
+}
+
+.monitorRow.tone-green {--charge-color:#178c92;--bar-color:#285ec0}
+.theme-dark .monitorRow.tone-green {--charge-color:#41c9d1;--bar-color:#759ff7}
+.monitorList .monitorRow .fleetBarFill,.monitorList .jobMeter i {background:var(--bar-color,var(--state))}
+.monitorList .jobBrief>span,.layout .monitorList .fleetJobName,.layout .monitorList .mobJobName {color:var(--ink);font-weight:600}
+.monitorList .jobBrief>span {font-size:11px;line-height:1.3}
+@media(max-width:620px){
+ .monitorList .monitorSummary {row-gap:2px}
+ .monitorList:is([data-view="auto"],[data-view="list"]) .monitorSummary {padding-block:6px}
+}
+
+/* Live overview and production visualizations. */
+.fleetHero {
+ position:relative;isolation:isolate;overflow:hidden;min-width:0;
+ padding:16px 20px;gap:22px;border-radius:18px;
+}
+.fleetHero::before {
+ content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+ background-image:linear-gradient(var(--hero-grid) 1px,transparent 1px),linear-gradient(90deg,var(--hero-grid) 1px,transparent 1px);
+ background-size:24px 24px;mask-image:linear-gradient(90deg,transparent 5%,#000 75%)
+}
+.theme-dark .fleetHero {--hero-grid:#90b9ff19}
+.theme-light .fleetHero {--hero-grid:#a45f2419}
+.fleetHeroText {min-width:0}
+.fleetHero .fleetHeroActions {margin-top:10px}
+.fleetHero .fleetHeroActions button {min-height:33px}
+
+
+
+
+
+
+
+
+
+
+
+
+.layout .monitorHeader {border-bottom-color:color-mix(in srgb,var(--line) 72%,transparent)}
+.monitorList .monitorRow .fleetCard {box-shadow:0 2px 0 color-mix(in srgb,var(--line) 38%,transparent)!important}
+.monitorList .fleetProgressWrap {gap:8px}
+.monitorList .fleetProgressPct {color:var(--bar-color,var(--state))}
+.monitorList .fleetJobHead {border-radius:6px}
+.outputChart {
+ display:grid;grid-template-columns:minmax(135px,.3fr) minmax(0,1fr);gap:16px;align-items:center;
+ margin-top:12px;padding:12px 15px;border:1px solid var(--line);border-radius:14px;background:var(--panel)
+}
+.outputChartTitle h2 {font-size:13px}
+.outputChartTitle p {color:var(--muted);font-size:12px;margin:4px 0 0}
+.outputChartTitle strong {font-size:19px;color:var(--ink);font-variant-numeric:tabular-nums}
+.outputChartDays {display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.outputDay {
+ min-width:0;display:grid;justify-items:stretch;gap:5px;padding:4px;
+ background:none;color:var(--muted);border:1px solid transparent;border-radius:7px;font-size:11px
+}
+.outputDay:hover,.outputDay[aria-pressed="true"] {border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.outputBarTrack {
+ display:flex;align-items:flex-end;justify-content:center;height:35px;border-bottom:1px solid var(--line);
+ background:linear-gradient(transparent 48%,var(--line) 50%,transparent 52%)
+}
+.outputBarTrack>span {width:min(55%,32px);border-radius:4px 4px 0 0;background:linear-gradient(var(--farm-blue),color-mix(in srgb,var(--farm-blue) 55%,var(--panel)))}
+.outputDayLabel {display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
+.outputDayLabel strong {color:var(--ink)}
+@media(min-width:900px) and (orientation:landscape) and (max-height:780px){
+ .fleetHero {padding-block:9px}
+ .fleetHero .fleetHeroActions {margin-top:6px}
+
+
+ .monitorList .monitorRow .fleetCard {padding-block:8px}
+}
+@media(max-width:700px){
+ .fleetHero {padding:10px;gap:6px}
+
+
+
+ .outputChart {grid-template-columns:1fr;gap:3px;padding:8px}
+ .outputChartTitle {display:flex;align-items:center;justify-content:space-between;gap:6px}
+ .outputChartTitle p {margin:0}
+ .outputChartDays {gap:2px}
+ .outputDay {padding:2px}
+}
+
+@media(min-width:1100px) and (orientation:landscape) and (max-height:780px){
+
+
+
+
+ .monitorList .monitorRow .fleetCard {padding-block:6px}
+}
+@media(max-width:380px){
+ .fleetHero h1 {font-size:22px}
+ .fleetHero p {margin-top:4px}
+ .fleetHero .fleetHeroActions button {font-size:10px;gap:3px;padding-inline:5px}
+ .fleetHero .fleetHeroActions button svg {width:13px}
+ .fleetFilter {padding-block:4px}
+ .fleetViewToolbar {margin-block:9px 5px}
+ .monitorList:is([data-view="auto"],[data-view="list"]) .monitorSummary {padding-block:4px}
+ .monitorList:is([data-view="auto"],[data-view="list"]) .infoButton {min-height:32px}
+}
+@media(min-width:1100px) and (orientation:landscape) and (max-height:780px){
+
+ .fleetHero {padding-block:7px}
+ .fleetViewToolbar {margin-block:8px 5px}
+ .monitorList .monitorRow .fleetMainRow {row-gap:6px}
+}
+@media(max-width:380px){
+ .monitorList:is([data-view="auto"],[data-view="list"]) {gap:3px}
+ .fleetHero {margin-block:7px 6px}
+}
+
+/* Work area and finish schedule */
+.fleetHero {
+ --hero-surface:linear-gradient(112deg,#fff4e7,#fffaf5 65%,#fff1df);
+ padding:13px 18px;border-radius:13px;margin-block:10px;
+}
+.theme-dark .fleetHero {
+ --hero-surface:linear-gradient(112deg,#142749,#0c1730 65%,#12274d);
+ border-color:var(--line)
+}
+.fleetHero::before {mask-image:linear-gradient(90deg,transparent 36%,#000)}
+.fleetHero .fleetHeroActions {margin:0}
+.fleetHero h1 {font-size:clamp(25px,3vw,36px)}
+.fleetHero p {margin-top:5px}
+.fleetWorkspace {display:grid;gap:12px;align-items:start}
+.fleetWorkspaceMain {min-width:0}
+.fleetSchedule {
+ display:none;min-width:0;border:1px solid var(--line);border-radius:13px;
+ background:var(--panel);overflow:hidden
+}
+.fleetScheduleHeader {
+ display:flex;align-items:center;gap:9px;padding:12px;
+ background:linear-gradient(135deg,color-mix(in srgb,var(--farm-blue) 13%,var(--panel)),var(--panel))
+}
+.fleetScheduleHeader>span {
+ display:grid;place-items:center;width:32px;height:32px;border-radius:9px;color:var(--accent);
+ background:color-mix(in srgb,var(--accent) 16%,var(--panel))
+}
+.fleetScheduleHeader h2 {font-size:14px}
+.fleetScheduleHeader p,.fleetScheduleEmpty {margin:3px 0 0;font-size:11px;color:var(--muted)}
+.fleetScheduleEmpty {padding:14px}
+.fleetScheduleList {padding:4px 7px 7px}
+.fleetScheduleItem {
+ width:100%;min-width:0;display:grid;grid-template-columns:9px minmax(0,1fr);gap:8px;text-align:left;
+ padding:9px 5px;background:none;color:var(--ink);border-radius:7px;
+}
+.fleetScheduleItem:hover {background:color-mix(in srgb,var(--accent) 10%,var(--panel))}
+.fleetScheduleDot {width:7px;height:7px;margin:5px 0 0 1px;border-radius:50%;background:var(--line)}
+.fleetScheduleDot.is-next {background:var(--farm-mint);box-shadow:0 0 0 3px color-mix(in srgb,var(--farm-mint) 15%,transparent)}
+.fleetScheduleJob>span {display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+.fleetScheduleJob strong,.fleetScheduleTime {font-size:11px}
+.fleetScheduleTime {color:var(--farm-blue);text-align:right}
+.fleetScheduleJob small {display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted);margin-top:3px}
+.fleetScheduleFoot {display:flex;align-items:center;gap:6px;padding:8px 12px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+.fleetSearch {display:none;align-items:center;gap:6px;min-width:0;padding:0 7px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--muted)}
+.fleetSearch input {width:150px;min-height:32px;border:0;background:transparent;color:var(--ink);font:inherit;font-size:12px}
+.fleetSearch input::placeholder {color:var(--muted)}
+.fleetViewToolbar {margin-top:0}
+.fleetFilterRail {margin-bottom:10px}
+@media(min-width:1000px) and (orientation:landscape){
+ .fleetSearch {display:flex}
+ .fleetWorkspace:not([data-view="list"]) {grid-template-columns:minmax(0,1fr) minmax(184px,21%)}
+ .fleetWorkspace:not([data-view="list"]) .fleetSchedule {display:block}
+ .fleetWorkspace:not([data-view="list"]) .fleetUpdateTime {display:none}
+ .monitorList .fleetJobName {font-size:12px}
+ .monitorList .fleetCol.metrics {gap:4px;padding-inline:6px}
+ .monitorList .fleetMetricVal {font-size:11px}
+ .monitorList .fleetMetricLabel {font-size:10px}
+}
+@media(max-width:700px){
+ .fleetHero {padding:9px 10px;gap:5px;margin-block:7px 6px}
+ .fleetHero h1 {font-size:22px}
+ .fleetHeroText {width:auto}
+ .fleetHero .fleetHeroActions button {min-height:32px}
+ .fleetFilterRail {margin-bottom:8px}
+}
+@media (min-width:1000px) and (orientation:landscape){
+ .fleetWorkspace:not([data-view="list"]) .fleetCol.metrics {grid-template-columns:minmax(0,1.22fr) minmax(0,1.12fr) minmax(0,.7fr)}
+}
+@media (min-width:1100px) and (orientation:landscape) and (max-height:780px){
+ .fleetHero {padding-block:8px}
+ .fleetHero h1 {font-size:30px}
+ .fleetWorkspace:not([data-view="list"]) .monitorList .fleetMainRow {row-gap:5px}
+ .fleetWorkspace:not([data-view="list"]) .monitorList .fleetTimeRow {gap:2px 6px}
+ .monitorList:is([data-view="auto"],[data-view="tiles"]) .fleetCard {padding-block:7px}
+}
+@media(max-width:999px),(orientation:portrait){
+ .fleetSearch.has-query {display:flex;grid-column:1/-1}
+ .fleetViewActions:has(.fleetSearch.has-query) {display:grid;grid-template-columns:auto auto}
+ .fleetSearch.has-query input {width:100%;min-width:0}
+}
+
+/* Timing shares the same inset surface as nozzle, bed and layer. */
+.layout .monitorList {
+ --detail-start:#176698;
+ --timing-accent:var(--detail-start);
+ --detail-time:#925826;
+ --detail-layer:#2a746c;
+ --detail-heat:#b54c37;
+ --detail-bed:#a25a13;
+}
+.theme-dark .monitorList {
+ --detail-start:#64cef1;
+ --detail-time:#efbd78;
+ --detail-layer:#6dd9c6;
+ --detail-heat:#ffa184;
+ --detail-bed:#f2bc71;
+}
+.layout .monitorList .fleetTimeRow:has(.startedAt,.remaining,.completedBy,.totalTime),
+.layout .monitorList .mobSecondaryTimes {
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 9px;
+ border:0;border-radius:9px;padding:5px 7px;background:var(--card-inset);
+}
+.layout .monitorList .fleetTimeRow:has(.startedAt,.remaining,.completedBy,.totalTime) .fleetTimeBadge,
+.layout .monitorList .mobTimeItem {
+ display:grid;justify-items:start;gap:2px;min-width:0;padding:0;
+ border:0;background:none;box-shadow:none;
+}
+.layout .monitorList :is(.fleetTimeBadge,.mobTimeItem).remaining {--timing-accent:var(--farm-mint)}
+.layout .monitorList :is(.fleetTimeBadge,.mobTimeItem):is(.completedBy,.completedAt) {--timing-accent:var(--farm-violet)}
+.layout .monitorList :is(.fleetTimeBadge,.mobTimeItem):is(.totalTime,.holdTime,.runout,.paused,.pausedTime,.speedFactor) {--timing-accent:var(--detail-time)}
+.layout .monitorList .fleetTimeRow .fleetTimeBadge .timeLabel,.layout .monitorList .mobTimeItem .mobTimeLabel {
+ display:flex;align-items:center;gap:4px;font-size:10px;line-height:1.15;
+ color:var(--timing-accent,var(--muted));font-weight:700;white-space:normal
+}
+.layout .monitorList .fleetTimeRow .fleetTimeBadge .timeLabel svg {display:block;width:11px;height:11px;color:inherit;flex:none}
+.layout .monitorList .fleetTimeRow .fleetTimeBadge .timeValue,.layout .monitorList .mobTimeItem .mobTimeVal {
+ font-size:11px;line-height:1.2;letter-spacing:0;color:var(--ink);font-weight:750;
+ white-space:normal;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;text-shadow:none
+}
+.layout .monitorList :is(.fleetMetricLabel,.mobMetricHead) {font-weight:700}
+.monitorList :is(.fleetMetricItem,.mobMetricCard):nth-child(1) :is(.fleetMetricLabel,.mobMetricHead) {color:var(--detail-heat)}
+.monitorList :is(.fleetMetricItem,.mobMetricCard):nth-child(2) :is(.fleetMetricLabel,.mobMetricHead) {color:var(--detail-bed)}
+.monitorList :is(.fleetMetricItem,.mobMetricCard):nth-child(3) :is(.fleetMetricLabel,.mobMetricHead) {color:var(--detail-layer)}
+.monitorList .fleetJobHead>svg {color:var(--farm-violet)!important;opacity:1!important}
+.layout .fleetFilter:not(.metric-all) {background:color-mix(in srgb,var(--metric) 8%,var(--panel))}
+.layout .fleetFilter:not(.metric-all)[aria-pressed="true"] {background:color-mix(in srgb,var(--metric) 18%,var(--panel))}
+.layout aside .nav:nth-of-type(3) svg,.layout .mobileNav button:nth-child(2) svg {color:var(--farm-violet)}
+.layout aside .nav:nth-of-type(4) svg,.layout .mobileNav button:nth-child(3) svg {color:var(--farm-amber)}
+@media(orientation:landscape) and (min-width:1000px){
+ .layout .monitorList:is([data-view="list"],[data-view="large"],[data-view="extra-large"]) .fleetTimeRow:has(.startedAt,.remaining,.completedBy,.totalTime) {
+  grid-template-columns:repeat(4,minmax(0,1fr))
+ }
+}
+
+.fleetReadings {min-width:0;max-width:100%}
+.fleetReadings[open] {flex-basis:100%}
+.fleetReadings summary {
+ display:inline-flex;align-items:center;gap:5px;min-height:28px;padding:4px 7px;
+ border:1px solid var(--line);border-radius:7px;background:var(--card-inset);color:var(--muted);
+ font-size:11px;font-weight:650;cursor:pointer;list-style:none
+}
+.fleetReadings summary::-webkit-details-marker {display:none}
+.fleetReadings summary:hover {color:var(--ink);border-color:var(--accent)}
+.fleetReadings[open] .readingsChevron {transform:rotate(180deg)}
+.monitorList .fleetReadings .fleetCol.metrics {margin-top:5px;overflow-wrap:anywhere}
+@media(orientation:landscape) and (min-width:660px) and (max-width:899px){
+ .monitorList .fleetMainRow {grid-template-columns:minmax(112px,.7fr) minmax(0,1.6fr) minmax(135px,1fr)}
+}
+@media(orientation:landscape) and (min-width:900px){
+ .monitorList[data-view="list"] .fleetMainRow {grid-template-columns:minmax(128px,.8fr) minmax(0,2.5fr) minmax(165px,1fr)}
+ .monitorList[data-view="extra-large"] .fleetMainRow {grid-template-columns:minmax(0,1fr)}
+}
+.monitorList .fleetReadings:not([open]) .fleetCol.metrics {display:none}
+.monitorList .fleetReadings:not([open]) .mobMetricsGrid {display:none}
+.monitorList .mobileReadings[open] .mobMetricsGrid {margin-top:5px}
+
+@media (orientation:portrait) and (max-width:860px){
+ .layout .monitorList {row-gap:10px}
+ .layout .monitorList[data-view="extra-large"] {row-gap:14px}
+}
+
+.mobileReadingsConnection {display:none}
+@media(orientation:portrait){
+ .monitorList .infoButton {min-width:92px;justify-content:center;padding-inline:9px}
+ .monitorList[data-view="tiles"] .infoButton {min-width:0}
+ .monitorList .monitorRow .fleetCard {padding:8px 10px}
+ .monitorList .fleetMobileCardView {gap:5px}
+ .monitorList .fleetMobileCardView :is(.fleetMobHeader,.fleetMobJobWrap) {display:none}
+ .monitorList .fleetMobExpandedSection {order:-1;gap:0;padding:0;margin:0;border:0;background:none}
+ .layout .monitorList .mobSecondaryTimes {gap:4px 8px;padding:5px 7px}
+ .monitorList .fleetMobPrimaryTimeRow {display:contents}
+ .monitorList .fleetMobPrimaryTimeRow .fleetTimeBadge {
+  display:grid;justify-items:start;gap:2px;padding:0;border:0;border-radius:0;box-shadow:none;background:none;min-width:0;
+ }
+ .monitorList .fleetMobPrimaryTimeRow .timeIcon {display:none}
+ .monitorList .fleetMobPrimaryTimeRow .timeLabel {margin:0;color:var(--farm-violet);font-size:10px;white-space:normal}
+ .monitorList .fleetMobPrimaryTimeRow .timeValue {color:var(--ink);text-shadow:none;font-size:11px;letter-spacing:0;white-space:normal}
+ .monitorList .fleetMobActionBar {margin:0;padding:0}
+ .monitorList .fleetMobActionButtons {gap:5px}
+ .monitorList .fleetMobActionButtons .fleetBtn {min-height:28px;padding:3px 7px;font-size:11px}
+ .monitorList .mobileReadings[open] .mobileReadingsConnection {display:block;margin-top:5px;color:var(--muted);overflow-wrap:anywhere}
+ .monitorList .mobileReadings .mobMetricsGrid {grid-template-columns:repeat(2,minmax(0,1fr))}
+}

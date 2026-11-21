@@ -204,6 +204,10 @@ async function fetchMetadata(endpoint,filename){
  }catch{return null}
 }
 
+// Only Moonraker history confirms a production completion. Older live entries
+// were inferred from standby, progress, or console messages.
+const isConfirmedCompletion=job=>job.status==='completed'&&!String(job.id||'').startsWith(job.printerId+'_live_');
+
 async function syncPrinterHistory(p){
  if(!p.enabled||!validHost(p.host)||!p.port)return;
  try{
@@ -246,7 +250,7 @@ async function syncPrinterHistory(p){
    allJobs.sort((a,b)=>new Date(b.completedAt)-new Date(a.completedAt));
    if(allJobs.length>4000)allJobs=allJobs.slice(0,4000);
    save(jobsFile,allJobs);
-   save(completedFile,allJobs.filter(x=>x.isCompleted));
+   save(completedFile,allJobs.filter(isConfirmedCompletion));
   }
  }catch{}
 }
@@ -296,10 +300,10 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJo
   let computedStatus = statuses[state]||'unknown';
   if(isShutdown){
    computedStatus = 'error';
-  }else if(compInfo && state!=='printing'){
+  }else if(compInfo){
    computedStatus='completed';
-  }else if(state==='complete'||(state==='standby'&&sd.progress>=0.98&&ps.filename&&duration>30)){
-   computedStatus='completed';
+  }else if(state==='complete'){
+   computedStatus='idle';
   }
 
   const finalProgress=computedStatus==='completed'?100:Math.max(0,Math.min(100,Math.round((sd.progress||0)*100)));
@@ -527,59 +531,37 @@ async function scan(p){
   );
   const shutdownReason=isKlippyShutdown?(whMsg||'Printer is shutdown'):null;
   const gcodeLogs=(gcodeData?.result?.gcode_store||[]).map(x=>x.message||'');
-  const hasCompletionLog=gcodeLogs.some(m=>
-   m.includes('Done printing file')||
-   m.includes('Command {clear_plr} finished')||
-   m.includes('Running Command {clear_plr}')||
-   m.includes('clear_plr')
-  );
-  
   const latestJob=histData?.result?.jobs?.[0]||null;
-  const isJobCompleted=(latestJob?.status==='completed');
-  const isCleared=latestJob&&clearedPrints[p.id]?.jobId===latestJob.job_id;
   const prev=last.get(p.id);
-  const rawState=body?.result?.status?.print_stats?.state||'unknown';
-  const duration=Math.round(body?.result?.status?.print_stats?.total_duration||body?.result?.status?.print_stats?.print_duration||0);
-  const progressRatio=body?.result?.status?.virtual_sdcard?.progress||0;
+  const printStats=body?.result?.status?.print_stats||{};
+  const rawState=printStats.state||'unknown';
+  const duration=Math.round(printStats.total_duration||printStats.print_duration||0);
+  const activeStart=jobStartTimes[p.id];
+  const sameActiveJob=(!printStats.filename||latestJob?.filename===printStats.filename)&&(
+   !activeStart?.startedAt||
+   (latestJob?.filename===activeStart.file&&latestJob.start_time*1000>=Date.parse(activeStart.startedAt)-15000)
+  );
+  const cleared=clearedPrints[p.id];
+  const historyConfirmed=Boolean(latestJob?.status==='completed'&&latestJob.job_id&&sameActiveJob&&(
+   latestJob.job_id!==cleared?.jobId&&(!cleared||latestJob.end_time*1000>Date.parse(cleared.clearedAt))
+  ));
 
-  if(isKlippyShutdown || rawState==='cancelled'){
+  const isTerminalState=['complete','standby','idle'].includes(rawState);
+  if(!isKlippyShutdown&&isTerminalState&&historyConfirmed){
+   const existingComp=completedState.get(p.id);
+   const compCompletedAt=latestJob.end_time?new Date(latestJob.end_time*1000).toISOString():existingComp?.completedAt||new Date().toISOString();
+   completedState.set(p.id,{
+    file:latestJob.filename,
+    duration:Math.round(latestJob.print_duration||duration),
+    filamentUsed:latestJob.filament_used||0,
+    completedAt:compCompletedAt,
+    startedAt:latestJob.start_time?new Date(latestJob.start_time*1000).toISOString():null,
+    jobId:latestJob.job_id,
+    notified:existingComp?.jobId===latestJob.job_id&&existingComp.notified||
+     allJobs.some(job=>job.printerId===p.id&&job.jobId===latestJob.job_id&&isConfirmedCompletion(job))
+   });
+  }else if(!isTerminalState||isKlippyShutdown||latestJob){
    completedState.delete(p.id);
-  }else if(rawState==='printing'){
-   completedState.delete(p.id);
-   if(clearedPrints[p.id]){
-    delete clearedPrints[p.id];
-    save(clearedFile,clearedPrints);
-   }
-  }else{
-   const shouldBeCompleted = (
-    rawState==='complete' ||
-    completedState.has(p.id) ||
-    (isJobCompleted && !isCleared) ||
-    (hasCompletionLog && (!clearedPrints[p.id] || clearedPrints[p.id]?.jobId!==latestJob?.job_id)) ||
-    ((prev?.status==='printing'||prev?.status==='paused') && rawState==='standby' && (prev?.progress>=92 || duration>60 || progressRatio>=0.95))
-   );
-
-   if(shouldBeCompleted){
-    const existingComp=completedState.get(p.id);
-    const compFile=latestJob?.filename||existingComp?.file||prev?.file||body?.result?.status?.print_stats?.filename||'Completed Model';
-    const compDuration=(latestJob?.print_duration&&latestJob.print_duration>0)?Math.round(latestJob.print_duration):(existingComp?.duration||prev?.duration||duration||0);
-    const compFilament=latestJob?.filament_used||existingComp?.filamentUsed||prev?.filamentUsed||0;
-    const compCompletedAt=existingComp?.completedAt||(latestJob?.end_time?new Date(latestJob.end_time*1000).toISOString():new Date().toISOString());
-    const compJobId=latestJob?.job_id||existingComp?.jobId||null;
-    const compStartedAt=existingComp?.startedAt||(latestJob?.start_time?new Date(latestJob.start_time*1000).toISOString():(jobStartTimes[p.id]?.file===compFile?jobStartTimes[p.id].startedAt:new Date(new Date(compCompletedAt).getTime()-compDuration*1000).toISOString()));
-    const alreadyLogged=(compJobId&&allJobs.some(x=>x.printerId===p.id&&x.jobId===compJobId))||
-      allJobs.some(x=>x.printerId===p.id&&x.file===compFile&&Math.abs(new Date(x.completedAt)-new Date(compCompletedAt))<120000);
-
-    completedState.set(p.id,{
-     file:compFile,
-     duration:compDuration,
-     filamentUsed:compFilament,
-     completedAt:compCompletedAt,
-     startedAt:compStartedAt,
-     jobId:compJobId,
-     notified:existingComp?.notified||alreadyLogged
-    });
-   }
   }
 
   const compInfo=completedState.get(p.id)||null;
@@ -625,7 +607,7 @@ async function scan(p){
 
   // 0. Print start tracking
   if (next.file && (next.status === 'printing' || next.status === 'paused' || isNowRunout)) {
-   const exactStart = (latestJob?.start_time && (latestJob.filename === next.file || !latestJob.filename)) ? new Date(latestJob.start_time * 1000).toISOString() : null;
+   const exactStart = (latestJob?.status==='in_progress' && latestJob.start_time && latestJob.filename===next.file) ? new Date(latestJob.start_time * 1000).toISOString() : null;
    const elapsed = (body?.result?.status?.print_stats?.total_duration != null && body.result.status.print_stats.total_duration > 0) ? body.result.status.print_stats.total_duration : (next.duration || 0);
    const fallbackStart = new Date(Date.now() - Math.round(elapsed * 1000)).toISOString();
    const chosenStart = exactStart || fallbackStart;
@@ -728,30 +710,7 @@ async function scan(p){
     record(p.id, 'completed', compMsg);
    }
 
-   const liveId = p.id + '_live_' + Date.now();
-   const existing = allJobs.find(x =>
-    x.printerId === p.id &&
-    ((compInfo?.jobId && x.jobId === compInfo.jobId) || (x.file === next.file && Math.abs(new Date(x.completedAt) - new Date(next.completedAt || Date.now())) < 60000))
-   );
-   if (!existing) {
-    allJobs.unshift({
-     id: liveId,
-     jobId: compInfo?.jobId || null,
-     printerId: p.id,
-     printerName: p.name,
-     file: next.file,
-     status: 'completed',
-     isCompleted: true,
-     isFailed: false,
-     startedAt: next.startedAt || compInfo?.startedAt || null,
-     completedAt: next.completedAt || new Date().toISOString(),
-     duration: next.duration || compInfo?.duration || 0,
-     totalDuration: next.duration || compInfo?.duration || 0,
-     filamentUsed: next.filamentUsed || 0
-    });
-    if (allJobs.length > 4000) allJobs = allJobs.slice(0, 4000);
-    save(jobsFile, allJobs);
-    save(completedFile, allJobs.filter(x => x.isCompleted));
+   if(!allJobs.some(job=>job.printerId===p.id&&job.jobId===compInfo?.jobId&&isConfirmedCompletion(job))){
     void syncPrinterHistory(p);
    }
   }
@@ -1225,6 +1184,9 @@ app.get('/api/completed-prints',auth,(req,res)=>{
   );
   filteredJobs = allJobs.filter(j => allowed.has(j.printerId));
  }
+ // Keep inferred legacy entries on disk, but omit them from production totals
+ // and from the job list. Authoritative history entries are still included.
+ filteredJobs=filteredJobs.filter(job=>job.status!=='completed'||isConfirmedCompletion(job));
  const summaryMap=new Map();
  for(const j of filteredJobs){
   const fn=j.file||'Unknown';
@@ -1233,7 +1195,7 @@ app.get('/api/completed-prints',auth,(req,res)=>{
   }
   const s=summaryMap.get(fn);
   s.totalJobs+=1;
-  if(j.isCompleted){
+  if(isConfirmedCompletion(j)){
    s.quantity+=1;
    s.totalDuration+=(j.duration||0);
    if(!s.lastCompletedAt||new Date(j.completedAt)>new Date(s.lastCompletedAt)){s.lastCompletedAt=j.completedAt}

@@ -1,0 +1,285 @@
+/* ==========================================================================
+   Neptune Farm design system — loaded last so it owns colour and surfaces.
+   One token set per mode; components below only reference tokens.
+   ========================================================================== */
+:root {
+ color-scheme:dark;
+ --font-ui:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+
+ /* Surfaces */
+ --farm-canvas:#0a0e13;--farm-panel:#12171e;--farm-raised:#181f28;--farm-line:#232c38;--farm-line-strong:#323d4b;
+ --farm-ink:#e9eef4;--farm-muted:#8d9aab;--card-inset:#0e1319;
+
+ /* Brand + status */
+ --farm-accent:#2dd4bf;--farm-blue:#2dd4bf;--farm-mint:#4ade80;--farm-violet:#a78bfa;--farm-amber:#fbbf24;--farm-rose:#fb7185;
+ --primary-fill:#14b8a6;--primary-hover:#2dd4bf;--primary-ink:#04201c;
+
+ --hero-surface:linear-gradient(120deg,#0f2a2a 0%,#12171e 55%,#161a26 100%);
+ --hero-ink:#f3f7fa;--hero-muted:#a7b4c3;--hero-grid:#2dd4bf12;
+
+ --shadow-sm:0 1px 2px #0006;
+ --shadow-md:0 8px 24px #0007;
+ --shadow-lg:0 24px 64px #000a;
+}
+:root[data-theme="light"] {
+ color-scheme:light;
+ --farm-canvas:#f4f6f9;--farm-panel:#ffffff;--farm-raised:#f8fafc;--farm-line:#e2e7ee;--farm-line-strong:#cfd7e2;
+ --farm-ink:#0f1a2a;--farm-muted:#5a6779;--card-inset:#f3f6f9;
+
+ --farm-accent:#0d9488;--farm-blue:#0f766e;--farm-mint:#15803d;--farm-violet:#6d28d9;--farm-amber:#b45309;--farm-rose:#be123c;
+ --primary-fill:#0d9488;--primary-hover:#0f766e;--primary-ink:#ffffff;
+
+ --hero-surface:linear-gradient(120deg,#e3f6f3 0%,#ffffff 60%,#f3f1fd 100%);
+ --hero-ink:#0f1a2a;--hero-muted:#4b5a6d;--hero-grid:#0d948812;
+
+ --shadow-sm:0 1px 2px #0f1a2a0d;
+ --shadow-md:0 6px 20px #0f1a2a12;
+ --shadow-lg:0 24px 60px #0f1a2a26;
+}
+
+/* ---------- Base ---------- */
+:root,html,body,html[data-theme="light"],[data-theme="light"] body {
+ font-family:var(--font-ui);background:var(--farm-canvas);color:var(--farm-ink)
+}
+.layout,.layout.theme-light,.layout.theme-dark {
+ --panel:var(--farm-panel);--canvas:var(--farm-canvas);--line:var(--farm-line);
+ --muted:var(--farm-muted);--ink:var(--farm-ink);--accent:var(--farm-accent);
+ background:var(--farm-canvas);color:var(--farm-ink)
+}
+.layout ::selection {background:color-mix(in srgb,var(--farm-accent) 30%,transparent)}
+.layout *,.launchLogin * {scrollbar-color:var(--farm-line-strong) transparent}
+.boot {background:var(--farm-canvas);color:var(--farm-muted)}
+
+/* ---------- Sidebar ---------- */
+.layout>aside {background:var(--farm-panel);border-right:1px solid var(--farm-line)}
+.fleetBrand {color:var(--farm-ink);font-weight:700}
+.fleetBrand strong {color:var(--farm-accent)}
+.fleetBrand .logoIconBox,.monitorBrand>span,.layout .logoIconBox {
+ background:linear-gradient(140deg,var(--primary-fill),color-mix(in srgb,var(--primary-fill) 55%,var(--farm-violet)));
+ color:var(--primary-ink);border-radius:10px;box-shadow:0 4px 14px color-mix(in srgb,var(--primary-fill) 30%,transparent)
+}
+.layout .nav,.theme-dark .nav,.theme-light .nav {color:var(--farm-muted);background:transparent;border:1px solid transparent;border-radius:10px;font-weight:600}
+.layout .nav:hover {background:var(--farm-raised);color:var(--farm-ink)}
+.layout .nav.active,.theme-dark .nav.active,.theme-light .nav.active {
+ background:color-mix(in srgb,var(--farm-accent) 12%,var(--farm-panel));
+ border-color:color-mix(in srgb,var(--farm-accent) 28%,transparent);color:var(--farm-accent)
+}
+.layout aside .nav svg {color:inherit}
+.layout aside .nav:nth-of-type(3) svg,.layout .mobileNav button:nth-child(2) svg,
+.layout aside .nav:nth-of-type(4) svg,.layout .mobileNav button:nth-child(3) svg {color:inherit}
+.fleetHostShortcut {background:var(--farm-raised);border-color:var(--farm-line);color:var(--farm-ink)}
+.fleetHostShortcut:hover {border-color:var(--farm-line-strong)}
+.hostConnectionDot {background:var(--farm-amber)}
+.hostConnectionDot.connected {background:var(--farm-mint);box-shadow:0 0 0 3px color-mix(in srgb,var(--farm-mint) 20%,transparent)}
+
+/* ---------- Top bar & menus ---------- */
+.layout .monitorHeader,.theme-light header,[data-theme="light"] header {
+ background:transparent;border-bottom:1px solid var(--farm-line)
+}
+.monitorBrand {color:var(--farm-ink)}
+.farmMenu summary,.monitorActions button {
+ background:var(--farm-panel);color:var(--farm-ink);border:1px solid var(--farm-line);border-radius:9px;transition:background .15s,border-color .15s
+}
+.farmMenu summary svg {color:var(--farm-muted)}
+.farmMenu summary:hover,.farmMenu[open] summary {background:var(--farm-raised);border-color:var(--farm-line-strong)}
+.farmMenuPanel {background:var(--farm-panel);border:1px solid var(--farm-line);box-shadow:var(--shadow-lg);border-radius:12px}
+.farmMenuPanel button,.farmMenuPanel a {color:var(--farm-ink)}
+.farmMenuPanel :is(button,a):hover {background:var(--farm-raised)}
+.farmMenuPanel .farmMenuSignOut {color:var(--farm-rose)}
+.farmMenuDivider {background:var(--farm-line)}
+
+/* ---------- Hero ---------- */
+.layout .fleetHero,.theme-dark .fleetHero,.theme-light .fleetHero {
+ --hero-surface:inherit;
+ background:var(--hero-surface);color:var(--hero-ink);
+ border:1px solid var(--farm-line);box-shadow:var(--shadow-sm)
+}
+.theme-dark .fleetHero {--hero-grid:#2dd4bf10}
+.theme-light .fleetHero {--hero-grid:#0d948810}
+.fleetHero h1 {color:var(--hero-ink);font-weight:800}
+.fleetHero p {color:var(--hero-muted)}
+.layout .fleetHeroActions button {
+ background:var(--farm-panel);border:1px solid var(--farm-line);color:var(--farm-ink);transition:background .15s,border-color .15s,filter .15s
+}
+.layout .fleetHeroActions button:hover {filter:none;border-color:var(--farm-line-strong);background:var(--farm-raised)}
+.layout .fleetHeroActions button:last-child:not([aria-label]),.theme-light .fleetHeroActions button:last-child:not([aria-label]) {
+ background:var(--primary-fill);border-color:transparent;color:var(--primary-ink)
+}
+.layout .fleetHeroActions button:last-child:not([aria-label]):hover {background:var(--primary-hover)}
+
+/* ---------- Status filter rail ---------- */
+.fleetFilter,.layout .fleetFilter:not(.metric-all) {
+ background:var(--farm-panel);border:1px solid var(--farm-line);box-shadow:var(--shadow-sm);color:var(--farm-ink);
+ transition:border-color .15s,background .15s,transform .15s
+}
+.fleetFilter {--metric:var(--farm-accent)}
+.fleetFilter.metric-printing {--metric:var(--farm-mint)}
+.fleetFilter.metric-complete {--metric:var(--farm-violet)}
+.fleetFilter.metric-issues {--metric:var(--farm-amber)}
+.fleetFilter.metric-offline {--metric:var(--farm-rose)}
+.fleetFilter:hover {border-color:color-mix(in srgb,var(--metric) 45%,var(--farm-line));transform:translateY(-1px)}
+.fleetFilter[aria-pressed="true"],.layout .fleetFilter:not(.metric-all)[aria-pressed="true"],.theme-dark .fleetFilter[aria-pressed="true"] {
+ background:color-mix(in srgb,var(--metric) 10%,var(--farm-panel));border-color:var(--metric)
+}
+.fleetFilterIcon {color:var(--metric);background:color-mix(in srgb,var(--metric) 14%,transparent)}
+.fleetFilter[aria-pressed="true"] .fleetFilterIcon,.theme-dark .fleetFilter[aria-pressed="true"] .fleetFilterIcon {
+ background:var(--metric);color:var(--farm-panel)
+}
+.fleetFilterLabel {color:var(--farm-muted)}
+
+/* ---------- Toolbar ---------- */
+.fleetViewToolbar h2 {color:var(--farm-ink)}
+.fleetSearch,.fleetViewPicker {background:var(--farm-panel);border-color:var(--farm-line);color:var(--farm-muted)}
+.fleetSearch:focus-within,.fleetViewPicker:focus-within {border-color:var(--farm-accent)}
+.fleetUpdateTime {color:var(--farm-muted)}
+
+/* ---------- Printer cards ---------- */
+.monitorRow.tone-green {--state:var(--farm-mint)}
+.monitorRow.tone-purple {--state:var(--farm-violet)}
+.monitorRow.tone-amber {--state:var(--farm-amber)}
+.monitorRow.tone-red {--state:var(--farm-rose)}
+.monitorRow.tone-green,.theme-dark .monitorRow.tone-green {--charge-color:var(--farm-mint);--bar-color:var(--farm-accent)}
+.monitorList .monitorRow {background:var(--farm-panel);border-color:var(--farm-line);border-radius:14px;box-shadow:var(--shadow-sm)}
+.monitorList .monitorRow .fleetCard,.monitorList .fleetCard,
+.monitorList .fleetCard.state-completed {background:var(--farm-panel)!important;border-color:var(--farm-line)!important}
+.monitorList .monitorRow .fleetCard {box-shadow:var(--shadow-sm)!important}
+.monitorList .monitorRow:hover .fleetCard {border-color:var(--farm-line-strong)!important}
+@media (orientation:landscape) and (min-width:900px){
+ .monitorList .monitorRow .fleetCard {border-radius:14px;border-inline-start:3px solid var(--state)!important}
+}
+.monitorRow.has-charge :is(.monitorSummary,.fleetCard)::before,
+.theme-dark .monitorRow.has-charge :is(.monitorSummary,.fleetCard)::before {
+ background:linear-gradient(90deg,color-mix(in srgb,var(--charge-color,var(--state)) 4%,transparent),color-mix(in srgb,var(--charge-color,var(--state)) 11%,transparent));
+ border-inline-end:2px solid color-mix(in srgb,var(--charge-color,var(--state)) 70%,transparent);
+ box-shadow:none
+}
+.monitorList .fleetPrinterIcon {background:color-mix(in srgb,var(--state) 14%,transparent);color:var(--state)}
+.monitorList .fleetPill {background:color-mix(in srgb,var(--state) 14%,transparent);color:var(--state);border-radius:999px;font-weight:700}
+.monitorList .fleetBar,.jobMeter {background:color-mix(in srgb,var(--farm-line) 80%,transparent)}
+.monitorList .monitorRow .fleetBarFill,.monitorList .jobMeter i {
+ background:linear-gradient(90deg,color-mix(in srgb,var(--bar-color,var(--state)) 70%,var(--farm-panel)),var(--bar-color,var(--state)))
+}
+.monitorList .fleetProgressPct {color:var(--bar-color,var(--state))}
+.layout .monitorList {
+ --detail-start:var(--farm-accent);--detail-time:var(--farm-amber);--detail-layer:var(--farm-accent);
+ --detail-heat:var(--farm-rose);--detail-bed:var(--farm-amber)
+}
+.theme-dark .monitorList {
+ --detail-start:#5eead4;--detail-time:#fcd34d;--detail-layer:#5eead4;--detail-heat:#fda4af;--detail-bed:#fcd34d
+}
+.layout .monitorList .fleetTimeRow:has(.startedAt,.remaining,.completedBy,.totalTime),
+.layout .monitorList .mobSecondaryTimes,.monitorList .fleetCol.metrics {background:var(--card-inset);border:1px solid var(--farm-line)}
+.monitorList .fleetJobHead>svg {color:var(--farm-accent)!important}
+.monitorList .fleetBtn.control,.monitorList .infoButton,
+.theme-dark .monitorList .fleetBtn.control,.theme-dark .monitorList .infoButton {
+ background:color-mix(in srgb,var(--farm-accent) 12%,var(--farm-panel));color:var(--farm-accent);
+ border:1px solid color-mix(in srgb,var(--farm-accent) 30%,var(--farm-line))
+}
+.monitorList .fleetBtn.control:hover,.monitorList .infoButton:hover,
+.theme-dark .monitorList .fleetBtn.control:hover,.theme-dark .monitorList .infoButton:hover {
+ background:var(--primary-fill);color:var(--primary-ink);border-color:transparent
+}
+.monitorList .fleetBtn:not(.control),.fleetReadings summary {background:var(--farm-raised);border:1px solid var(--farm-line);color:var(--farm-muted)}
+.monitorList .fleetBtn:not(.control):hover,.fleetReadings summary:hover {color:var(--farm-ink);border-color:var(--farm-line-strong)}
+
+/* ---------- Next finishes ---------- */
+.fleetSchedule {background:var(--farm-panel);border-color:var(--farm-line);box-shadow:var(--shadow-sm);border-radius:14px}
+.fleetScheduleHeader {background:linear-gradient(135deg,color-mix(in srgb,var(--farm-accent) 10%,var(--farm-panel)),var(--farm-panel));border-bottom:1px solid var(--farm-line)}
+.fleetScheduleHeader>span {color:var(--farm-accent);background:color-mix(in srgb,var(--farm-accent) 15%,transparent)}
+.fleetScheduleItem:hover {background:var(--farm-raised)}
+.fleetScheduleTime {color:var(--farm-accent)}
+.fleetScheduleFoot {border-top-color:var(--farm-line)}
+
+/* ---------- Mobile nav ---------- */
+.layout .mobileNav {background:var(--farm-panel);border-top:1px solid var(--farm-line);box-shadow:0 -6px 20px #0000001a}
+.layout .mobileNav button {color:var(--farm-muted)}
+.layout .mobileNav button.active,.theme-dark .mobileNav button.active {
+ color:var(--farm-accent);background:color-mix(in srgb,var(--farm-accent) 12%,transparent);border-color:transparent
+}
+
+/* ---------- Generic controls ---------- */
+.layout .primary,.launchLogin .primary,.layout .monitorActions button:not([aria-label]) {
+ background:var(--primary-fill);color:var(--primary-ink);border:1px solid transparent;border-radius:9px;font-weight:700
+}
+.layout .primary:hover,.launchLogin .primary:hover {background:var(--primary-hover)}
+.layout .outline {background:var(--farm-raised);border:1px solid var(--farm-line);color:var(--farm-ink);border-radius:9px}
+.layout .outline:hover {border-color:var(--farm-line-strong)}
+.layout .card {background:var(--farm-panel);border-color:var(--farm-line)}
+.layout :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea) {
+ background:var(--farm-canvas);color:var(--farm-ink);border-color:var(--farm-line)
+}
+.layout :is(input,select,textarea):focus {border-color:var(--farm-accent);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--farm-accent) 20%,transparent)}
+.layout :is(button,a,input,select,summary):focus-visible,.launchLogin :is(button,a,input):focus-visible {outline:2px solid var(--farm-accent);outline-offset:2px}
+.layout .banner {background:color-mix(in srgb,var(--farm-rose) 12%,var(--farm-panel));color:var(--farm-rose);border:1px solid color-mix(in srgb,var(--farm-rose) 35%,transparent);border-radius:10px}
+.settingsSubTab.active,.layout .prodViewBtn.active {color:var(--farm-accent);background:color-mix(in srgb,var(--farm-accent) 12%,var(--farm-panel));border-color:color-mix(in srgb,var(--farm-accent) 30%,var(--farm-line))}
+.outputBarTrack>span {background:linear-gradient(var(--farm-accent),color-mix(in srgb,var(--farm-accent) 45%,var(--farm-panel)))}
+.outputDay:hover,.outputDay[aria-pressed="true"] {border-color:var(--farm-accent);background:color-mix(in srgb,var(--farm-accent) 10%,transparent)}
+.alertRecord {--event-color:var(--farm-accent);background:var(--farm-panel);border-color:var(--farm-line)}
+.alertRecord.is-issue {--event-color:var(--farm-amber)}
+.alertRecord.is-complete {--event-color:var(--farm-violet)}
+
+/* ---------- Modals ---------- */
+.modalBackdrop {background:color-mix(in srgb,#05080c 70%,transparent);backdrop-filter:blur(6px)}
+[data-theme="light"] .modalBackdrop {background:#0f1a2a59}
+.modalCard,.modalCard.controlModal,[data-theme="light"] .modalCard.controlModal,.hostModalCard,[data-theme="light"] .hostModalCard {
+ background:var(--farm-panel);border:1px solid var(--farm-line);color:var(--farm-ink);border-radius:16px;box-shadow:var(--shadow-lg)
+}
+.modalHeader,[data-theme="light"] .modalHeader {border-bottom-color:var(--farm-line)}
+
+/* ---------- Sign in ---------- */
+.launchLogin {
+ background:
+  radial-gradient(ellipse 60% 50% at 70% 0%,color-mix(in srgb,var(--farm-accent) 14%,transparent),transparent 70%),
+  radial-gradient(ellipse 50% 40% at 10% 100%,color-mix(in srgb,var(--farm-violet) 10%,transparent),transparent 70%),
+  var(--farm-canvas);
+ color:var(--farm-ink)
+}
+.launchLogin .login {background:var(--farm-panel);border:1px solid var(--farm-line);border-radius:18px;box-shadow:var(--shadow-lg)}
+.launchLogin input {background:var(--farm-canvas);border-color:var(--farm-line);color:var(--farm-ink);border-radius:10px}
+.launchLogin input:focus {border-color:var(--farm-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--farm-accent) 20%,transparent)}
+.launchLogin .primary {min-height:42px;font-size:14px}
+.loginBrand svg,.loginAccess a {color:var(--farm-accent)}
+.launchLogin .iconButton {background:var(--farm-raised);border-color:var(--farm-line);color:var(--farm-muted)}
+.launchLogin .iconButton:hover {color:var(--farm-ink);border-color:var(--farm-accent)}
+
+/* ---------- Printer control workspace ---------- */
+.modalCard .printerIcon {background:color-mix(in srgb,var(--farm-accent) 14%,transparent)!important;color:var(--farm-accent)!important;border:0!important}
+.modalCard .controlStatsBar,[data-theme="light"] .modalCard .controlStatsBar {background:var(--farm-raised);border-bottom:1px solid var(--farm-line)}
+.modalCard .controlStatsBar span {color:var(--farm-muted)}
+.modalCard .controlStatsBar strong,[data-theme="light"] .modalCard .controlStatsBar strong {color:var(--farm-ink)}
+.printerWorkspaceTabs {border-bottom-color:var(--farm-line)}
+.printerWorkspaceTabs select {border-color:var(--farm-line);background:var(--farm-canvas)}
+.printerWorkspaceTabs option,.layout option {color:var(--farm-ink);background:var(--farm-panel)}
+.ctrlTabBtn,[data-theme="light"] .ctrlTabBtn {color:var(--farm-muted)}
+.ctrlTabBtn:hover,[data-theme="light"] .ctrlTabBtn:hover {color:var(--farm-ink);background:var(--farm-raised)}
+.ctrlTabBtn.active,[data-theme="light"] .ctrlTabBtn.active {
+ color:var(--farm-accent);background:color-mix(in srgb,var(--farm-accent) 10%,var(--farm-panel));
+ border:1px solid color-mix(in srgb,var(--farm-accent) 35%,var(--farm-line));border-bottom-width:2px;border-bottom-color:var(--farm-accent)
+}
+.ctrlActiveJobSection,[data-theme="light"] .ctrlActiveJobSection {background:var(--farm-raised);border-color:var(--farm-line)}
+.ctrlActiveJobMeta {color:var(--farm-muted)}
+.ctrlActiveJobMeta b,[data-theme="light"] .ctrlActiveJobMeta b {color:var(--farm-ink)}
+.ctrlActiveJobActions {border-top-color:var(--farm-line)}
+.modalCard .fleetBar {background:var(--farm-line)}
+.modalCard .fleetBarFill.green {background:linear-gradient(90deg,color-mix(in srgb,var(--farm-accent) 65%,var(--farm-panel)),var(--farm-accent))}
+.modalFooterActions {border-top-color:var(--farm-line)}
+
+.layout .ctrlBtn {--tone:var(--farm-muted);background:color-mix(in srgb,var(--tone) 12%,var(--farm-panel));color:var(--tone);border:1px solid color-mix(in srgb,var(--tone) 32%,var(--farm-line));border-radius:9px}
+.layout .ctrlBtn:hover:not(:disabled) {background:var(--tone);color:var(--farm-panel);border-color:transparent}
+.ctrlBtn.pause {--tone:var(--farm-amber)}
+.ctrlBtn.resume {--tone:var(--farm-mint)}
+.ctrlBtn.cancel {--tone:var(--farm-rose)}
+.ctrlBtn.cooldown {--tone:var(--farm-accent)}
+.ctrlBtn.home {--tone:var(--farm-muted)}
+.ctrlBtn.restart {--tone:var(--farm-violet)}
+.layout .ctrlBtn.emergency {--tone:var(--farm-rose);background:#e11d48;color:#fff;border-color:transparent}
+.layout .ctrlBtn.emergency:hover:not(:disabled) {background:#be123c;color:#fff}
+
+/* ---------- Settings tabs ---------- */
+.settingsSubTabs,[data-theme="light"] .settingsSubTabs {background:var(--farm-raised);border-color:var(--farm-line)}
+.settingsSubTab,[data-theme="light"] .settingsSubTab {color:var(--farm-muted)}
+.settingsSubTab:hover,[data-theme="light"] .settingsSubTab:hover {background:var(--farm-panel);color:var(--farm-ink)}
+.layout .settingsSubTab.active,[data-theme="light"] .settingsSubTab.active {
+ color:var(--farm-accent);background:color-mix(in srgb,var(--farm-accent) 12%,var(--farm-panel));
+ border-color:color-mix(in srgb,var(--farm-accent) 35%,var(--farm-line));box-shadow:none
+}
