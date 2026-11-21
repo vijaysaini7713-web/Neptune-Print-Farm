@@ -51,7 +51,14 @@ async function subscribeToWebPush(sendTest = true) {
   return sub;
 }
 
-const api=async(url,options={})=>{const r=await fetch('/api'+url,{credentials:'same-origin',headers:{'content-type':'application/json'},...options});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data};
+const api=async(url,options={})=>{
+ let r;
+ try{r=await fetch('/api'+url,{credentials:'same-origin',headers:{'content-type':'application/json'},...options});}
+ catch{throw Error('Could not reach the farm server. Check your connection and try again.');}
+ const data=await r.json().catch(()=>({}));
+ if(!r.ok)throw Error(data.error||(r.status===524||r.status===504?'The server took too long to respond. The command may still have run, so check the printer status.':`Request failed (HTTP ${r.status})`));
+ return data;
+};
 const fmtDuration=n=>{if(n==null)return'—';const s=Math.max(0,Math.round(n)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),remS=s%60;if(h>0)return `${h}h ${m}m`;if(m>0)return `${m}m ${remS}s`;return `${remS}s`;};
 const temp=n=>typeof n==='number'?n.toFixed(1)+'°C':'—';
 const color=s=>({printing:'green',completed:'purple',idle:'blue',standby:'blue',paused:'amber',offline:'red',error:'red',disabled:'gray',connecting:'gray',cancelled:'gray',leveling:'teal',homing:'teal',runout:'orange',filament_runout:'orange'})[s]||'gray';
@@ -2602,7 +2609,7 @@ function CompletedPage({data, onSync, isAdmin}){
    </div>
    {syncError && <p className="banner" role="alert">{syncError}</p>}
    <section className="productionTotals" aria-label="Production totals">
-    {[[PackageCheck,'Today',todayPieces],[Calendar,'Yesterday',yesterdayPieces],[CheckCircle2,'Total completed',totalCompletedPieces],[AlertTriangle,'Failed / cancelled',totalFailedJobs],[Clock,'Machine time',fmtDuration(totalProductionSec)]].map(([Icon,label,value])=>(
+    {[[PackageCheck,'Today',todayPieces],[Calendar,'Yesterday',yesterdayPieces],[CheckCircle2,'Total completed',totalCompletedPieces],[AlertTriangle,'Failed / cancelled',totalFailedJobs],[Clock,'Machine time',totalProductionSec>=360000?Math.round(totalProductionSec/3600).toLocaleString()+' h':fmtDuration(totalProductionSec)]].map(([Icon,label,value])=>(
      <div key={label} className="colorMetric"><Icon size={16}/><strong>{value}</strong><span>{label}</span></div>
     ))}
    </section>

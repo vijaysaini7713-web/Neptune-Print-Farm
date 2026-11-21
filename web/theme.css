@@ -152,7 +152,7 @@
 .monitorRow.has-charge :is(.monitorSummary,.fleetCard)::before,
 .theme-dark .monitorRow.has-charge :is(.monitorSummary,.fleetCard)::before {
  background:linear-gradient(90deg,color-mix(in srgb,var(--charge-color,var(--state)) 4%,transparent),color-mix(in srgb,var(--charge-color,var(--state)) 11%,transparent));
- border-inline-end:2px solid color-mix(in srgb,var(--charge-color,var(--state)) 70%,transparent);
+ border-inline-end:0;
  box-shadow:none
 }
 .monitorList .fleetPrinterIcon {background:color-mix(in srgb,var(--state) 14%,transparent);color:var(--state)}
@@ -325,3 +325,6 @@
  .nextRing {width:34px;height:34px}
  .nextCompleteText > span {font-size:13px}
 }
+
+/* Machine time is neutral info, not an error */
+.layout .productionTotals .colorMetric:nth-child(5) {--metric:var(--farm-ink)}

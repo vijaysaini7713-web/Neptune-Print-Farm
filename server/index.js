@@ -1060,22 +1060,42 @@ app.post('/api/printers/:id/print-file',auth,async(req,res)=>{
   return res.status(400).json({error:'Filename is required'});
  }
 
+ const name=filename.trim();
+ const endpoint=`http://${p.host}:${p.port}`;
+ // Moonraker often answers /print/start only after the printer has begun the job
+ // (homing/heating can take well over 9s). Treat a timeout as "unknown" and verify
+ // via print_stats instead of reporting a false failure.
+ const confirmStarted=async()=>{
+  for(let i=0;i<6;i++){
+   try{
+    const q=await fetch(`${endpoint}/printer/objects/query?print_stats=state,filename`,{signal:AbortSignal.timeout(4000)});
+    const st=(await q.json())?.result?.status?.print_stats;
+    if(st&&['printing','paused'].includes(st.state)&&(!st.filename||st.filename===name||st.filename.endsWith('/'+name)||name.endsWith(st.filename)))return true;
+   }catch{}
+   await new Promise(r=>setTimeout(r,2500));
+  }
+  return false;
+ };
+ const ok=()=>{
+  record(p.id,'command',`${p.name}: Started print job [${name}]`);
+  void poll();
+  res.json({ok:true,result:'ok'});
+ };
  try{
-  const endpoint=`http://${p.host}:${p.port}`;
-  const r=await fetch(`${endpoint}/printer/print/start?filename=${encodeURIComponent(filename.trim())}`,{
+  const r=await fetch(`${endpoint}/printer/print/start?filename=${encodeURIComponent(name)}`,{
    method:'POST',
    headers:{'content-type':'application/json'},
-   signal:AbortSignal.timeout(9000)
+   signal:AbortSignal.timeout(20000)
   });
   const data=await r.json().catch(()=>({}));
   if(!r.ok){
-   return res.status(400).json({error:data?.error?.message||`Moonraker HTTP ${r.status}`});
+   if(await confirmStarted())return ok();
+   return res.status(400).json({error:data?.error?.message||`Printer rejected the job (HTTP ${r.status})`});
   }
-  record(p.id,'command',`${p.name}: Started print job [${filename.trim()}]`);
-  void poll();
-  res.json({ok:true,result:data?.result||'ok'});
+  ok();
  }catch(err){
-  res.status(502).json({error:`Failed to start print on ${p.name}: ${err.message}`});
+  if(await confirmStarted())return ok();
+  res.status(502).json({error:`Could not confirm the print started on ${p.name}: ${err.message}`});
  }
 });
 
