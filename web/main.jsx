@@ -1,7 +1,7 @@
 
 import React,{useEffect,useState} from 'react';
 import{createRoot}from'react-dom/client';
-import{Folder,FileText,Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Timer,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap,Key,Lock,Copy,Check,Cpu,HardDrive,Users,UserPlus,Eye,Shield,Mail,LayoutGrid,CircleCheckBig,TriangleAlert,Settings2}from'lucide-react';
+import{Folder,FileText,Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Timer,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap,Key,Lock,Copy,Check,Cpu,HardDrive,Users,UserPlus,Eye,Shield,Mail,LayoutGrid,CircleCheckBig,TriangleAlert,Settings2,Video,VideoOff,Maximize2,Image as ImageIcon}from'lucide-react';
 import './style.css';
 import './monitor.css';
 import './theme.css';
@@ -553,6 +553,12 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
        <span>{isLocal?'Control':'Remote control'}</span>
       </button>
      )}
+     {p.enabled&&p.camera?.available&&(
+      <button className="fleetBtn camera" onClick={()=>onOpenControl(p,'camera')} title={`Live camera for ${p.name}`}>
+       <Video size={13}/>
+       <span>Camera</span>
+      </button>
+     )}
      {isLocal&&printerUrl&&(
        <a
         href={printerUrl} 
@@ -672,6 +678,12 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
        >
         <Sliders size={13}/>
         <span>{isLocal?'Control':'Remote control'}</span>
+       </button>
+      )}
+      {p.enabled&&p.camera?.available&&(
+       <button className="fleetBtn camera" onClick={()=>onOpenControl(p,'camera')} title={`Live camera for ${p.name}`}>
+        <Video size={13}/>
+        <span>Camera</span>
        </button>
       )}
       {isLocal&&printerUrl&&(
@@ -1680,7 +1692,78 @@ function HostSetupGuideModal({onClose, onOpenStatus}){
  );
 }
 
-function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true}){
+
+// Live camera feed. Goes through the farm server, so it works on the LAN and remotely.
+// Tries the MJPEG stream first; if the stream can't be held open (some networks /
+// proxies buffer it) it falls back to refreshing snapshots.
+function CameraView({p}){
+ const [info,setInfo]=useState(null);
+ const [mode,setMode]=useState('stream');
+ const [nonce,setNonce]=useState(()=>Date.now());
+ const [loaded,setLoaded]=useState(false);
+ const [failed,setFailed]=useState(false);
+ const boxRef=React.useRef(null);
+
+ const check=React.useCallback(async()=>{
+  setInfo(null);setFailed(false);setLoaded(false);setMode('stream');
+  try{setInfo(await api(`/printers/${p.id}/camera?refresh=1`))}
+  catch{setInfo({available:false})}
+  setNonce(Date.now());
+ },[p.id]);
+ useEffect(()=>{check()},[check]);
+
+ useEffect(()=>{
+  if(mode!=='snapshot'||!info?.available)return;
+  const iv=setInterval(()=>setNonce(Date.now()),1500);
+  return ()=>clearInterval(iv);
+ },[mode,info?.available]);
+
+ // If the stream connects but no frame arrives, switch to snapshots
+ useEffect(()=>{
+  if(mode!=='stream'||!info?.available||loaded)return;
+  const t=setTimeout(()=>setMode('snapshot'),7000);
+  return ()=>clearTimeout(t);
+ },[mode,info?.available,loaded,nonce]);
+
+ const onError=()=>{
+  if(mode==='stream'){setMode('snapshot');setNonce(Date.now());return}
+  if(!loaded)setFailed(true);
+ };
+ const fullscreen=()=>{const el=boxRef.current;if(!el)return;(el.requestFullscreen||el.webkitRequestFullscreen)?.call(el)};
+ const transform=[info?.rotation?`rotate(${info.rotation}deg)`:'',info?.flipH?'scaleX(-1)':'',info?.flipV?'scaleY(-1)':''].filter(Boolean).join(' ');
+ const src=`/api/printers/${encodeURIComponent(p.id)}/camera/${mode}?t=${nonce}`;
+
+ if(!info)return <div className="cameraPanel"><div className="cameraEmpty"><RefreshCw size={22} className="spin"/><p>Looking for a camera on {p.name}…</p></div></div>;
+ if(!info.available||failed)return (
+  <div className="cameraPanel">
+   <div className="cameraEmpty">
+    <VideoOff size={28}/>
+    <strong>No camera detected on {p.name}</strong>
+    <p>Plug a USB camera into the printer. It will show up here on its own, both on the local network and remotely.</p>
+    <button type="button" className="outline" onClick={check}><RefreshCw size={14}/> Check again</button>
+   </div>
+  </div>
+ );
+ return (
+  <div className="cameraPanel">
+   <div className="cameraFrame" ref={boxRef}>
+    {!loaded&&<div className="cameraLoading"><RefreshCw size={20} className="spin"/>Connecting to camera…</div>}
+    <img key={mode} src={src} alt={`${p.name} live camera`} style={transform?{transform}:undefined}
+     onLoad={()=>setLoaded(true)} onError={onError}/>
+    <span className={'cameraBadge '+(mode==='stream'?'is-live':'')}><span aria-hidden="true"/>{mode==='stream'?'LIVE':'SNAPSHOT · 1.5s'}</span>
+   </div>
+   <div className="cameraActions">
+    <button type="button" className="outline" onClick={()=>{setLoaded(false);setMode(m=>m==='stream'?'snapshot':'stream');setNonce(Date.now())}}>
+     {mode==='stream'?<><ImageIcon size={14}/> Use snapshots</>:<><Video size={14}/> Try live stream</>}
+    </button>
+    <button type="button" className="outline" onClick={check}><RefreshCw size={14}/> Reconnect</button>
+    <button type="button" className="outline" onClick={fullscreen}><Maximize2 size={14}/> Full screen</button>
+   </div>
+  </div>
+ );
+}
+
+function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true,initialTab='job'}){
  const hasRunout = Boolean(
   (p.status === 'runout' || (p.filamentRunout === true && (p.status === 'printing' || p.status === 'paused'))) &&
   Boolean(p.file) &&
@@ -1696,7 +1779,7 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
  const [sending,setSending]=useState(false);
  const [feedback,setFeedback]=useState(null);
  const [autoScroll,setAutoScroll]=useState(true);
- const [modalTab,setModalTab]=useState('job');
+ const [modalTab,setModalTab]=useState(initialTab||'job');
  const [files,setFiles]=useState([]);
  const [loadingFiles,setLoadingFiles]=useState(false);
  const [filesError,setFilesError]=useState(null);
@@ -1808,7 +1891,7 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
  const canResume=s==='paused'||hasRunout;
  const canPause=s==='printing'&&!hasRunout;
  const advancedTabs=[['fan','Filament & fan',Wind],['jog','Motion',Compass],['terminal','Console',Terminal],['elements','Diagnostics',Activity]];
- const primaryTabs=[['job','Current job',Activity],['files','Files',Folder],...(isAdmin?[['temp','Heat',Flame]]:[])];
+ const primaryTabs=[['job','Current job',Activity],['camera','Camera',Video],['files','Files',Folder],...(isAdmin?[['temp','Heat',Flame]]:[])];
  const printerUrl=p.host?`http://${p.host}${p.port&&p.port!==80?':'+p.port:''}`:null;
 
  return (
@@ -1865,6 +1948,7 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
     </div>
 
     {/* TAB 1: JOG & MOTION */}
+    {modalTab==='camera'&&<CameraView p={p}/>}
     {modalTab==='jog'&&(
      <div className="ctrlTabContent">
       <div className="ctrlJogWrapper">
@@ -3489,7 +3573,7 @@ const fleetViews = [
 ];
 
 function App(){
- const[authed,setAuthed]=useState(null),[currentUser,setCurrentUser]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[systemInfo,setSystemInfo]=useState(null),[controlPrinter,setControlPrinter]=useState(null),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);
+ const[authed,setAuthed]=useState(null),[currentUser,setCurrentUser]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[systemInfo,setSystemInfo]=useState(null),[controlPrinter,setControlPrinter]=useState(null),[controlTab,setControlTab]=useState('job'),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);
  const[fleetFilter,setFleetFilter]=useState('all');
  const[fleetSearch,setFleetSearch]=useState('');
  const[fleetView,setFleetView]=useState(()=>{
@@ -3798,7 +3882,7 @@ function App(){
         p={p} 
         isLocal={isLocal} 
         systemInfo={systemInfo} 
-        onOpenControl={setControlPrinter}
+        onOpenControl={(printer,tab)=>{setControlTab(tab||'job');setControlPrinter(printer)}}
         onClearBed={handleClearBed}
         onFirmwareRestart={handleFirmwareRestart}
         isAdmin={isAdmin}
@@ -3841,7 +3925,8 @@ function App(){
      p={controlPrinter} 
      isLocal={isLocal} 
      systemInfo={systemInfo} 
-     onClose={()=>setControlPrinter(null)} 
+     onClose={()=>{setControlPrinter(null);setControlTab('job')}} 
+     initialTab={controlTab}
      onRefresh={refresh}
      isAdmin={isAdmin}
     />

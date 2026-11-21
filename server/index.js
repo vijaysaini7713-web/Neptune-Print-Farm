@@ -1213,8 +1213,102 @@ app.get('/api/me',auth,(req,res)=>{
  });
 });
 
+// ---- Printer cameras ---------------------------------------------------------
+// Cameras live on the printer's LAN address, so the browser can't reach them
+// remotely. The server proxies snapshot + MJPEG stream so the same URL works on
+// the local network and through the Cloudflare tunnel, behind the farm login.
+const cameraCache=new Map();
+const canSeePrinter=(user,p)=>{
+ if(!user||user.role==='admin')return true;
+ const a=Array.isArray(user.assignedPrinters)?user.assignedPrinters:[];
+ return a.includes('*')||a.includes(p.id)||Boolean(p.ownerEmail&&p.ownerEmail.toLowerCase()===user.email?.toLowerCase());
+};
+async function resolveCamera(p,force=false){
+ const cached=cameraCache.get(p.id);
+ if(!force&&cached&&Date.now()-cached.checkedAt<60000)return cached;
+ if(cached?.pending)return cached;
+ cameraCache.set(p.id,{...(cached||{available:false}),pending:true,checkedAt:cached?.checkedAt||0});
+ const base=`http://${p.host}`;
+ // Default: the mjpg-streamer path these Neptune 4 images expose through nginx
+ let cam={name:'Camera',stream:`${base}/webcam/?action=stream`,snapshot:`${base}/webcam/?action=snapshot`,flipH:false,flipV:false,rotation:0};
+ try{
+  const r=await fetch(`http://${p.host}:${p.port}/server/webcams/list`,{signal:AbortSignal.timeout(3000)});
+  const w=(await r.json())?.result?.webcams?.find(x=>x.enabled!==false);
+  if(w){
+   // Only follow camera URLs on the printer's own host
+   const abs=u=>{if(!u)return null;try{const url=new URL(u,base+'/');return url.hostname===p.host?url.href:null}catch{return null}};
+   cam={name:w.name||'Camera',stream:abs(w.stream_url)||cam.stream,snapshot:abs(w.snapshot_url)||cam.snapshot,
+    flipH:Boolean(w.flip_horizontal),flipV:Boolean(w.flip_vertical),rotation:Number(w.rotation)||0};
+  }
+ }catch{}
+ let available=false;
+ try{
+  const r=await fetch(cam.snapshot,{signal:AbortSignal.timeout(4000)});
+  available=r.ok&&String(r.headers.get('content-type')||'').startsWith('image/');
+  await r.body?.cancel?.().catch(()=>{});
+ }catch{}
+ const out={...cam,available,checkedAt:Date.now()};
+ cameraCache.set(p.id,out);
+ return out;
+}
+const publicCamera=c=>c?{available:Boolean(c.available),name:c.name,flipH:c.flipH,flipV:c.flipV,rotation:c.rotation,checkedAt:c.checkedAt?new Date(c.checkedAt).toISOString():null}:{available:false};
+function findVisiblePrinter(req,res){
+ const p=printers.find(x=>x.id===req.params.id);
+ if(!p||!p.enabled||!validHost(p.host)||!canSeePrinter(req.user,p)){res.status(404).json({error:'Printer not found'});return null}
+ return p;
+}
+
+app.get('/api/printers/:id/camera',auth,async(req,res)=>{
+ const p=findVisiblePrinter(req,res);if(!p)return;
+ res.json(publicCamera(await resolveCamera(p,req.query.refresh==='1')));
+});
+
+app.get('/api/printers/:id/camera/snapshot',auth,async(req,res)=>{
+ const p=findVisiblePrinter(req,res);if(!p)return;
+ const cam=await resolveCamera(p);
+ try{
+  const r=await fetch(cam.snapshot,{signal:AbortSignal.timeout(6000)});
+  const type=r.headers.get('content-type')||'';
+  if(!r.ok||!type.startsWith('image/'))return res.status(502).json({error:'Camera not available'});
+  res.set({'content-type':type,'cache-control':'no-store'});
+  res.end(Buffer.from(await r.arrayBuffer()));
+ }catch{
+  res.status(502).json({error:'Camera not available'});
+ }
+});
+
+app.get('/api/printers/:id/camera/stream',auth,async(req,res)=>{
+ const p=findVisiblePrinter(req,res);if(!p)return;
+ const cam=await resolveCamera(p);
+ const ctrl=new AbortController();
+ req.on('close',()=>ctrl.abort());
+ const connectTimer=setTimeout(()=>ctrl.abort(),8000);
+ try{
+  const r=await fetch(cam.stream,{signal:ctrl.signal});
+  clearTimeout(connectTimer);
+  const type=r.headers.get('content-type')||'';
+  if(!r.ok||!r.body||!/multipart|image/.test(type)){ctrl.abort();return res.status(502).json({error:'Camera stream not available'})}
+  res.set({'content-type':type,'cache-control':'no-store, no-transform','x-accel-buffering':'no',connection:'keep-alive'});
+  res.flushHeaders();
+  const reader=r.body.getReader();
+  while(true){
+   const {done,value}=await reader.read();
+   if(done)break;
+   if(!res.write(value))await new Promise(resolve=>res.once('drain',resolve));
+  }
+  res.end();
+ }catch{
+  clearTimeout(connectTimer);
+  if(!res.headersSent)res.status(502).json({error:'Camera stream not available'});else res.end();
+ }
+});
+
 app.get('/api/printers',auth,(req,res)=>{
- let list=printers.map(p=>current.get(p.id)||{...p,status:'connecting',connected:false});
+ let list=printers.map(p=>{
+  const c=cameraCache.get(p.id);
+  if(p.enabled&&validHost(p.host)&&(!c||Date.now()-c.checkedAt>60000))void resolveCamera(p).catch(()=>{});
+  return {...(current.get(p.id)||{...p,status:'connecting',connected:false}),camera:publicCamera(c)};
+ });
  if (req.user && req.user.role !== 'admin') {
   const userPrinters = Array.isArray(req.user.assignedPrinters) ? req.user.assignedPrinters : [];
   const isAll = userPrinters.includes('*');
