@@ -83,7 +83,7 @@ async function sendPushToAll({ title, body, tag, url }) {
  }
 }
 let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{}),runoutState=read(runoutFile,{}),jobHoldStats=read(jobHoldFile,{}),jobStartTimes=read(jobStartsFile,{}),users=read(usersFile,[]);
-const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map(),recentCommands=new Map(),pendingStops=new Map();
+const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map(),recentCommands=new Map(),pendingStops=new Map(),consoleSeen=new Map(),consoleAlertAt=new Map(),recentCancelCmd=new Map();
 const offlineSince=new Map(),offlineAlertSent=new Map();
 const idleSince=new Map(),errorSince=new Map(),pauseSince=new Map();
 const etaSmoothed=new Map();
@@ -257,6 +257,56 @@ async function syncPrinterHistory(p){
 
 async function syncAllHistory(){
  await Promise.all(printers.map(syncPrinterHistory));
+}
+
+
+// ---- Printer console watcher -------------------------------------------------
+// Reads new Klipper console lines each poll and turns the important ones into
+// alerts. Rules come from what these Neptune 4 printers actually print.
+const CONSOLE_RULES=[
+ {id:'mcu',type:'error',re:/Lost communication with MCU|Klipper state: Disconnect|Got EOF when reading|Timer too close/i,
+  msg:(n,l)=>`${n}: Printer board disconnected / MCU error — ${l}`},
+ {id:'heater',type:'error',re:/not heating at expected rate|Heater \w+ not heating|ADC out of range|thermal runaway/i,
+  msg:(n,l)=>`${n}: HEATER FAULT — ${l}`},
+ {id:'runout',type:'runout',re:/Filament detection is triggered|filament runout/i,
+  msg:n=>`${n}: Filament sensor triggered — check filament`},
+ {id:'idle-cool',type:'paused',re:/Extruder powered down on idle timeout/i,
+  msg:n=>`${n}: Heaters turned OFF by idle timeout — nozzle is cooling. Reheat before resuming.`},
+ {id:'klipper-err',type:'error',re:/^!!\s*(.+)/,
+  msg:(n,l)=>`${n}: Printer error — ${l.replace(/^!!\s*/,'')}`},
+];
+// Harmless noise on these printers (slicer/firmware quirks) - never alert.
+const CONSOLE_IGNORE=/Unknown command:"(T0|SAVE_VARIABLE|RUN_SHELL_COMMAND|CLEAR_LAST_FILE)"|EXCLUDE_OBJECT_END .* does not match/i;
+
+function watchConsole(p,entries,prevStatus,nowStatus){
+ if(!Array.isArray(entries)||!entries.length)return;
+ const newest=Math.max(...entries.map(e=>e.time||0));
+ const seen=consoleSeen.get(p.id);
+ consoleSeen.set(p.id,Math.max(newest,seen||0));
+ if(seen==null)return; // first poll after start: don't replay old lines
+ for(const e of entries){
+  if(!(e.time>seen))continue;
+  const line=String(e.message||'').trim();
+  if(!line||CONSOLE_IGNORE.test(line))continue;
+  if(e.type==='command'){
+   if(/^CANCEL_PRINT\b/i.test(line))recentCancelCmd.set(p.id,Date.now());
+   if(/^(FIRMWARE_RESTART|RESTART)\b/i.test(line))recentCancelCmd.set(p.id+':restart',Date.now());
+   continue;
+  }
+  const rule=CONSOLE_RULES.find(r=>r.re.test(line));
+  if(!rule)continue;
+  // Shutdowns are already alerted (with reason) by the status tracker
+  if(nowStatus==='error'&&['mcu','heater','klipper-err'].includes(rule.id))continue;
+  // Runout & idle-cool only matter around an active/paused job
+  if(rule.id==='runout'&&(runoutState[p.id]||!['printing','paused','runout'].includes(prevStatus)))continue;
+  if(rule.id==='idle-cool'&&!['paused','runout'].includes(prevStatus))continue;
+  // A disconnect right after a user-issued (firmware) restart is expected
+  if(rule.id==='mcu'&&Date.now()-(recentCancelCmd.get(p.id+':restart')||0)<3*60*1000)continue;
+  const key=p.id+':'+rule.id,lastAt=consoleAlertAt.get(key)||0;
+  if(Date.now()-lastAt<10*60*1000)continue; // one alert per rule per 10 min
+  consoleAlertAt.set(key,Date.now());
+  record(p.id,rule.type,rule.msg(p.name,line.replace(/^(\/\/|!!)\s*/,'').slice(0,160)));
+ }
 }
 
 function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJob,gcodeLogs=[],recentCmd=null){
@@ -504,7 +554,7 @@ async function scan(p){
   
   const [response, gcodeRes, histRes, infoRes] = await Promise.all([
    fetch(endpoint+'/printer/objects/query?'+query,{signal:AbortSignal.timeout(5500)}),
-   fetch(endpoint+'/server/gcode_store?count=30',{signal:AbortSignal.timeout(4500)}).catch(()=>null),
+   fetch(endpoint+'/server/gcode_store?count=60',{signal:AbortSignal.timeout(4500)}).catch(()=>null),
    fetch(endpoint+'/server/history/list?limit=1',{signal:AbortSignal.timeout(4500)}).catch(()=>null),
    fetch(endpoint+'/printer/info',{signal:AbortSignal.timeout(4500)}).catch(()=>null)
   ]);
@@ -570,6 +620,7 @@ async function scan(p){
   const recentCmd=recentCommands.get(p.id)||null;
   const next=normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJob,gcodeLogs,recentCmd);
   current.set(p.id,next);last.set(p.id,next);
+  try{watchConsole(p,gcodeData?.result?.gcode_store,prev?.status,next.status)}catch(e){console.warn('[Console watch]',p.name,e.message)}
 
   // If printer was previously offline, handle reconnect & clear alert tracking
   if(offlineSince.has(p.id)){
@@ -730,7 +781,8 @@ async function scan(p){
     if (lj.status !== 'completed') {
      const ran = formatHoldDuration(Math.round(lj.print_duration || pend.duration || 0));
      if (lj.status === 'cancelled') {
-      record(p.id, 'cancelled', `${p.name}: Print CANCELLED (stopped manually) — ${pend.file}${ran ? ` (Ran: ${ran})` : ''}`);
+      const manual = Date.now() - (recentCancelCmd.get(p.id) || 0) < 5 * 60 * 1000;
+      record(p.id, 'cancelled', `${p.name}: Print CANCELLED${manual ? ' (stopped manually)' : ''} — ${pend.file}${ran ? ` (Ran: ${ran})` : ''}`);
      } else {
       record(p.id, 'error', `${p.name}: Print STOPPED (${String(lj.status).replace(/_/g, ' ')}) — ${pend.file}${ran ? ` (Ran: ${ran})` : ''}`);
      }
@@ -745,7 +797,7 @@ async function scan(p){
   // 4. Status change tracking for Error, Paused, Cancelled
   if (prev?.connected && prev.status !== next.status) {
    if (next.status === 'error' || (next.status === 'paused' && !isNowRunout)) {
-    record(p.id, next.status, p.name + ': ' + next.status.toUpperCase() + ' — ' + (next.file || 'No filename'));
+    record(p.id, next.status, p.name + ': ' + next.status.toUpperCase() + ' — ' + (next.file || 'No filename') + (next.status === 'error' && next.shutdownReason ? ' · Reason: ' + String(next.shutdownReason).split(/\r?\n/)[0].slice(0, 160) : ''));
    } else if (next.status === 'cancelled') {
     record(p.id, 'cancelled', p.name + ': Print CANCELLED / STOPPED — ' + (next.file || prev?.file || 'Job stopped'));
    }
