@@ -3746,16 +3746,19 @@ function App(){
        <button aria-label="Refresh printer status" title="Refresh printer status" onClick={refresh}><RefreshCw size={16}/></button>
        {nextUp ? (()=>{
         const left=Math.max(0,(Date.parse(nextUp.eta)-Date.now())/1000);
-        const more=finishQueue.length-1;
-        return <button type="button" className="nextCompleteChip" aria-label={`Next to complete: ${nextUp.name}, ${fmtDuration(left)} remaining`} title={nextUp.file||nextUp.name} onClick={()=>setControlPrinter(nextUp)}>
-         <span className="nextCompleteIcon" aria-hidden="true"><CircleCheckBig size={16}/></span>
+        const pct=Math.max(0,Math.min(100,Math.round(nextUp.progress??0)));
+        const C=2*Math.PI*16;
+        return <button type="button" className="nextCompleteChip" aria-label={`Next complete: ${nextUp.name} in ${fmtDuration(left)}, ${pct}% done`} onClick={()=>setControlPrinter(nextUp)}>
+         <span className="nextRing" aria-hidden="true">
+          <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" className="nextRingTrack"/><circle cx="20" cy="20" r="16" className="nextRingFill" strokeDasharray={C} strokeDashoffset={C*(1-pct/100)}/></svg>
+          <span>{pct}%</span>
+         </span>
          <span className="nextCompleteText">
-          <small>Next complete{more>0?` · +${more} more`:''}</small>
-          <span><strong>{nextUp.name}</strong> in <b>{left<60?'<1m':fmtDuration(left)}</b></span>
-          <em>{formatFinishTime(nextUp.eta)}{nextUp.file?' · '+nextUp.file:''}</em>
+          <small>Next complete</small>
+          <span><strong>{nextUp.name}</strong> · <b>{left<60?'<1m':fmtDuration(left)}</b></span>
          </span>
         </button>;
-       })() : <span className="nextCompleteChip is-idle"><span className="nextCompleteIcon" aria-hidden="true"><Clock size={16}/></span><span className="nextCompleteText"><small>Next complete</small><span>No active prints</span></span></span>}
+       })() : <span className="nextCompleteChip is-idle"><span className="nextCompleteText"><small>Next complete</small><span>No active prints</span></span></span>}
       </div>
      </section>
      <div className="fleetFilterRail" role="group" aria-label="Filter printers by status">

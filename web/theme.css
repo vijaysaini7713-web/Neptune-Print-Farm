@@ -304,22 +304,24 @@
 
 /* ---------- Next complete chip (hero) ---------- */
 .layout .fleetHeroActions .nextCompleteChip {
- display:flex;align-items:center;gap:10px;min-height:46px;max-width:340px;padding:6px 12px 6px 8px;
- border-radius:11px;text-align:left;cursor:pointer;
- background:color-mix(in srgb,var(--farm-complete) 12%,var(--farm-panel));
- border:1px solid color-mix(in srgb,var(--farm-complete) 38%,var(--farm-line));color:var(--farm-ink)
+ display:flex;align-items:center;gap:10px;min-height:48px;padding:5px 14px 5px 6px;border-radius:999px;text-align:left;cursor:pointer;
+ background:color-mix(in srgb,var(--farm-complete) 10%,var(--farm-panel));
+ border:1px solid color-mix(in srgb,var(--farm-complete) 35%,var(--farm-line));color:var(--farm-ink)
 }
-.layout .fleetHeroActions button.nextCompleteChip:hover {background:color-mix(in srgb,var(--farm-complete) 18%,var(--farm-panel));border-color:var(--farm-complete)}
-.layout .nextCompleteChip.is-idle {cursor:default;background:var(--farm-panel);border-color:var(--farm-line)}
-.nextCompleteIcon {display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:9px;background:color-mix(in srgb,var(--farm-complete) 20%,transparent);color:var(--farm-complete)}
-.is-idle .nextCompleteIcon {background:var(--farm-raised);color:var(--farm-muted)}
-.nextCompleteText {display:flex;flex-direction:column;min-width:0;line-height:1.25}
+.layout .fleetHeroActions button.nextCompleteChip:hover {background:color-mix(in srgb,var(--farm-complete) 16%,var(--farm-panel));border-color:var(--farm-complete)}
+.layout .nextCompleteChip.is-idle {cursor:default;padding-left:14px;background:var(--farm-panel);border-color:var(--farm-line)}
+.nextRing {position:relative;display:grid;place-items:center;flex:none;width:38px;height:38px}
+.nextRing svg {position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.nextRing circle {fill:none;stroke-width:4}
+.nextRingTrack {stroke:color-mix(in srgb,var(--farm-complete) 18%,transparent)}
+.nextRingFill {stroke:var(--farm-complete);stroke-linecap:round;transition:stroke-dashoffset .6s ease}
+.nextRing > span {position:relative;font-size:9.5px;font-weight:800;color:var(--farm-ink);font-variant-numeric:tabular-nums}
+.nextCompleteText {display:flex;flex-direction:column;line-height:1.25}
 .nextCompleteText small {font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--farm-muted)}
-.nextCompleteText > span {font-size:13px;font-weight:600;color:var(--farm-ink);white-space:nowrap}
+.nextCompleteText > span {font-size:14px;font-weight:600;color:var(--farm-ink);white-space:nowrap}
 .nextCompleteText b {color:var(--farm-complete);font-weight:800;font-variant-numeric:tabular-nums}
-.nextCompleteText em {font-style:normal;font-size:11px;color:var(--farm-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
 @media (max-width:640px){
- .layout .fleetHeroActions .nextCompleteChip {max-width:220px;min-height:40px;padding:4px 8px 4px 6px;gap:7px}
- .nextCompleteIcon {width:26px;height:26px}
- .nextCompleteText em {max-width:160px}
+ .layout .fleetHeroActions .nextCompleteChip {min-height:42px;padding:4px 10px 4px 4px;gap:7px}
+ .nextRing {width:34px;height:34px}
+ .nextCompleteText > span {font-size:13px}
 }
