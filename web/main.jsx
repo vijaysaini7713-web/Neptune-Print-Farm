@@ -3631,6 +3631,7 @@ function App(){
  const finishQueue=printers.filter(printer=>isPrinting(printer)&&Number.isFinite(Date.parse(printer.eta)))
   .sort((a,b)=>Date.parse(a.eta)-Date.parse(b.eta))
   .slice(0,5);
+ const nextUp=finishQueue[0];
  const activeMetric=fleetMetrics.find(metric=>metric.key===fleetFilter);
  const printerQuery=fleetSearch.trim().toLowerCase();
  const sortedPrinters=printers.filter(printer=>activeMetric.matches(printer)&&
@@ -3743,7 +3744,18 @@ function App(){
       </div>
       <div className="fleetHeroActions">
        <button aria-label="Refresh printer status" title="Refresh printer status" onClick={refresh}><RefreshCw size={16}/></button>
-       {isAdmin && <button onClick={()=>setPage('settings')}><Plus size={17}/> Add printer</button>}
+       {nextUp ? (()=>{
+        const left=Math.max(0,(Date.parse(nextUp.eta)-Date.now())/1000);
+        const more=finishQueue.length-1;
+        return <button type="button" className="nextCompleteChip" aria-label={`Next to complete: ${nextUp.name}, ${fmtDuration(left)} remaining`} title={nextUp.file||nextUp.name} onClick={()=>setControlPrinter(nextUp)}>
+         <span className="nextCompleteIcon" aria-hidden="true"><CircleCheckBig size={16}/></span>
+         <span className="nextCompleteText">
+          <small>Next complete{more>0?` · +${more} more`:''}</small>
+          <span><strong>{nextUp.name}</strong> in <b>{left<60?'<1m':fmtDuration(left)}</b></span>
+          <em>{formatFinishTime(nextUp.eta)}{nextUp.file?' · '+nextUp.file:''}</em>
+         </span>
+        </button>;
+       })() : <span className="nextCompleteChip is-idle"><span className="nextCompleteIcon" aria-hidden="true"><Clock size={16}/></span><span className="nextCompleteText"><small>Next complete</small><span>No active prints</span></span></span>}
       </div>
      </section>
      <div className="fleetFilterRail" role="group" aria-label="Filter printers by status">
