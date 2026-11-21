@@ -7,15 +7,16 @@
  --font-ui:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
 
  /* Surfaces */
- --farm-canvas:#0a0e13;--farm-panel:#12171e;--farm-raised:#181f28;--farm-line:#232c38;--farm-line-strong:#323d4b;
- --farm-ink:#e9eef4;--farm-muted:#8d9aab;--card-inset:#0e1319;
+ --farm-canvas:#080e1c;--farm-panel:#0e1628;--farm-raised:#142037;--farm-line:#1d2a44;--farm-line-strong:#2b3c5e;
+ --farm-ink:#e8eefb;--farm-muted:#8d9cba;--card-inset:#0b1325;
 
  /* Brand + status */
- --farm-accent:#2dd4bf;--farm-blue:#2dd4bf;--farm-mint:#4ade80;--farm-violet:#a78bfa;--farm-amber:#fbbf24;--farm-rose:#fb7185;
- --primary-fill:#14b8a6;--primary-hover:#2dd4bf;--primary-ink:#04201c;
+ --farm-accent:#60a5fa;--farm-blue:#60a5fa;--farm-mint:#4ade80;--farm-violet:#34d399;--farm-amber:#fbbf24;--farm-rose:#fb7185;
+ --farm-printing:#60a5fa;--farm-complete:#34d399;
+ --primary-fill:#2563eb;--primary-hover:#3b82f6;--primary-ink:#ffffff;
 
- --hero-surface:linear-gradient(120deg,#0f2a2a 0%,#12171e 55%,#161a26 100%);
- --hero-ink:#f3f7fa;--hero-muted:#a7b4c3;--hero-grid:#2dd4bf12;
+ --hero-surface:radial-gradient(ellipse 70% 120% at 100% 0%,#1d3d7a 0%,transparent 60%),linear-gradient(120deg,#0f1d3a 0%,#0e1628 70%);
+ --hero-ink:#f3f7ff;--hero-muted:#a9b8d6;--hero-grid:#60a5fa12;
 
  --shadow-sm:0 1px 2px #0006;
  --shadow-md:0 8px 24px #0007;
@@ -23,14 +24,15 @@
 }
 :root[data-theme="light"] {
  color-scheme:light;
- --farm-canvas:#f4f6f9;--farm-panel:#ffffff;--farm-raised:#f8fafc;--farm-line:#e2e7ee;--farm-line-strong:#cfd7e2;
- --farm-ink:#0f1a2a;--farm-muted:#5a6779;--card-inset:#f3f6f9;
+ --farm-canvas:#f3f6fb;--farm-panel:#ffffff;--farm-raised:#f6f9fe;--farm-line:#e0e7f2;--farm-line-strong:#c9d5e7;
+ --farm-ink:#0b1a33;--farm-muted:#55657f;--card-inset:#f2f6fc;
 
- --farm-accent:#0d9488;--farm-blue:#0f766e;--farm-mint:#15803d;--farm-violet:#6d28d9;--farm-amber:#b45309;--farm-rose:#be123c;
- --primary-fill:#0d9488;--primary-hover:#0f766e;--primary-ink:#ffffff;
+ --farm-accent:#2563eb;--farm-blue:#1d4ed8;--farm-mint:#15803d;--farm-violet:#047857;--farm-amber:#b45309;--farm-rose:#be123c;
+ --farm-printing:#2563eb;--farm-complete:#047857;
+ --primary-fill:#2563eb;--primary-hover:#1d4ed8;--primary-ink:#ffffff;
 
- --hero-surface:linear-gradient(120deg,#e3f6f3 0%,#ffffff 60%,#f3f1fd 100%);
- --hero-ink:#0f1a2a;--hero-muted:#4b5a6d;--hero-grid:#0d948812;
+ --hero-surface:radial-gradient(ellipse 70% 120% at 100% 0%,#dbe8ff 0%,transparent 60%),linear-gradient(120deg,#eef4ff 0%,#ffffff 70%);
+ --hero-ink:#0f1a2a;--hero-muted:#4b5a6d;--hero-grid:#2563eb10;
 
  --shadow-sm:0 1px 2px #0f1a2a0d;
  --shadow-md:0 6px 20px #0f1a2a12;
@@ -54,8 +56,8 @@
 .layout>aside {background:var(--farm-panel);border-right:1px solid var(--farm-line)}
 .fleetBrand {color:var(--farm-ink);font-weight:700}
 .fleetBrand strong {color:var(--farm-accent)}
-.fleetBrand .logoIconBox,.monitorBrand>span,.layout .logoIconBox {
- background:linear-gradient(140deg,var(--primary-fill),color-mix(in srgb,var(--primary-fill) 55%,var(--farm-violet)));
+.fleetBrand .logoIconBox,.monitorBrand>span,.layout .logoIconBox,.loginBrand .logoIconBox {
+ background:linear-gradient(140deg,var(--primary-fill),color-mix(in srgb,var(--primary-fill) 55%,#38bdf8));
  color:var(--primary-ink);border-radius:10px;box-shadow:0 4px 14px color-mix(in srgb,var(--primary-fill) 30%,transparent)
 }
 .layout .nav,.theme-dark .nav,.theme-light .nav {color:var(--farm-muted);background:transparent;border:1px solid transparent;border-radius:10px;font-weight:600}
@@ -94,8 +96,8 @@
  background:var(--hero-surface);color:var(--hero-ink);
  border:1px solid var(--farm-line);box-shadow:var(--shadow-sm)
 }
-.theme-dark .fleetHero {--hero-grid:#2dd4bf10}
-.theme-light .fleetHero {--hero-grid:#0d948810}
+.theme-dark .fleetHero {--hero-grid:#60a5fa10}
+.theme-light .fleetHero {--hero-grid:#2563eb10}
 .fleetHero h1 {color:var(--hero-ink);font-weight:800}
 .fleetHero p {color:var(--hero-muted)}
 .layout .fleetHeroActions button {
@@ -113,8 +115,8 @@
  transition:border-color .15s,background .15s,transform .15s
 }
 .fleetFilter {--metric:var(--farm-accent)}
-.fleetFilter.metric-printing {--metric:var(--farm-mint)}
-.fleetFilter.metric-complete {--metric:var(--farm-violet)}
+.fleetFilter.metric-printing {--metric:var(--farm-printing)}
+.fleetFilter.metric-complete {--metric:var(--farm-complete)}
 .fleetFilter.metric-issues {--metric:var(--farm-amber)}
 .fleetFilter.metric-offline {--metric:var(--farm-rose)}
 .fleetFilter:hover {border-color:color-mix(in srgb,var(--metric) 45%,var(--farm-line));transform:translateY(-1px)}
@@ -134,11 +136,11 @@
 .fleetUpdateTime {color:var(--farm-muted)}
 
 /* ---------- Printer cards ---------- */
-.monitorRow.tone-green {--state:var(--farm-mint)}
-.monitorRow.tone-purple {--state:var(--farm-violet)}
+.monitorRow.tone-green {--state:var(--farm-printing)}
+.monitorRow.tone-purple {--state:var(--farm-complete)}
 .monitorRow.tone-amber {--state:var(--farm-amber)}
 .monitorRow.tone-red {--state:var(--farm-rose)}
-.monitorRow.tone-green,.theme-dark .monitorRow.tone-green {--charge-color:var(--farm-mint);--bar-color:var(--farm-accent)}
+.monitorRow.tone-green,.theme-dark .monitorRow.tone-green {--charge-color:var(--farm-printing);--bar-color:var(--farm-printing)}
 .monitorList .monitorRow {background:var(--farm-panel);border-color:var(--farm-line);border-radius:14px;box-shadow:var(--shadow-sm)}
 .monitorList .monitorRow .fleetCard,.monitorList .fleetCard,
 .monitorList .fleetCard.state-completed {background:var(--farm-panel)!important;border-color:var(--farm-line)!important}
@@ -165,7 +167,7 @@
  --detail-heat:var(--farm-rose);--detail-bed:var(--farm-amber)
 }
 .theme-dark .monitorList {
- --detail-start:#5eead4;--detail-time:#fcd34d;--detail-layer:#5eead4;--detail-heat:#fda4af;--detail-bed:#fcd34d
+ --detail-start:#93c5fd;--detail-time:#fcd34d;--detail-layer:#7dd3fc;--detail-heat:#fda4af;--detail-bed:#fcd34d
 }
 .layout .monitorList .fleetTimeRow:has(.startedAt,.remaining,.completedBy,.totalTime),
 .layout .monitorList .mobSecondaryTimes,.monitorList .fleetCol.metrics {background:var(--card-inset);border:1px solid var(--farm-line)}
@@ -216,7 +218,7 @@
 .outputDay:hover,.outputDay[aria-pressed="true"] {border-color:var(--farm-accent);background:color-mix(in srgb,var(--farm-accent) 10%,transparent)}
 .alertRecord {--event-color:var(--farm-accent);background:var(--farm-panel);border-color:var(--farm-line)}
 .alertRecord.is-issue {--event-color:var(--farm-amber)}
-.alertRecord.is-complete {--event-color:var(--farm-violet)}
+.alertRecord.is-complete {--event-color:var(--farm-complete)}
 
 /* ---------- Modals ---------- */
 .modalBackdrop {background:color-mix(in srgb,#05080c 70%,transparent);backdrop-filter:blur(6px)}
@@ -230,7 +232,7 @@
 .launchLogin {
  background:
   radial-gradient(ellipse 60% 50% at 70% 0%,color-mix(in srgb,var(--farm-accent) 14%,transparent),transparent 70%),
-  radial-gradient(ellipse 50% 40% at 10% 100%,color-mix(in srgb,var(--farm-violet) 10%,transparent),transparent 70%),
+  radial-gradient(ellipse 50% 40% at 10% 100%,color-mix(in srgb,#38bdf8 8%,transparent),transparent 70%),
   var(--farm-canvas);
  color:var(--farm-ink)
 }
@@ -271,7 +273,7 @@
 .ctrlBtn.cancel {--tone:var(--farm-rose)}
 .ctrlBtn.cooldown {--tone:var(--farm-accent)}
 .ctrlBtn.home {--tone:var(--farm-muted)}
-.ctrlBtn.restart {--tone:var(--farm-violet)}
+.ctrlBtn.restart {--tone:var(--farm-accent)}
 .layout .ctrlBtn.emergency {--tone:var(--farm-rose);background:#e11d48;color:#fff;border-color:transparent}
 .layout .ctrlBtn.emergency:hover:not(:disabled) {background:#be123c;color:#fff}
 
@@ -283,3 +285,19 @@
  color:var(--farm-accent);background:color-mix(in srgb,var(--farm-accent) 12%,var(--farm-panel));
  border-color:color-mix(in srgb,var(--farm-accent) 35%,var(--farm-line));box-shadow:none
 }
+
+/* ---------- Blue theme details ---------- */
+.productionTotals .colorMetric:nth-child(1) {--metric:var(--farm-accent)}
+.productionTotals .colorMetric:nth-child(2) {--metric:#38bdf8}
+[data-theme="light"] .productionTotals .colorMetric:nth-child(2) {--metric:#0369a1}
+.productionTotals .colorMetric:nth-child(3) {--metric:var(--farm-complete)}
+.monitorList .fleetMobPrimaryTimeRow .timeLabel {color:var(--farm-accent)}
+.layout .monitorList :is(.fleetTimeBadge,.mobTimeItem).remaining {--timing-accent:var(--farm-printing)}
+.layout .monitorList :is(.fleetTimeBadge,.mobTimeItem):is(.completedBy,.completedAt) {--timing-accent:var(--farm-complete)}
+
+/* ---------- Icons: one stroke weight, one container shape ---------- */
+.layout svg.lucide,.launchLogin svg.lucide {stroke-width:1.85}
+.layout :is(.fleetFilterIcon,.fleetPrinterIcon,.machineMark,.alertIcon,.fleetScheduleHeader>span) {border-radius:10px}
+.fleetFilterIcon svg,.fleetPrinterIcon svg {stroke-width:2}
+.brandMark {display:block;width:100%;height:100%}
+.fleetBrand .logoIconBox,.monitorBrand>span,.loginBrand .logoIconBox {padding:6px}

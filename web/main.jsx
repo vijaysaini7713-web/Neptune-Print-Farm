@@ -1,10 +1,20 @@
 
 import React,{useEffect,useState} from 'react';
 import{createRoot}from'react-dom/client';
-import{Folder,FileText,Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Timer,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap,Key,Lock,Copy,Check,Cpu,HardDrive,Users,UserPlus,Eye,Shield,Mail}from'lucide-react';
+import{Folder,FileText,Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Timer,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap,Key,Lock,Copy,Check,Cpu,HardDrive,Users,UserPlus,Eye,Shield,Mail,LayoutGrid,CircleCheckBig,TriangleAlert,Settings2}from'lucide-react';
 import './style.css';
 import './monitor.css';
 import './theme.css';
+
+function BrandMark(){
+ return <svg className="brandMark" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <path d="M8.5 2.5h7v4l-2.25 3h-2.5L8.5 6.5z"/>
+  <path d="M12 9.5v2.25"/>
+  <path d="M6 15h12"/>
+  <path d="M4 18.5h16"/>
+  <path d="M5.5 22h13"/>
+ </svg>;
+}
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -153,7 +163,7 @@ function Login({done,theme,toggleTheme}){
  return <main className="loginShell launchLogin">
   <form onSubmit={submit} className="login card">
    <div className="loginBrand">
-    <span><Printer size={20}/> Neptune Farm</span>
+    <span><span className="logoIconBox" style={{width:32,height:32}}><BrandMark/></span> Neptune Farm</span>
     <button className="iconButton" type="button" onClick={toggleTheme} aria-label={theme==='dark'?'Use light mode':'Use dark mode'}>{theme==='dark'?<Sun size={17}/>:<Moon size={17}/>}</button>
    </div>
    <h1>Sign in</h1>
@@ -268,7 +278,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
     {/* Col 2: Job & Progress */}
     <div className="fleetCol jobProgress">
      <div className="fleetJobHead">
-      {isDone ? <Sparkles size={13} style={{flexShrink:0,color:'#c084fc'}}/> : <Activity size={13} style={{flexShrink:0,opacity:.8,color:isPrinting?'#38bdf8':'#64748b'}}/>}
+      {isDone ? <Sparkles size={13} style={{flexShrink:0,color:'#34d399'}}/> : <Activity size={13} style={{flexShrink:0,opacity:.8,color:isPrinting?'#38bdf8':'#64748b'}}/>}
       <span className="fleetJobName" title={p.file||(isDone?'Print Finished':'No active G-code job')}>
        {p.file||(isDone?'Print Finished':'No active G-code job')}
       </span>
@@ -576,7 +586,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
     {/* 2. Job & Progress: File Name + Progress Bar + % */}
     <div className="fleetMobJobWrap">
      <div className="fleetMobJobHead">
-      {isDone ? <Sparkles size={13} style={{flexShrink:0,color:'#c084fc'}}/> : <Activity size={13} style={{flexShrink:0,opacity:.8,color:isPrinting?'#38bdf8':'#64748b'}}/>}
+      {isDone ? <Sparkles size={13} style={{flexShrink:0,color:'#34d399'}}/> : <Activity size={13} style={{flexShrink:0,opacity:.8,color:isPrinting?'#38bdf8':'#64748b'}}/>}
       <span className="fleetMobJobName" title={p.file||(isDone?'Print Finished':'No active G-code job')}>
        {p.file||(isDone?'Print Finished':'No active G-code job')}
       </span>
@@ -1495,7 +1505,7 @@ function UsersModal({printers, currentUser, onClose}){
    <div className="hostModalCard" style={{maxWidth:'820px',maxHeight:'90vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
     <div className="hostModalHead">
      <div className="hostModalTitle">
-      <Users size={18} color="#c084fc"/>
+      <Users size={18} color="#34d399"/>
       <span>User & Guest Management</span>
      </div>
      <button className="hostModalClose" onClick={onClose} title="Close">
@@ -2183,7 +2193,7 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
       <div className="ctrlFilesListSection">
        <div className="ctrlFilesHeader">
         <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-         <Folder size={16} style={{color:'#a855f7'}}/>
+         <Folder size={16} style={{color:'#10b981'}}/>
          <strong style={{fontSize:'13px',color:'var(--farm-ink)'}}>Files Stored on {p.name}</strong>
          <span className="ctrlFilesCount">{filteredFiles.length} {filteredFiles.length===1?'file':'files'}</span>
         </div>
@@ -3612,10 +3622,10 @@ function App(){
  const total=printers.length;
  const online=printers.filter(p=>p.connected).length;
  const fleetMetrics=[
-  {key:'all',label:'All printers',icon:Printer,count:total,matches:()=>true},
-  {key:'printing',label:'Printing',icon:Play,count:printers.filter(isPrinting).length,matches:isPrinting},
-  {key:'complete',label:'Complete',icon:CheckCheck,count:printers.filter(isComplete).length,matches:isComplete},
-  {key:'issues',label:'Issues',icon:AlertTriangle,count:printers.filter(hasIssue).length,matches:hasIssue},
+  {key:'all',label:'All printers',icon:LayoutGrid,count:total,matches:()=>true},
+  {key:'printing',label:'Printing',icon:Printer,count:printers.filter(isPrinting).length,matches:isPrinting},
+  {key:'complete',label:'Complete',icon:CircleCheckBig,count:printers.filter(isComplete).length,matches:isComplete},
+  {key:'issues',label:'Issues',icon:TriangleAlert,count:printers.filter(hasIssue).length,matches:hasIssue},
   {key:'offline',label:'Offline',icon:WifiOff,count:printers.filter(p=>p.enabled&&!p.connected&&p.status!=='connecting').length,matches:p=>p.enabled&&!p.connected&&p.status!=='connecting'}
  ];
  const finishQueue=printers.filter(printer=>isPrinting(printer)&&Number.isFinite(Date.parse(printer.eta)))
@@ -3630,21 +3640,21 @@ function App(){
  return <div className={`layout theme-${theme}`}>
   <aside>
    <button className="fleetBrand" onClick={()=>{setFleetFilter('all');setPage('overview')}}>
-    <span className="logoIconBox"><Layers size={21}/></span>
+    <span className="logoIconBox"><BrandMark/></span>
     <span>Neptune <strong>Farm</strong></span>
    </button>
    <button className={'nav '+(page==='overview'?'active':'')} onClick={()=>setPage('overview')}>
-    <Activity size={17}/> <span>Printer status</span>
+    <LayoutGrid size={17}/> <span>Printer status</span>
    </button>
    <button className={'nav '+(page==='completed'?'active':'')} onClick={()=>setPage('completed')}>
-    <CheckCheck size={17}/> <span>Production</span>
+    <PackageCheck size={17}/> <span>Production</span>
    </button>
    <button className={'nav '+(page==='alerts'?'active':'')} onClick={()=>setPage('alerts')}>
     <Bell size={17}/> <span>Alerts & events</span>
    </button>
    {isAdmin && (
     <button className={'nav '+(page==='settings'?'active':'')} onClick={()=>setPage('settings')}>
-     <Settings size={17}/> <span>Printer settings</span>
+     <Settings2 size={17}/> <span>Printer settings</span>
     </button>
    )}
    <div className="asideFoot">
@@ -3657,7 +3667,7 @@ function App(){
 
   <main className="main">
    <header className="monitorHeader">
-    <span className="monitorBrand"><span><Layers size={17}/></span>Neptune Farm</span>
+    <span className="monitorBrand"><span><BrandMark/></span>Neptune Farm</span>
     <nav className="farmHeaderMenus" aria-label="Farm shortcuts" onClick={event=>{
      const action=event.target.closest('.farmMenuPanel button, .farmMenuPanel a');
      if(action) action.closest('details').open=false;
@@ -3717,7 +3727,7 @@ function App(){
    </header>
 
    <div className="mobileNav">
-    {[['overview','Printers',Printer],['completed','Production',PackageCheck],['alerts','Alerts',Bell],...(isAdmin?[['settings','Settings',Settings]]:[])].map(([key,title,Icon])=>(
+    {[['overview','Printers',LayoutGrid],['completed','Production',PackageCheck],['alerts','Alerts',Bell],...(isAdmin?[['settings','Settings',Settings2]]:[])].map(([key,title,Icon])=>(
      <button key={key} className={page===key?'active':''} aria-current={page===key?'page':undefined} onClick={()=>setPage(key)}><Icon size={17}/>{title}</button>
     ))}
    </div>
