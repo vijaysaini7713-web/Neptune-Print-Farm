@@ -151,7 +151,7 @@
 }
 .monitorRow.has-charge :is(.monitorSummary,.fleetCard)::before,
 .theme-dark .monitorRow.has-charge :is(.monitorSummary,.fleetCard)::before {
- background:linear-gradient(90deg,color-mix(in srgb,var(--charge-color,var(--state)) 4%,transparent),color-mix(in srgb,var(--charge-color,var(--state)) 11%,transparent));
+ background:linear-gradient(90deg,color-mix(in srgb,var(--charge-color,var(--state)) 12%,transparent),color-mix(in srgb,var(--charge-color,var(--state)) 26%,transparent));
  border-inline-end:0;
  box-shadow:none
 }
@@ -361,3 +361,8 @@
 .cameraEmpty p {max-width:380px;margin:0;font-size:13px;line-height:1.5}
 .cameraEmpty button {display:inline-flex;align-items:center;gap:6px;margin-top:4px}
 .layout .fleetBtn.camera {color:var(--farm-accent)}
+
+/* Stronger charge fill so progress stays visible on low-contrast displays */
+.theme-dark .monitorRow.has-charge :is(.monitorSummary,.fleetCard)::before {
+ background:linear-gradient(90deg,color-mix(in srgb,var(--charge-color,var(--state)) 14%,transparent),color-mix(in srgb,var(--charge-color,var(--state)) 30%,transparent))
+}
