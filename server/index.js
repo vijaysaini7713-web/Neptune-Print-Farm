@@ -31,12 +31,18 @@ const defaultHostSettings = {
  telegramChatId: process.env.TELEGRAM_CHAT_ID||'',
  telegramChats: [],
  telegramEnabled: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
- telegramEvents: ['completed', 'runout', 'resumed', 'error', 'paused', 'offline', 'cancelled'],
+ telegramEvents: ['started', 'completed', 'runout', 'resumed', 'error', 'paused', 'offline', 'cancelled'],
  publicTunnelUrl: 'https://neptunemonitor.com'
 };
 const read=(file,fallback)=>{try{return JSON.parse(fs.readFileSync(file,'utf8'))}catch{return fallback}};
 const save=(file,value)=>fs.writeFileSync(file,JSON.stringify(value,null,2),{mode:0o600});
 let hostSettings = { ...defaultHostSettings, ...read(hostSettingsFile, {}) };
+// Print-start alerts were added later: switch them on once for existing setups
+if (!hostSettings.startedAlertAdded) {
+ if (Array.isArray(hostSettings.telegramEvents) && !hostSettings.telegramEvents.includes('started')) hostSettings.telegramEvents = ['started', ...hostSettings.telegramEvents];
+ hostSettings.startedAlertAdded = true;
+ try { save(hostSettingsFile, hostSettings); } catch {}
+}
 if (!Array.isArray(hostSettings.telegramChats) || !hostSettings.telegramChats.length) {
  const ids = parseTelegramChatIds(hostSettings.telegramChatId);
  if (ids.length) {
@@ -83,6 +89,10 @@ async function sendPushToAll({ title, body, tag, url }) {
  }
 }
 let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),allJobs=read(jobsFile,read(completedFile,[])),clearedPrints=read(clearedFile,{}),runoutState=read(runoutFile,{}),jobHoldStats=read(jobHoldFile,{}),jobStartTimes=read(jobStartsFile,{}),users=read(usersFile,[]);
+// Last file each printer finished, so a new job with the same file is reported as a reprint
+const lastFilesFile=path.join(dataDir,'last_files.json');
+const lastFinishedFile=new Map(Object.entries(read(lastFilesFile,{})));
+function rememberLastFile(id){const f=jobStartTimes?.[id]?.file;if(!f)return;lastFinishedFile.set(id,f);try{save(lastFilesFile,Object.fromEntries(lastFinishedFile))}catch{}}
 const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map(),recentCommands=new Map(),pendingStops=new Map(),consoleSeen=new Map(),consoleAlertAt=new Map(),recentCancelCmd=new Map();
 const offlineSince=new Map(),offlineAlertSent=new Map();
 const idleSince=new Map(),errorSince=new Map(),pauseSince=new Map();
@@ -167,11 +177,12 @@ function formatHoldDuration(seconds) {
 function record(printerId,type,message){
  events.unshift({id:crypto.randomUUID(),printerId,type,message,time:new Date().toISOString()});
  events=events.slice(0,2000);save(historyFile,events);
- if(['completed','paused','error','runout','offline','resumed','cancelled'].includes(type)){
+ if(['started','completed','paused','error','runout','offline','resumed','cancelled'].includes(type)){
   const tgType = (type === 'offline' && !hostSettings.telegramEvents?.includes('offline')) ? 'error' : ((type === 'resumed' && !hostSettings.telegramEvents?.includes('resumed')) ? 'runout' : type);
   void telegram(message, tgType);
   let title = '🖨 Neptune Farm Alert';
-  if (type === 'completed') title = '🎉 Print Finished!';
+  if (type === 'started') title = /reprint/i.test(message) ? '🔁 Reprint Started' : '▶️ New Print Started';
+  else if (type === 'completed') title = '🎉 Print Finished!';
   else if (type === 'runout') title = '⚠️ Filament Runout Detected!';
   else if (type === 'resumed') title = '▶️ Filament Reloaded & Resumed';
   else if (type === 'error') title = '🚨 Printer Error / Shutdown!';
@@ -651,7 +662,7 @@ async function scan(p){
    if (next.status === 'cancelled' || rawState === 'cancelled' || (next.status === 'idle' && !next.file)) {
     delete jobHoldStats[p.id];
     save(jobHoldFile, jobHoldStats);
-    delete jobStartTimes[p.id];
+    rememberLastFile(p.id);delete jobStartTimes[p.id];
     save(jobStartsFile, jobStartTimes);
    }
   }
@@ -673,6 +684,22 @@ async function scan(p){
    );
 
    if (isNewPrintRun) {
+    // Notify about the new job. Skip jobs that were already running long before we saw
+    // them (e.g. right after a server restart) so a restart doesn't re-announce prints.
+    const startedAgoSec = (Date.now() - new Date(chosenStart).getTime()) / 1000;
+    const lastFile = prevStart?.file || lastFinishedFile.get(p.id) || '';
+    if (startedAgoSec < 600) {
+     const isReprint = Boolean(lastFile) && lastFile === next.file;
+     const startedFile = next.file;
+     void (async () => {
+      let est = '';
+      try {
+       const meta = await fetchMetadata(`http://${p.host}:${p.port}`, startedFile);
+       if (typeof meta?.estimated_time === 'number' && meta.estimated_time > 30) est = ` · Est. time: ${formatHoldDuration(meta.estimated_time).replace(/ d+s$/, '')}`;
+      } catch {}
+      record(p.id, 'started', `${p.name}: ${isReprint ? 'Reprint started' : 'New print started'} — ${startedFile}${est}`);
+     })();
+    }
     jobStartTimes[p.id] = {
      file: next.file,
      startedAt: chosenStart
@@ -741,7 +768,7 @@ async function scan(p){
     if (next.status === 'cancelled' || (next.status === 'idle' && !next.file)) {
      delete jobHoldStats[p.id];
      save(jobHoldFile, jobHoldStats);
-     delete jobStartTimes[p.id];
+     rememberLastFile(p.id);delete jobStartTimes[p.id];
      save(jobStartsFile, jobStartTimes);
     }
    }
@@ -1062,7 +1089,7 @@ app.post(['/api/printers/:id/command', '/api/printers/:id/control'],auth,async(r
   save(runoutFile, runoutState);
   delete jobHoldStats[p.id];
   save(jobHoldFile, jobHoldStats);
-  delete jobStartTimes[p.id];
+  rememberLastFile(p.id);delete jobStartTimes[p.id];
   save(jobStartsFile, jobStartTimes);
   completedState.delete(p.id);
  }
@@ -1189,7 +1216,7 @@ app.post('/api/printers/:id/clear-completed',auth,async(req,res)=>{
  save(clearedFile,clearedPrints);
  delete jobHoldStats[p.id];
  save(jobHoldFile, jobHoldStats);
- delete jobStartTimes[p.id];
+ rememberLastFile(p.id);delete jobStartTimes[p.id];
  save(jobStartsFile, jobStartTimes);
  const cur=current.get(p.id);
  if(cur){
@@ -1538,7 +1565,7 @@ app.get('/api/host-settings', auth, (req, res) => {
   telegramChatId: hostSettings.telegramChatId || '',
   telegramChats: hostSettings.telegramChats || [],
   telegramEnabled: hostSettings.telegramEnabled !== false,
-  telegramEvents: hostSettings.telegramEvents || ['completed', 'runout', 'resumed', 'error', 'paused', 'offline', 'cancelled'],
+  telegramEvents: hostSettings.telegramEvents || ['started', 'completed', 'runout', 'resumed', 'error', 'paused', 'offline', 'cancelled'],
   publicTunnelUrl: hostSettings.publicTunnelUrl || 'https://neptunemonitor.com',
   system: {
    hostname: os.hostname(),
@@ -1597,7 +1624,7 @@ app.put('/api/host-settings', requireAdmin, (req, res) => {
   hostSettings.telegramEnabled = incoming.telegramEnabled;
  }
  if (Array.isArray(incoming.telegramEvents)) {
-  hostSettings.telegramEvents = incoming.telegramEvents.filter(x => ['completed', 'runout', 'resumed', 'error', 'paused', 'offline', 'cancelled'].includes(x));
+  hostSettings.telegramEvents = incoming.telegramEvents.filter(x => ['started', 'completed', 'runout', 'resumed', 'error', 'paused', 'offline', 'cancelled'].includes(x));
  }
  if (typeof incoming.publicTunnelUrl === 'string') {
   hostSettings.publicTunnelUrl = incoming.publicTunnelUrl.trim();

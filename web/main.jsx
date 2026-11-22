@@ -2744,7 +2744,7 @@ function CompletedPage({data, onSync, isAdmin}){
       <option value="all">All time</option><option value="today">Today</option><option value="yesterday">Yesterday</option><option value="last7">Last 7 days</option><option value="custom">Specific date</option>
      </select>
      <select aria-label="Print status" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
-      <option value="all">All results</option><option value="completed">Completed</option><option value="failed">Failed / cancelled</option>
+      <option value="all">All results</option><option value="started">Print started</option><option value="completed">Completed</option><option value="failed">Failed / cancelled</option>
      </select>
      {datePreset==='custom' && <input type="date" aria-label="Print date" value={customDate} onChange={e=>setCustomDate(e.target.value)}/>}
     </div>
@@ -3351,6 +3351,7 @@ function SettingsPage({list,reload,systemInfo}){
         <label className="hostFieldLabel" style={{marginBottom:'6px'}}>Alert Triggers</label>
         <div className="tgEventsGrid">
          {[
+          {key:'started',label:'Print Started / Reprint'},
           {key:'completed',label:'Print Completed'},
           {key:'runout',label:'Filament Runout'},
           {key:'resumed',label:'Filament Reloaded & Resumed'},
@@ -3575,7 +3576,7 @@ function AlertsPage({events}){
    {relevant.map(event=>{
     const isIssue=['error','offline','runout','paused','failed','shutdown'].includes(event.type);
     const isComplete=event.type==='completed';
-    const Icon=isIssue?AlertTriangle:isComplete?PackageCheck:Activity;
+    const Icon=isIssue?AlertTriangle:isComplete?PackageCheck:event.type==='started'?Play:Activity;
     const date=new Date(event.time);
     return <article key={event.id} className={'alertRecord '+(isIssue?'is-issue':isComplete?'is-complete':'')}>
      <span className="alertIcon"><Icon size={17}/></span>
