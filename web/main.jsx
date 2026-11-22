@@ -54,9 +54,9 @@ async function subscribeToWebPush(sendTest = true) {
 const api=async(url,options={})=>{
  let r;
  try{r=await fetch('/api'+url,{credentials:'same-origin',headers:{'content-type':'application/json'},...options});}
- catch{throw Error('Could not reach the farm server. Check your connection and try again.');}
+ catch{const e=Error('Could not reach the farm server. Check your connection and try again.');e.status=0;throw e}
  const data=await r.json().catch(()=>({}));
- if(!r.ok)throw Error(data.error||(r.status===524||r.status===504?'The server took too long to respond. The command may still have run, so check the printer status.':`Request failed (HTTP ${r.status})`));
+ if(!r.ok){const e=Error(data.error||(r.status===524||r.status===504?'The server took too long to respond. The command may still have run, so check the printer status.':`Request failed (HTTP ${r.status})`));e.status=r.status;throw e}
  return data;
 };
 const fmtDuration=n=>{if(n==null)return'—';const s=Math.max(0,Math.round(n)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),remS=s%60;if(h>0)return `${h}h ${m}m`;if(m>0)return `${m}m ${remS}s`;return `${remS}s`;};
@@ -1826,6 +1826,25 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
    setTimeout(onRefresh,1000);
    setTimeout(loadFiles,1500);
   }catch(err){
+   // A slow printer or the remote tunnel can fail the request even though the job started.
+   // Before reporting an error, check whether the printer is now running this file.
+   if(err.status===0||err.status>=500){
+    setFeedback({type:'success',text:`Checking whether ${filename} started…`});
+    const base=filename.split('/').pop();
+    for(let i=0;i<8;i++){
+     await new Promise(r=>setTimeout(r,2500));
+     try{
+      const list=await api('/printers');
+      const cur=(Array.isArray(list)?list:list.printers||[]).find(x=>x.id===p.id);
+      const file=String(cur?.file||cur?.filename||'');
+      if(cur&&['printing','paused','leveling','homing'].includes(cur.status)&&(!file||file.split('/').pop()===base)){
+       setFeedback({type:'success',text:`Print job started for: ${filename}`});
+       onRefresh();setTimeout(loadFiles,500);
+       return;
+      }
+     }catch{}
+    }
+   }
    setFeedback({type:'error',text:err.message});
   }finally{
    setStartingPrint(false);
