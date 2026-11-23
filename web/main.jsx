@@ -529,6 +529,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
         </div>
        )}
       </div>
+      {p.enabled&&p.spool&&<SpoolMeter p={p} onClick={onOpenControl?()=>onOpenControl(p,'job'):undefined}/>}
     </div>
 
     <div className="fleetCol actions">
@@ -810,6 +811,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
          <strong className="mobTimeVal">{fmtDuration(p.remainingTime)}</strong>
         </div>
        )}
+       {p.enabled&&p.spool&&<div className="mobTimeItem spoolItem"><SpoolMeter p={p} onClick={onOpenControl?()=>onOpenControl(p,'job'):undefined}/></div>}
        {p.filamentUsed > 0 && (
         <div className="mobTimeItem filamentUsed" title={`Filament used: ${fmtFilament(p.filamentUsed)} (1.75 mm PLA, 1 kg ≈ 335 m)`}>
          <span className="mobTimeLabel"><Layers size={11}/> Filament used:</span>
@@ -1804,6 +1806,79 @@ function CameraView({p}){
  );
 }
 
+// Filament left on the loaded spool (tracked by the farm server)
+function spoolTone(sp){
+ if(!sp?.known)return 'unknown';
+ if(sp.enoughForJob===false||sp.remainingG<=50)return 'low';
+ if(sp.pct<=20)return 'warn';
+ return 'ok';
+}
+function SpoolMeter({p,onClick}){
+ const sp=p.spool;
+ if(!sp)return null;
+ const Tag=onClick?'button':'div';
+ if(!sp.known)return (
+  <Tag type={onClick?'button':undefined} className="spoolMeter unknown" onClick={onClick} title="Tell the farm how much filament is on this printer's spool">
+   <Layers size={13}/><span className="spoolLabel">Spool</span><span className="spoolValue">Not set{onClick?' · Set spool':''}</span>
+  </Tag>
+ );
+ const tone=spoolTone(sp);
+ const tip=`${sp.remainingG} g (~${sp.remainingM} m) left of a ${sp.capacityG>=1000?(sp.capacityG/1000)+' kg':sp.capacityG+' g'} spool`+
+  (sp.needG?` · this print needs ~${sp.needG} g more`:'')+
+  (sp.loadedAt?` · loaded ${new Date(sp.loadedAt).toLocaleString([],{dateStyle:'medium',timeStyle:'short'})}${sp.source==='runout'?' after a runout':''}`:'');
+ return (
+  <Tag type={onClick?'button':undefined} className={'spoolMeter tone-'+tone} onClick={onClick} title={tip} aria-label={'Spool: '+tip}>
+   <Layers size={13}/>
+   <span className="spoolLabel">Spool left</span>
+   <span className="spoolBar" aria-hidden="true"><i style={{width:Math.max(2,Math.min(100,sp.pct))+'%'}}/></span>
+   <span className="spoolValue">{fmtWeight(sp.remainingG*MM_PER_GRAM)} <small>{sp.pct}%</small></span>
+   {sp.enoughForJob===false&&<span className="spoolWarn"><AlertTriangle size={12}/> Not enough for this print (~{sp.needG} g needed)</span>}
+  </Tag>
+ );
+}
+
+function SpoolPanel({p,isAdmin,onRefresh}){
+ const [size,setSize]=useState(1000);
+ const [left,setLeft]=useState('');
+ const [busy,setBusy]=useState(false);
+ const [msg,setMsg]=useState(null);
+ async function save(full){
+  const remainingG=full?null:(left===''?null:Number(left));
+  const text=full?`Mark a new full ${size>=1000?size/1000+' kg':size+' g'} spool as loaded on ${p.name}?`:`Set ${p.name}'s spool to ${remainingG??size} g left?`;
+  if(!window.confirm(text))return;
+  setBusy(true);setMsg(null);
+  try{
+   await api(`/printers/${p.id}/spool`,{method:'POST',body:JSON.stringify({capacityG:size,remainingG})});
+   setMsg({type:'success',text:'Spool updated'});setLeft('');onRefresh&&onRefresh();
+  }catch(e){setMsg({type:'error',text:e.message})}
+  finally{setBusy(false)}
+ }
+ return (
+  <section className="spoolPanel" aria-label="Filament spool">
+   <div className="spoolPanelHead">
+    <strong><Layers size={15}/> Filament spool</strong>
+    <small>Counted from what each print uses (1.75 mm PLA, 1 kg ≈ 335 m). A full spool is assumed automatically when filament is reloaded after a runout.</small>
+   </div>
+   <SpoolMeter p={p}/>
+   {isAdmin&&(
+    <div className="spoolControls">
+     <label>Spool size
+      <select value={size} onChange={e=>setSize(Number(e.target.value))}>
+       <option value={1000}>1 kg</option><option value={750}>750 g</option><option value={500}>500 g</option><option value={250}>250 g</option><option value={2000}>2 kg</option><option value={3000}>3 kg</option>
+      </select>
+     </label>
+     <button type="button" className="primary" disabled={busy} onClick={()=>save(true)}><RefreshCw size={14}/> New full spool loaded</button>
+     <label>Grams left (partly used spool)
+      <input type="number" min="0" max={size} step="10" inputMode="numeric" placeholder={`e.g. ${Math.round(size*0.6)}`} value={left} onChange={e=>setLeft(e.target.value)}/>
+     </label>
+     <button type="button" className="outline" disabled={busy||left===''} onClick={()=>save(false)}>Set grams left</button>
+    </div>
+   )}
+   {msg&&<p className={'ctrlFeedback '+msg.type}>{msg.text}</p>}
+  </section>
+ );
+}
+
 function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true,initialTab='job'}){
  const hasRunout = Boolean(
   (p.status === 'runout' || (p.filamentRunout === true && (p.status === 'printing' || p.status === 'paused'))) &&
@@ -2340,6 +2415,7 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
 
      </div>
     )}
+    {modalTab==='job'&&<SpoolPanel p={p} isAdmin={isAdmin} onRefresh={onRefresh}/>}
     {modalTab==='files'&&(
      <div className="ctrlTabContent ctrlFilesTab">
       <div className="ctrlFilesListSection">
@@ -3411,6 +3487,7 @@ function SettingsPage({list,reload,systemInfo}){
           {key:'error',label:'Shutdown / Heater Error'},
           {key:'paused',label:'Print Paused'},
           {key:'cancelled',label:'Print Cancelled / Stopped'},
+          {key:'lowfilament',label:'Low Filament on Spool'},
           {key:'offline',label:'Offline (>5 min)'}
          ].map(ev=>(
           <label key={ev.key} className="tgEventCheck">
@@ -3617,7 +3694,7 @@ function SettingsPage({list,reload,systemInfo}){
 
 function AlertsPage({events}){
  const [filter,setFilter]=useState('all');
- const relevant=events.filter(event=>filter==='all'||(filter==='issue'?['error','offline','runout','paused','failed','shutdown'].includes(event.type):event.type===filter));
+ const relevant=events.filter(event=>filter==='all'||(filter==='issue'?['error','offline','runout','paused','failed','shutdown','lowfilament'].includes(event.type):event.type===filter));
  return <section className="alertsPage">
   <div className="monitorTitle">
    <div><h1>Alerts</h1><p>Printer events and status changes</p></div>
@@ -3627,7 +3704,7 @@ function AlertsPage({events}){
   </div>
   <div className="alertRecords">
    {relevant.map(event=>{
-    const isIssue=['error','offline','runout','paused','failed','shutdown'].includes(event.type);
+    const isIssue=['error','offline','runout','paused','failed','shutdown','lowfilament'].includes(event.type);
     const isComplete=event.type==='completed';
     const Icon=isIssue?AlertTriangle:isComplete?PackageCheck:event.type==='started'?Play:Activity;
     const date=new Date(event.time);

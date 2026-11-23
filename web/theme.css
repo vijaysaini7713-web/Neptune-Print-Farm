@@ -375,3 +375,37 @@
 
 /* Filament used detail on printer cards */
 .layout .monitorList :is(.fleetTimeBadge,.mobTimeItem).filamentUsed {--timing-accent:var(--detail-layer)}
+
+/* ---------- Filament spool meter ---------- */
+.spoolMeter {
+ --spool:var(--farm-mint,#34d399);
+ display:grid;grid-template-columns:auto auto minmax(40px,1fr) auto;align-items:center;gap:4px 8px;
+ width:100%;margin-top:6px;padding:6px 9px;border:1px solid var(--farm-line);border-radius:9px;
+ background:color-mix(in srgb,var(--spool) 7%,transparent);color:var(--farm-ink);font:inherit;font-size:11px;text-align:left
+}
+button.spoolMeter {cursor:pointer}
+button.spoolMeter:hover {border-color:color-mix(in srgb,var(--spool) 55%,var(--farm-line))}
+.spoolMeter>svg {color:var(--spool)}
+.spoolMeter.tone-warn {--spool:var(--farm-amber,#f59e0b)}
+.spoolMeter.tone-low {--spool:var(--farm-rose,#f43f5e);border-color:color-mix(in srgb,var(--spool) 45%,var(--farm-line))}
+.spoolMeter.unknown {--spool:var(--farm-muted);grid-template-columns:auto auto 1fr}
+.spoolLabel {font-weight:700;color:var(--spool);white-space:nowrap}
+.spoolBar {height:6px;border-radius:99px;background:color-mix(in srgb,var(--farm-line) 85%,transparent);overflow:hidden}
+.spoolBar i {display:block;height:100%;border-radius:inherit;background:var(--spool);transition:width .6s ease}
+.spoolValue {font-weight:750;white-space:nowrap;font-variant-numeric:tabular-nums}
+.spoolValue small {font-weight:600;color:var(--farm-muted);margin-left:2px}
+.spoolWarn {grid-column:1/-1;display:flex;align-items:center;gap:4px;color:var(--spool);font-weight:700}
+.layout .monitorList .mobTimeItem.spoolItem {grid-column:1/-1}
+.layout .monitorList .mobTimeItem.spoolItem .spoolMeter {margin-top:0}
+@media (prefers-reduced-motion:reduce){.spoolBar i{transition:none}}
+
+.spoolPanel {display:grid;gap:10px;margin-top:12px;padding:12px;border:1px solid var(--farm-line);border-radius:12px;background:var(--farm-panel)}
+.spoolPanelHead {display:grid;gap:3px}
+.spoolPanelHead strong {display:flex;align-items:center;gap:6px;font-size:13px;color:var(--farm-ink)}
+.spoolPanelHead small {color:var(--farm-muted);font-size:11px;line-height:1.45}
+.spoolPanel .spoolMeter {margin-top:0;padding:9px 11px;font-size:12.5px}
+.spoolControls {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:end}
+.spoolControls label {display:grid;gap:4px;font-size:11px;font-weight:650;color:var(--farm-muted)}
+.spoolControls :is(select,input) {width:100%;min-height:36px;padding:7px 9px;border:1px solid var(--farm-line);border-radius:8px;background:var(--farm-bg,transparent);color:var(--farm-ink);font:inherit;font-size:13px}
+.spoolControls button {min-height:36px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+@media (max-width:520px){.spoolControls {grid-template-columns:1fr}}

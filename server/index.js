@@ -31,7 +31,7 @@ const defaultHostSettings = {
  telegramChatId: process.env.TELEGRAM_CHAT_ID||'',
  telegramChats: [],
  telegramEnabled: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
- telegramEvents: ['started', 'completed', 'runout', 'resumed', 'error', 'paused', 'offline', 'cancelled'],
+ telegramEvents: ['started', 'completed', 'runout', 'resumed', 'error', 'paused', 'offline', 'cancelled', 'lowfilament'],
  publicTunnelUrl: 'https://neptunemonitor.com'
 };
 const read=(file,fallback)=>{try{return JSON.parse(fs.readFileSync(file,'utf8'))}catch{return fallback}};
@@ -177,13 +177,14 @@ function formatHoldDuration(seconds) {
 function record(printerId,type,message){
  events.unshift({id:crypto.randomUUID(),printerId,type,message,time:new Date().toISOString()});
  events=events.slice(0,2000);save(historyFile,events);
- if(['started','completed','paused','error','runout','offline','resumed','cancelled'].includes(type)){
-  const tgType = (type === 'offline' && !hostSettings.telegramEvents?.includes('offline')) ? 'error' : ((type === 'resumed' && !hostSettings.telegramEvents?.includes('resumed')) ? 'runout' : type);
+ if(['started','completed','paused','error','runout','offline','resumed','cancelled','lowfilament'].includes(type)){
+  const tgType = (type === 'lowfilament' && !hostSettings.telegramEvents?.includes('lowfilament')) ? 'runout' : (type === 'offline' && !hostSettings.telegramEvents?.includes('offline')) ? 'error' : ((type === 'resumed' && !hostSettings.telegramEvents?.includes('resumed')) ? 'runout' : type);
   void telegram(message, tgType);
   let title = '🖨 Neptune Farm Alert';
   if (type === 'started') title = /reprint/i.test(message) ? '🔁 Reprint Started' : '▶️ New Print Started';
   else if (type === 'completed') title = '🎉 Print Finished!';
   else if (type === 'runout') title = '⚠️ Filament Runout Detected!';
+  else if (type === 'lowfilament') title = '🧵 Low Filament on Spool';
   else if (type === 'resumed') title = '▶️ Filament Reloaded & Resumed';
   else if (type === 'error') title = '🚨 Printer Error / Shutdown!';
   else if (type === 'paused') title = '⏸️ Print Paused';
@@ -318,6 +319,70 @@ function watchConsole(p,entries,prevStatus,nowStatus){
   consoleAlertAt.set(key,Date.now());
   record(p.id,rule.type,rule.msg(p.name,line.replace(/^(\/\/|!!)\s*/,'').slice(0,160)));
  }
+}
+
+// ---- Spool tracking ----------------------------------------------------------
+// Each printer has one spool. We add up the filament every job pulls (Moonraker
+// reports filament_used in mm per job) since the spool was loaded. A new spool is
+// assumed automatically after a filament runout is reloaded, or set by hand.
+const MM_PER_GRAM=335; // 1.75 mm PLA: a 1 kg spool is about 335 m
+const DEFAULT_SPOOL_G=1000;
+const spoolFile=path.join(dataDir,'spools.json');
+const spools=read(spoolFile,{});
+let spoolSaveTimer=null;
+const saveSpools=()=>{if(spoolSaveTimer)return;spoolSaveTimer=setTimeout(()=>{spoolSaveTimer=null;try{save(spoolFile,spools)}catch{}},3000)};
+function loadSpool(id,{capacityG=DEFAULT_SPOOL_G,remainingG=null,source='manual'}={}){
+ const prevSpool=spools[id]||{};
+ const cap=Math.max(1,Math.round(Number(capacityG)||DEFAULT_SPOOL_G));
+ const left=remainingG==null?cap:Math.max(0,Math.min(cap,Math.round(Number(remainingG))));
+ spools[id]={capacityG:cap,usedMm:Math.round((cap-left)*MM_PER_GRAM),loadedAt:new Date().toISOString(),source,
+  // keep the running job's position so only filament used from now on is counted
+  lastJobKey:prevSpool.lastJobKey||null,lastJobMm:prevSpool.lastJobMm||0,lowAlerted:false,emptyAlerted:false};
+ save(spoolFile,spools);
+ return spools[id];
+}
+function trackSpool(p,next,latestJob){
+ const sp=spools[p.id];
+ const active=['printing','paused','runout'].includes(next.status)&&next.file;
+ let key=null,mm=0;
+ if(latestJob&&(latestJob.status==='in_progress'?latestJob.filename===next.file:latestJob.job_id===sp?.lastJobKey)){
+  key=latestJob.job_id;
+  mm=latestJob.status==='in_progress'?Number(next.filamentUsed||0):Number(latestJob.filament_used||0);
+ }else if(active){
+  key=`${next.file}|${jobStartTimes[p.id]?.startedAt||''}`;
+  mm=Number(next.filamentUsed||0);
+ }
+ if(!key||!sp)return;
+ if(key!==sp.lastJobKey){
+  // A job we haven't counted yet; only count it if it started after the spool was loaded
+  const startedMs=latestJob?.job_id===key&&latestJob.start_time?latestJob.start_time*1000:Date.now();
+  const delta=startedMs>=Date.parse(sp.loadedAt)-60000?mm:0;
+  sp.usedMm+=Math.max(0,Math.min(delta,400000));
+  sp.lastJobKey=key;sp.lastJobMm=mm;saveSpools();
+ }else if(mm>sp.lastJobMm){
+  sp.usedMm+=Math.min(mm-sp.lastJobMm,400000);sp.lastJobMm=mm;saveSpools();
+ }
+ // Warn once per spool when it won't last
+ const pub=publicSpool(p.id,next);
+ if(active&&pub.known){
+  if(pub.needG>0&&pub.remainingG<pub.needG&&sp.lowAlerted!==sp.lastJobKey){
+   sp.lowAlerted=sp.lastJobKey;saveSpools();
+   record(p.id,'lowfilament',`${p.name}: Low filament — about ${pub.remainingG} g left on the spool, but this print needs ~${pub.needG} g more (${next.file})`);
+  }else if(pub.remainingG<=50&&!sp.emptyAlerted){
+   sp.emptyAlerted=true;saveSpools();
+   record(p.id,'lowfilament',`${p.name}: Spool almost empty — about ${pub.remainingG} g left`);
+  }
+ }
+}
+function publicSpool(id,cur){
+ const sp=spools[id];
+ if(!sp)return {known:false};
+ const usedG=Math.round(sp.usedMm/MM_PER_GRAM);
+ const remainingG=Math.max(0,sp.capacityG-usedG);
+ const active=cur&&['printing','paused','runout'].includes(cur.status);
+ const needG=active&&cur.filamentTotal>0?Math.max(0,Math.round((cur.filamentTotal-(cur.filamentUsed||0))/MM_PER_GRAM)):0;
+ return {known:true,capacityG:sp.capacityG,usedG,remainingG,remainingM:Math.round(remainingG*MM_PER_GRAM/1000),
+  pct:Math.round(remainingG/sp.capacityG*100),loadedAt:sp.loadedAt,source:sp.source,needG,enoughForJob:needG?remainingG>=needG:null};
 }
 
 function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJob,gcodeLogs=[],recentCmd=null){
@@ -633,6 +698,7 @@ async function scan(p){
   const next=normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJob,gcodeLogs,recentCmd);
   current.set(p.id,next);last.set(p.id,next);
   try{watchConsole(p,gcodeData?.result?.gcode_store,prev?.status,next.status)}catch(e){console.warn('[Console watch]',p.name,e.message)}
+  try{trackSpool(p,next,latestJob)}catch(e){console.warn('[Spool]',p.name,e.message)}
 
   // If printer was previously offline, handle reconnect & clear alert tracking
   if(offlineSince.has(p.id)){
@@ -752,6 +818,8 @@ async function scan(p){
     const holdStr = formatHoldDuration(holdSec);
     const resumeMsg = `${p.name}: Filament reloaded & print resumed! Filament change time: ${holdStr}`;
     record(p.id, 'resumed', resumeMsg);
+    // Runout reloaded: a fresh spool went in
+    loadSpool(p.id, { source: 'runout' });
     delete runoutState[p.id];
     save(runoutFile, runoutState);
 
@@ -1353,11 +1421,24 @@ app.get('/api/printers/:id/camera/stream',auth,async(req,res)=>{
  }
 });
 
+// Record a spool change: a full spool by default, or a partly used one
+app.post('/api/printers/:id/spool',requireAdmin,(req,res)=>{
+ const p=printers.find(x=>x.id===req.params.id);
+ if(!p)return res.status(404).json({error:'Printer not found'});
+ const capacityG=Number(req.body?.capacityG)||DEFAULT_SPOOL_G;
+ const remainingG=req.body?.remainingG==null||req.body.remainingG===''?null:Number(req.body.remainingG);
+ if(!(capacityG>0&&capacityG<=10000)||(remainingG!=null&&!(remainingG>=0&&remainingG<=capacityG)))return res.status(400).json({error:'Enter a spool size up to 10 kg, and grams left no more than the spool size'});
+ loadSpool(p.id,{capacityG,remainingG,source:'manual'});
+ record(p.id,'command',`${p.name}: New spool loaded (${remainingG==null?capacityG:remainingG} g)`);
+ res.json({ok:true,spool:publicSpool(p.id,current.get(p.id))});
+});
+
 app.get('/api/printers',auth,(req,res)=>{
  let list=printers.map(p=>{
   const c=cameraCache.get(p.id);
   if(p.enabled&&validHost(p.host)&&(!c||Date.now()-c.checkedAt>60000))void resolveCamera(p).catch(()=>{});
-  return {...(current.get(p.id)||{...p,status:'connecting',connected:false}),camera:publicCamera(c)};
+  const cur=current.get(p.id)||{...p,status:'connecting',connected:false};
+  return {...cur,camera:publicCamera(c),spool:publicSpool(p.id,cur)};
  });
  if (req.user && req.user.role !== 'admin') {
   const userPrinters = Array.isArray(req.user.assignedPrinters) ? req.user.assignedPrinters : [];
@@ -1588,7 +1669,7 @@ app.get('/api/host-settings', auth, (req, res) => {
   telegramChatId: hostSettings.telegramChatId || '',
   telegramChats: hostSettings.telegramChats || [],
   telegramEnabled: hostSettings.telegramEnabled !== false,
-  telegramEvents: hostSettings.telegramEvents || ['started', 'completed', 'runout', 'resumed', 'error', 'paused', 'offline', 'cancelled'],
+  telegramEvents: hostSettings.telegramEvents || ['started', 'completed', 'runout', 'resumed', 'error', 'paused', 'offline', 'cancelled', 'lowfilament'],
   publicTunnelUrl: hostSettings.publicTunnelUrl || 'https://neptunemonitor.com',
   system: {
    hostname: os.hostname(),
@@ -1647,7 +1728,7 @@ app.put('/api/host-settings', requireAdmin, (req, res) => {
   hostSettings.telegramEnabled = incoming.telegramEnabled;
  }
  if (Array.isArray(incoming.telegramEvents)) {
-  hostSettings.telegramEvents = incoming.telegramEvents.filter(x => ['started', 'completed', 'runout', 'resumed', 'error', 'paused', 'offline', 'cancelled'].includes(x));
+  hostSettings.telegramEvents = incoming.telegramEvents.filter(x => ['lowfilament', 'started', 'completed', 'runout', 'resumed', 'error', 'paused', 'offline', 'cancelled', 'lowfilament'].includes(x));
  }
  if (typeof incoming.publicTunnelUrl === 'string') {
   hostSettings.publicTunnelUrl = incoming.publicTunnelUrl.trim();
