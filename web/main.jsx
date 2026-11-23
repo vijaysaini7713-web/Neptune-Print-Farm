@@ -329,6 +329,12 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
            <strong className="timeValue">{fmtDuration(p.duration)}</strong>
           </span>
          )}
+         {p.filamentUsed > 0 && (
+          <span className="fleetTimeBadge filamentUsed" title={`Filament used so far: ${fmtFilament(p.filamentUsed)}${p.filamentTotal > 0 ? ` of about ${fmtFilament(p.filamentTotal)}` : ''} (1.75 mm PLA, 1 kg ≈ 335 m)`}>
+           <span className="timeLabel"><Layers size={12} className="timeIcon"/>Filament used</span>
+           <strong className="timeValue">{fmtWeight(p.filamentUsed)}{p.filamentTotal > 0 ? ` / ~${fmtWeight(p.filamentTotal)}` : ''}</strong>
+          </span>
+         )}
          {p.jobHoldSec > 0 && (
           <span className="fleetTimeBadge holdTime" title={`Filament change hold time: ${fmtDuration(p.jobHoldSec)}`}>
            <span className="timeLabel"><Pause size={13} className="timeIcon"/>Filament Change:</span>
@@ -348,6 +354,12 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
           <span className="fleetTimeBadge totalTime" title={`Elapsed print time before error: ${fmtDuration(p.duration)}`}>
            <span className="timeLabel"><Timer size={12} className="timeIcon"/>Total time</span>
            <strong className="timeValue">{fmtDuration(p.duration)}</strong>
+          </span>
+         )}
+         {p.filamentUsed > 0 && (
+          <span className="fleetTimeBadge filamentUsed" title={`Filament used so far: ${fmtFilament(p.filamentUsed)}${p.filamentTotal > 0 ? ` of about ${fmtFilament(p.filamentTotal)}` : ''} (1.75 mm PLA, 1 kg ≈ 335 m)`}>
+           <span className="timeLabel"><Layers size={12} className="timeIcon"/>Filament used</span>
+           <strong className="timeValue">{fmtWeight(p.filamentUsed)}{p.filamentTotal > 0 ? ` / ~${fmtWeight(p.filamentTotal)}` : ''}</strong>
           </span>
          )}
          <span className="fleetTimeBadge errorTime" title={`Error active for ${p.errorSec > 0 ? fmtDuration(p.errorSec) : 'just now'}: ${p.shutdownReason || p.error || 'Printer error'}`}>
@@ -380,6 +392,12 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
           <span className="fleetTimeBadge totalTime" title={`Time this file has been running: ${fmtDuration(p.duration)}`}>
            <span className="timeLabel"><Timer size={12} className="timeIcon"/>Total time</span>
            <strong className="timeValue">{fmtDuration(p.duration)}</strong>
+          </span>
+         )}
+         {p.filamentUsed > 0 && (
+          <span className="fleetTimeBadge filamentUsed" title={`Filament used so far: ${fmtFilament(p.filamentUsed)}${p.filamentTotal > 0 ? ` of about ${fmtFilament(p.filamentTotal)}` : ''} (1.75 mm PLA, 1 kg ≈ 335 m)`}>
+           <span className="timeLabel"><Layers size={12} className="timeIcon"/>Filament used</span>
+           <strong className="timeValue">{fmtWeight(p.filamentUsed)}{p.filamentTotal > 0 ? ` / ~${fmtWeight(p.filamentTotal)}` : ''}</strong>
           </span>
          )}
 
@@ -417,6 +435,12 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
           <span className="fleetTimeBadge totalTime" title={`Total print time taken: ${fmtDuration(p.duration)}`}>
            <span className="timeLabel"><Timer size={12} className="timeIcon"/>Total time</span>
            <strong className="timeValue">{fmtDuration(p.duration)}</strong>
+          </span>
+         )}
+         {p.filamentUsed > 0 && (
+          <span className="fleetTimeBadge filamentUsed" title={`Filament used so far: ${fmtFilament(p.filamentUsed)}${p.filamentTotal > 0 ? ` of about ${fmtFilament(p.filamentTotal)}` : ''} (1.75 mm PLA, 1 kg ≈ 335 m)`}>
+           <span className="timeLabel"><Layers size={12} className="timeIcon"/>Filament used</span>
+           <strong className="timeValue">{fmtWeight(p.filamentUsed)}{p.filamentTotal > 0 ? ` / ~${fmtWeight(p.filamentTotal)}` : ''}</strong>
           </span>
          )}
 
@@ -473,6 +497,12 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
           <span className="fleetTimeBadge totalTime" title={`Time this file has been running: ${fmtDuration(p.duration)}`}>
            <span className="timeLabel"><Timer size={12} className="timeIcon"/>Total time</span>
            <strong className="timeValue">{fmtDuration(p.duration)}</strong>
+          </span>
+         )}
+         {p.filamentUsed > 0 && (
+          <span className="fleetTimeBadge filamentUsed" title={`Filament used so far: ${fmtFilament(p.filamentUsed)}${p.filamentTotal > 0 ? ` of about ${fmtFilament(p.filamentTotal)}` : ''} (1.75 mm PLA, 1 kg ≈ 335 m)`}>
+           <span className="timeLabel"><Layers size={12} className="timeIcon"/>Filament used</span>
+           <strong className="timeValue">{fmtWeight(p.filamentUsed)}{p.filamentTotal > 0 ? ` / ~${fmtWeight(p.filamentTotal)}` : ''}</strong>
           </span>
          )}
 
@@ -778,6 +808,12 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
         <div className="mobTimeItem remaining" title={`Estimated time remaining: ${fmtDuration(p.remainingTime)}`}>
          <span className="mobTimeLabel"><Clock size={11}/> Remaining:</span>
          <strong className="mobTimeVal">{fmtDuration(p.remainingTime)}</strong>
+        </div>
+       )}
+       {p.filamentUsed > 0 && (
+        <div className="mobTimeItem filamentUsed" title={`Filament used: ${fmtFilament(p.filamentUsed)} (1.75 mm PLA, 1 kg ≈ 335 m)`}>
+         <span className="mobTimeLabel"><Layers size={11}/> Filament used:</span>
+         <strong className="mobTimeVal">{fmtWeight(p.filamentUsed)}{p.filamentTotal > 0 ? ` / ~${fmtWeight(p.filamentTotal)}` : ''}</strong>
         </div>
        )}
        {p.jobHoldSec > 0 && (

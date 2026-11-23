@@ -372,3 +372,6 @@
 .productionTotals .colorMetric:nth-child(6) {--metric:var(--farm-accent)}
 .productionTotals .metricSub {display:block;margin-top:2px;font-size:10px;color:var(--farm-muted)}
 @media (max-width:900px){.layout .productionTotals {grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Filament used detail on printer cards */
+.layout .monitorList :is(.fleetTimeBadge,.mobTimeItem).filamentUsed {--timing-accent:var(--detail-layer)}
