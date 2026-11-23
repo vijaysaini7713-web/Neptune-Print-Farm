@@ -530,6 +530,7 @@ function normalize(p,body,meta,compInfo,isKlippyShutdown,shutdownReason,latestJo
   eta:computedStatus==='completed'?null:eta,
   speedFactor,
   filamentUsed:finalFilament,
+  filamentTotal:(typeof meta?.filament_total==='number'&&meta.filament_total>0)?Math.round(meta.filament_total):null,
   layer,
   totalLayers,
   z:currentZ,

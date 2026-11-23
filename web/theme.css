@@ -366,3 +366,9 @@
 .theme-dark .monitorRow.has-charge :is(.monitorSummary,.fleetCard)::before {
  background:linear-gradient(90deg,color-mix(in srgb,var(--charge-color,var(--state)) 14%,transparent),color-mix(in srgb,var(--charge-color,var(--state)) 30%,transparent))
 }
+
+/* Production totals: six tiles incl. filament used */
+.layout .productionTotals {grid-template-columns:repeat(6,minmax(0,1fr))}
+.productionTotals .colorMetric:nth-child(6) {--metric:var(--farm-accent)}
+.productionTotals .metricSub {display:block;margin-top:2px;font-size:10px;color:var(--farm-muted)}
+@media (max-width:900px){.layout .productionTotals {grid-template-columns:repeat(3,minmax(0,1fr))}}

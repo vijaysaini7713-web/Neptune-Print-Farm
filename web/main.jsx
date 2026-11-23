@@ -60,6 +60,11 @@ const api=async(url,options={})=>{
  return data;
 };
 const fmtDuration=n=>{if(n==null)return'—';const s=Math.max(0,Math.round(n)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),remS=s%60;if(h>0)return `${h}h ${m}m`;if(m>0)return `${m}m ${remS}s`;return `${remS}s`;};
+const MM_PER_GRAM=335; // 1.75 mm PLA: 1 kg spool is about 335 m
+const filamentGrams=mm=>Math.max(0,Number(mm)||0)/MM_PER_GRAM;
+const fmtWeight=mm=>{const g=filamentGrams(mm);if(!g)return '—';return g>=1000?(g/1000).toFixed(2)+' kg':(g>=100?Math.round(g):g.toFixed(1))+' g'};
+const fmtLength=mm=>{const m=(Number(mm)||0)/1000;return m>=100?Math.round(m).toLocaleString()+' m':m.toFixed(1)+' m'};
+const fmtFilament=mm=>(Number(mm)||0)>0?`${fmtWeight(mm)} · ${fmtLength(mm)}`:'—';
 const temp=n=>typeof n==='number'?n.toFixed(1)+'°C':'—';
 const color=s=>({printing:'green',completed:'purple',idle:'blue',standby:'blue',paused:'amber',offline:'red',error:'red',disabled:'gray',connecting:'gray',cancelled:'gray',leveling:'teal',homing:'teal',runout:'orange',filament_runout:'orange'})[s]||'gray';
 
@@ -2284,6 +2289,7 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
           {p.duration > 0 && <span><Timer size={11}/> Elapsed: <b>{fmtDuration(p.duration)}</b></span>}
           {p.remainingTime != null && <span><Clock size={11}/> Remaining: <b>{fmtDuration(p.remainingTime)}</b></span>}
           {p.eta && <span><CheckCircle2 size={11}/> Complete by: <b>{formatFinishTime(p.eta)}</b></span>}
+          {(p.filamentUsed > 0 || p.filamentTotal > 0) && <span title="Based on 1.75 mm PLA: 1 kg ≈ 335 m"><Layers size={11}/> Filament: <b>{p.filamentUsed > 0 ? fmtWeight(p.filamentUsed) : '0 g'}{p.filamentTotal > 0 ? ` of ~${fmtWeight(p.filamentTotal)}` : ''}</b>{p.filamentTotal > 0 ? ` (${fmtLength(p.filamentTotal)})` : ''}</span>}
          </div>
 
 
@@ -2529,7 +2535,7 @@ function RemoteControlModal({p,isLocal,systemInfo,onClose,onRefresh,isAdmin=true
         <strong className="elementVal" style={{color: p.filamentDetected !== false ? '#34d399' : (hasRunout ? '#f97316' : '#94a3b8')}}>
          {p.filamentDetected !== false ? 'Filament Detected (OK)' : (hasRunout ? 'Runout Detected (Empty)' : 'No Filament Loaded (Empty)')}
         </strong>
-        <small className="elementSub">{p.filamentUsed ? `${Math.round(p.filamentUsed)} mm used` : 'Switch sensor active'}</small>
+        <small className="elementSub">{p.filamentUsed ? `${fmtFilament(p.filamentUsed)} used this print` : 'Switch sensor active'}</small>
        </div>
        <div className="elementCard">
         <span className="elementLabel"><Server size={13}/> Network & Host Port</span>
@@ -2630,6 +2636,9 @@ function CompletedPage({data, onSync, isAdmin}){
  const totalCompletedPieces = allJobs.filter(j => j.isCompleted).length;
  const totalFailedJobs = allJobs.filter(j => j.isFailed).length;
  const totalProductionSec = allJobs.filter(j => j.isCompleted).reduce((sum, j) => sum + (j.duration || 0), 0);
+ // Filament is consumed by cancelled/failed jobs too, so count every job
+ const totalFilamentMm = allJobs.reduce((sum, j) => sum + (Number(j.filamentUsed) || 0), 0);
+ const todayFilamentMm = allJobs.filter(j => getLocalDateStr(j.completedAt) === todayStr).reduce((sum, j) => sum + (Number(j.filamentUsed) || 0), 0);
 
  // Filtered Jobs based on user selections
  const filteredJobs = allJobs.filter(j => {
@@ -2646,6 +2655,7 @@ function CompletedPage({data, onSync, isAdmin}){
 
  const filteredCompletedCount = filteredJobs.filter(j => j.isCompleted).length;
  const filteredFailedCount = filteredJobs.filter(j => j.isFailed).length;
+ const filteredFilamentMm = filteredJobs.reduce((sum, j) => sum + (Number(j.filamentUsed) || 0), 0);
 
  // Group by File: gives exactly "how many pieces of which files completed, and when"
  const fileSummaryMap = new Map();
@@ -2657,12 +2667,16 @@ function CompletedPage({data, onSync, isAdmin}){
     completedPieces: 0,
     failedPieces: 0,
     totalDuration: 0,
+    filamentMm: 0,
+    completedFilamentMm: 0,
     lastCompletedAt: null,
     printers: new Set(),
     batches: 0
    });
   }
   const item = fileSummaryMap.get(fn);
+  item.filamentMm += Number(j.filamentUsed) || 0;
+  if (j.isCompleted) item.completedFilamentMm += Number(j.filamentUsed) || 0;
   if (j.isCompleted) {
    item.completedPieces += 1;
    item.totalDuration += (j.duration || 0);
@@ -2679,7 +2693,8 @@ function CompletedPage({data, onSync, isAdmin}){
  const fileSummaryList = Array.from(fileSummaryMap.values()).map(x => ({
   ...x,
   printers: Array.from(x.printers),
-  avgDuration: x.completedPieces > 0 ? Math.round(x.totalDuration / x.completedPieces) : 0
+  avgDuration: x.completedPieces > 0 ? Math.round(x.totalDuration / x.completedPieces) : 0,
+  avgFilamentMm: x.completedPieces > 0 ? x.completedFilamentMm / x.completedPieces : 0
  })).sort((a,b) => b.completedPieces - a.completedPieces || b.totalDuration - a.totalDuration);
 
  async function triggerSync(){
@@ -2712,8 +2727,8 @@ function CompletedPage({data, onSync, isAdmin}){
    </div>
    {syncError && <p className="banner" role="alert">{syncError}</p>}
    <section className="productionTotals" aria-label="Production totals">
-    {[[PackageCheck,'Today',todayPieces],[Calendar,'Yesterday',yesterdayPieces],[CheckCircle2,'Total completed',totalCompletedPieces],[AlertTriangle,'Failed / cancelled',totalFailedJobs],[Clock,'Machine time',totalProductionSec>=360000?Math.round(totalProductionSec/3600).toLocaleString()+' h':fmtDuration(totalProductionSec)]].map(([Icon,label,value])=>(
-     <div key={label} className="colorMetric"><Icon size={16}/><strong>{value}</strong><span>{label}</span></div>
+    {[[PackageCheck,'Today',todayPieces],[Calendar,'Yesterday',yesterdayPieces],[CheckCircle2,'Total completed',totalCompletedPieces],[AlertTriangle,'Failed / cancelled',totalFailedJobs],[Clock,'Machine time',totalProductionSec>=360000?Math.round(totalProductionSec/3600).toLocaleString()+' h':fmtDuration(totalProductionSec)],[Layers,'Filament used',fmtWeight(totalFilamentMm),todayFilamentMm>0?'Today '+fmtWeight(todayFilamentMm):fmtLength(totalFilamentMm)]].map(([Icon,label,value,sub])=>(
+     <div key={label} className="colorMetric" title={label==='Filament used'?'Based on 1.75 mm PLA: 1 kg ≈ 335 m':undefined}><Icon size={16}/><strong>{value}</strong><span>{label}{sub&&<small className="metricSub">{sub}</small>}</span></div>
     ))}
    </section>
    <section className="outputChart" aria-labelledby="weekly-output-heading">
@@ -2744,13 +2759,13 @@ function CompletedPage({data, onSync, isAdmin}){
       <option value="all">All time</option><option value="today">Today</option><option value="yesterday">Yesterday</option><option value="last7">Last 7 days</option><option value="custom">Specific date</option>
      </select>
      <select aria-label="Print status" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
-      <option value="all">All results</option><option value="started">Print started</option><option value="completed">Completed</option><option value="failed">Failed / cancelled</option>
+      <option value="all">All results</option><option value="completed">Completed</option><option value="failed">Failed / cancelled</option>
      </select>
      {datePreset==='custom' && <input type="date" aria-label="Print date" value={customDate} onChange={e=>setCustomDate(e.target.value)}/>}
     </div>
    </section>
    <div className="productionResultCount">
-    <span>{results.length} {isByFile?'files':'jobs'} · {filteredCompletedCount} completed{filteredFailedCount>0?' · '+filteredFailedCount+' failed / cancelled':''}</span>
+    <span>{results.length} {isByFile?'files':'jobs'} · {filteredCompletedCount} completed{filteredFailedCount>0?' · '+filteredFailedCount+' failed / cancelled':''}{filteredFilamentMm>0?' · '+fmtWeight(filteredFilamentMm)+' filament':''}</span>
     {hasFilters && <button className="prodClearLink" onClick={resetFilters}>Reset filters</button>}
    </div>
    <section className="productionResults" aria-label={isByFile?'Prints by file':'Print job log'}>
@@ -2773,11 +2788,13 @@ function CompletedPage({data, onSync, isAdmin}){
          ['Print batches',result.batches],
          ['Average time',fmtDuration(result.avgDuration)],
          ['Machine time',fmtDuration(result.totalDuration)],
+         ['Filament per piece',fmtFilament(result.avgFilamentMm)],
+         ['Total filament',fmtFilament(result.filamentMm)],
          ['Printers',result.printers.join(', ')||'—']
         ] : [
          ['Started',dateTime(startedAt)],
          ['Duration',fmtDuration(result.duration||result.totalDuration)],
-         ['Filament',result.filamentUsed?Math.round(result.filamentUsed)+' mm':'—']
+         ['Filament used',fmtFilament(result.filamentUsed)]
         ]).map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
        </dl>
       </details>
@@ -3569,7 +3586,7 @@ function AlertsPage({events}){
   <div className="monitorTitle">
    <div><h1>Alerts</h1><p>Printer events and status changes</p></div>
    <select aria-label="Filter alerts" value={filter} onChange={e=>setFilter(e.target.value)}>
-    <option value="all">All events</option><option value="issue">Printer issues</option><option value="completed">Completed</option>
+    <option value="all">All events</option><option value="issue">Printer issues</option><option value="started">Print started</option><option value="completed">Completed</option>
    </select>
   </div>
   <div className="alertRecords">
