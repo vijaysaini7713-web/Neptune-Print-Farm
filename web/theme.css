@@ -409,3 +409,19 @@ button.spoolMeter:hover {border-color:color-mix(in srgb,var(--spool) 55%,var(--f
 .spoolControls :is(select,input) {width:100%;min-height:36px;padding:7px 9px;border:1px solid var(--farm-line);border-radius:8px;background:var(--farm-bg,transparent);color:var(--farm-ink);font:inherit;font-size:13px}
 .spoolControls button {min-height:36px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 @media (max-width:520px){.spoolControls {grid-template-columns:1fr}}
+
+/* Compact spool chip: small ring instead of a long bar */
+.layout .spoolMeter,.spoolMeter {
+ display:inline-flex;width:auto;max-width:100%;align-items:center;gap:6px;
+ padding:3px 9px 3px 5px;border-radius:999px;font-size:11px
+}
+.spoolMeter .spoolRing {width:20px;height:20px;flex:none}
+.spoolRingTrack {fill:none;stroke:color-mix(in srgb,var(--spool) 22%,transparent);stroke-width:3}
+.spoolRingFill {fill:none;stroke:var(--spool);stroke-width:3;stroke-linecap:round;transition:stroke-dashoffset .6s ease}
+.spoolMeter .spoolWarn {grid-column:auto;font-size:10.5px}
+.spoolPanel .spoolMeter {justify-self:start;padding:4px 12px 4px 6px;font-size:12.5px}
+.spoolPanel .spoolMeter .spoolRing {width:24px;height:24px}
+.layout .monitorList .mobTimeItem.spoolItem {grid-column:auto}
+@media (prefers-reduced-motion:reduce){.spoolRingFill{transition:none}}
+.layout .monitorList .spoolMeter {align-self:flex-start;justify-self:start;flex:0 0 auto}
+.layout .monitorList .mobSecondaryTimes .mobTimeItem.spoolItem {grid-column:1/-1;order:99}

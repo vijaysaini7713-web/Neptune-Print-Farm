@@ -1813,6 +1813,10 @@ function spoolTone(sp){
  if(sp.pct<=20)return 'warn';
  return 'ok';
 }
+function SpoolRing({pct}){
+ const r=8,C=2*Math.PI*r,v=Math.max(0,Math.min(100,pct||0));
+ return <svg className="spoolRing" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r={r} className="spoolRingTrack"/><circle cx="10" cy="10" r={r} className="spoolRingFill" strokeDasharray={C} strokeDashoffset={C*(1-v/100)} transform="rotate(-90 10 10)"/></svg>;
+}
 function SpoolMeter({p,onClick}){
  const sp=p.spool;
  if(!sp)return null;
@@ -1828,11 +1832,10 @@ function SpoolMeter({p,onClick}){
   (sp.loadedAt?` · loaded ${new Date(sp.loadedAt).toLocaleString([],{dateStyle:'medium',timeStyle:'short'})}${sp.source==='runout'?' after a runout':''}`:'');
  return (
   <Tag type={onClick?'button':undefined} className={'spoolMeter tone-'+tone} onClick={onClick} title={tip} aria-label={'Spool: '+tip}>
-   <Layers size={13}/>
-   <span className="spoolLabel">Spool left</span>
-   <span className="spoolBar" aria-hidden="true"><i style={{width:Math.max(2,Math.min(100,sp.pct))+'%'}}/></span>
-   <span className="spoolValue">{fmtWeight(sp.remainingG*MM_PER_GRAM)} <small>{sp.pct}%</small></span>
-   {sp.enoughForJob===false&&<span className="spoolWarn"><AlertTriangle size={12}/> Not enough for this print (~{sp.needG} g needed)</span>}
+   <SpoolRing pct={sp.pct}/>
+   <span className="spoolLabel">Spool</span>
+   <span className="spoolValue">{sp.remainingG>=1000?(sp.remainingG/1000).toFixed(2)+' kg':sp.remainingG+' g'} <small>{sp.pct}%</small></span>
+   {sp.enoughForJob===false&&<span className="spoolWarn" title={`This print needs ~${sp.needG} g more`}><AlertTriangle size={12}/> Low</span>}
   </Tag>
  );
 }
