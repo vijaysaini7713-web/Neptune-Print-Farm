@@ -331,15 +331,21 @@ const spoolFile=path.join(dataDir,'spools.json');
 const spools=read(spoolFile,{});
 let spoolSaveTimer=null;
 const saveSpools=()=>{if(spoolSaveTimer)return;spoolSaveTimer=setTimeout(()=>{spoolSaveTimer=null;try{save(spoolFile,spools)}catch{}},3000)};
-function loadSpool(id,{capacityG=DEFAULT_SPOOL_G,remainingG=null,source='manual'}={}){
+function loadSpool(id,{capacityG=null,remainingG=null,source='manual'}={}){
  const prevSpool=spools[id]||{};
- const cap=Math.max(1,Math.round(Number(capacityG)||DEFAULT_SPOOL_G));
+ const cap=Math.max(1,Math.round(Number(capacityG)||prevSpool.capacityG||DEFAULT_SPOOL_G));
  const left=remainingG==null?cap:Math.max(0,Math.min(cap,Math.round(Number(remainingG))));
  spools[id]={capacityG:cap,usedMm:Math.round((cap-left)*MM_PER_GRAM),loadedAt:new Date().toISOString(),source,
   // keep the running job's position so only filament used from now on is counted
-  lastJobKey:prevSpool.lastJobKey||null,lastJobMm:prevSpool.lastJobMm||0,lowAlerted:false,emptyAlerted:false};
+  lastJobKey:prevSpool.lastJobKey||null,lastJobMm:prevSpool.lastJobMm||0,lowAlerted:false,emptyAlerted:false,empty:false};
  save(spoolFile,spools);
  return spools[id];
+}
+// Runout sensor fired: the spool is empty, whatever the count said
+function markSpoolEmpty(id){
+ const sp=spools[id]||(spools[id]={capacityG:DEFAULT_SPOOL_G,usedMm:0,loadedAt:new Date().toISOString(),source:'runout',lastJobKey:null,lastJobMm:0});
+ sp.usedMm=Math.round(sp.capacityG*MM_PER_GRAM);sp.empty=true;sp.emptyAlerted=true;sp.lowAlerted=sp.lastJobKey;
+ save(spoolFile,spools);
 }
 function trackSpool(p,next,latestJob){
  const sp=spools[p.id];
@@ -381,7 +387,7 @@ function publicSpool(id,cur){
  const remainingG=Math.max(0,sp.capacityG-usedG);
  const active=cur&&['printing','paused','runout'].includes(cur.status);
  const needG=active&&cur.filamentTotal>0?Math.max(0,Math.round((cur.filamentTotal-(cur.filamentUsed||0))/MM_PER_GRAM)):0;
- return {known:true,capacityG:sp.capacityG,usedG,remainingG,remainingM:Math.round(remainingG*MM_PER_GRAM/1000),
+ return {known:true,empty:Boolean(sp.empty)||remainingG<=0,capacityG:sp.capacityG,usedG,remainingG,remainingM:Math.round(remainingG*MM_PER_GRAM/1000),
   pct:Math.round(remainingG/sp.capacityG*100),loadedAt:sp.loadedAt,source:sp.source,needG,enoughForJob:needG?remainingG>=needG:null};
 }
 
@@ -787,6 +793,7 @@ async function scan(p){
 
   if (isNowRunout && !isKlippyShutdown) {
    if (!runoutState[p.id]) {
+    try { markSpoolEmpty(p.id); } catch (e) { console.warn('[Spool]', p.name, e.message); }
     runoutState[p.id] = {
      startedAt: new Date().toISOString(),
      startTime: Date.now(),
@@ -816,10 +823,11 @@ async function scan(p){
     const startMs = runoutState[p.id].startTime || (runoutState[p.id].startedAt ? new Date(runoutState[p.id].startedAt).getTime() : Date.now());
     const holdSec = Math.max(0, Math.round((Date.now() - startMs) / 1000));
     const holdStr = formatHoldDuration(holdSec);
-    const resumeMsg = `${p.name}: Filament reloaded & print resumed! Filament change time: ${holdStr}`;
+    // Runout reloaded: a fresh spool of this printer's size went in (1 kg unless set otherwise)
+    const newSpool = loadSpool(p.id, { source: 'runout' });
+    const spoolStr = newSpool.capacityG >= 1000 ? `${newSpool.capacityG / 1000} kg` : `${newSpool.capacityG} g`;
+    const resumeMsg = `${p.name}: Filament reloaded & print resumed! Filament change time: ${holdStr} · New ${spoolStr} spool counted`;
     record(p.id, 'resumed', resumeMsg);
-    // Runout reloaded: a fresh spool went in
-    loadSpool(p.id, { source: 'runout' });
     delete runoutState[p.id];
     save(runoutFile, runoutState);
 

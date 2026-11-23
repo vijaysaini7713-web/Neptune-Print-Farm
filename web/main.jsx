@@ -1808,7 +1808,7 @@ function CameraView({p}){
 // Filament left on the loaded spool (tracked by the farm server)
 function spoolTone(sp){
  if(!sp?.known)return 'unknown';
- if(sp.enoughForJob===false||sp.remainingG<=50)return 'low';
+ if(sp.empty||sp.enoughForJob===false||sp.remainingG<=50)return 'low';
  if(sp.pct<=20)return 'warn';
  return 'ok';
 }
@@ -1833,14 +1833,14 @@ function SpoolMeter({p,onClick}){
   <Tag type={onClick?'button':undefined} className={'spoolMeter tone-'+tone} onClick={onClick} title={tip} aria-label={'Spool: '+tip}>
    <SpoolRing pct={sp.pct}/>
    <span className="spoolLabel">Spool</span>
-   <span className="spoolValue">{sp.remainingG>=1000?(sp.remainingG/1000).toFixed(2)+' kg':sp.remainingG+' g'} <small>{sp.pct}%</small></span>
+   <span className="spoolValue">{sp.empty?'Empty':sp.remainingG>=1000?(sp.remainingG/1000).toFixed(2)+' kg':sp.remainingG+' g'} <small>{sp.pct}%</small></span>
    {sp.enoughForJob===false&&<span className="spoolWarn" title={`This print needs ~${sp.needG} g more`}><AlertTriangle size={12}/> Low</span>}
   </Tag>
  );
 }
 
 function SpoolPanel({p,isAdmin,onRefresh}){
- const [size,setSize]=useState(1000);
+ const [size,setSize]=useState(p.spool?.capacityG||1000);
  const [left,setLeft]=useState('');
  const [busy,setBusy]=useState(false);
  const [msg,setMsg]=useState(null);
@@ -1859,7 +1859,7 @@ function SpoolPanel({p,isAdmin,onRefresh}){
   <section className="spoolPanel" aria-label="Filament spool">
    <div className="spoolPanelHead">
     <strong><Layers size={15}/> Filament spool</strong>
-    <small>Counted from what each print uses (1.75 mm PLA, 1 kg ≈ 335 m). A full spool is assumed automatically when filament is reloaded after a runout.</small>
+    <small>Counted from what each print uses (1.75 mm PLA, 1 kg ≈ 335 m). When the runout sensor fires the spool shows Empty; when the print resumes a new spool of this size (1 kg by default) is counted automatically.</small>
    </div>
    <SpoolMeter p={p}/>
    {isAdmin&&(
