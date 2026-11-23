@@ -279,12 +279,12 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
         <i/>
         {hasRunout ? 'Filament Runout' : isShutdown ? 'Printer Shutdown' : effectiveStatus==='completed'?'Print Completed':effectiveStatus==='offline'?'Offline':effectiveStatus==='error'?'Printer error':effectiveStatus==='printing'?'Printing':effectiveStatus==='paused'?'Paused':effectiveStatus==='cancelled'?'Cancelled':effectiveStatus==='leveling'?'Leveling Bed':effectiveStatus==='homing'?'Homing Axes':effectiveStatus==='idle'?'Idle':effectiveStatus}
        </span>
+       {p.enabled&&p.spool&&<SpoolMeter p={p} onClick={onOpenControl?()=>onOpenControl(p,'job'):undefined}/>}
       </div>
       <h3 className="fleetPrinterName" title={p.name}>{p.name}</h3>
       <div className="fleetSubline">
        <span>{p.host||'unknown'}{p.enabled?` · Port: ${p.port||80}`:' · Disabled'}</span>
       </div>
-      {p.enabled&&p.spool&&<SpoolMeter p={p} onClick={onOpenControl?()=>onOpenControl(p,'job'):undefined}/>}
      </div>
     </div>
 

@@ -447,3 +447,18 @@ button.spoolMeter:hover {border-color:color-mix(in srgb,var(--spool) 55%,var(--f
 .layout .monitorList .machineName .machineState {display:inline-flex;vertical-align:middle}
 .layout .monitorList .machineName .spoolMeter .spoolValue small {display:none}
 .layout .monitorList .machineName .spoolMeter {margin-left:6px;padding-right:8px}
+
+/* Spool chip sits right beside the status pill (Printing / Idle …) */
+.layout .monitorList .fleetPillWrap {display:flex;align-items:center;gap:6px;flex-wrap:nowrap}
+.layout .monitorList .fleetPillWrap .spoolMeter {grid-column:auto;grid-row:auto;margin:0}
+@media(orientation:landscape) and (min-width:900px){
+ .layout .monitorList[data-view="list"] .fleetPillWrap .spoolMeter {grid-column:auto;grid-row:auto}
+}
+.layout .monitorList .fleetPillWrap {flex-wrap:wrap;row-gap:4px}
+.layout .monitorList .fleetPillWrap .fleetPill {white-space:nowrap;flex:none}
+@media(orientation:landscape) and (min-width:900px){
+ .layout .monitorList[data-view="list"] .fleetMainRow {grid-template-columns:minmax(200px,.9fr) minmax(0,2.1fr) minmax(174px,1fr) minmax(128px,.85fr)}
+}
+@media(orientation:landscape) and (min-width:900px){
+ .layout .monitorList[data-view="list"] .fleetPillWrap {grid-column:1/-1}
+}
