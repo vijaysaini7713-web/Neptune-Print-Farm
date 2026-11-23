@@ -434,3 +434,16 @@ button.spoolMeter:hover {border-color:color-mix(in srgb,var(--spool) 55%,var(--f
 @media(orientation:landscape) and (min-width:900px){
  .layout .monitorList[data-view="list"] .fleetIdentityText .spoolMeter {grid-column:2;grid-row:4}
 }
+
+/* Spool chip: a bit larger on desktop, and in the collapsed mobile card */
+.layout .monitorList .fleetIdentityText .spoolMeter {padding:3px 10px 3px 4px;gap:6px;font-size:12.5px}
+.layout .monitorList .fleetIdentityText .spoolMeter .spoolRing {width:22px;height:22px}
+.layout .monitorList .machineName .spoolMeter {
+ margin:0 0 0 8px;padding:2px 9px 2px 3px;gap:5px;font-size:12px;vertical-align:middle;min-height:0;width:auto
+}
+.layout .monitorList .machineName .spoolMeter .spoolLabel {display:none}
+.layout .monitorList .machineName .spoolMeter .spoolRing {width:20px;height:20px}
+.layout .monitorList .machineName .spoolMeter .spoolWarn {display:none}
+.layout .monitorList .machineName .machineState {display:inline-flex;vertical-align:middle}
+.layout .monitorList .machineName .spoolMeter .spoolValue small {display:none}
+.layout .monitorList .machineName .spoolMeter {margin-left:6px;padding-right:8px}

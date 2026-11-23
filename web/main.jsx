@@ -242,7 +242,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
   <section className={'monitorRow tone-'+tone+(activeJob&&progressVal>0?' has-charge':'')+(isDone?' charge-complete':'')} style={{'--job-charge':progressVal+'%'}}>
    <div className="monitorSummary">
     <div className="machineMark"><Printer size={19} aria-hidden="true"/></div>
-    <div className="machineName"><h3 title={p.name}>{p.name}</h3><span className="machineState"><i/>{label}</span></div>
+    <div className="machineName"><h3 title={p.name}>{p.name}</h3><span className="machineState"><i/>{label}</span>{p.enabled&&p.spool&&<SpoolMeter p={p} onClick={onOpenControl?()=>onOpenControl(p,'job'):undefined}/>}</div>
     <div className="jobBrief"><span title={p.file}>{p.file || 'No active job'}</span>
      {activeJob && <div className="jobMeter"><i style={{width:progressVal+'%'}}/></div>}
     </div>
@@ -811,7 +811,6 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
          <strong className="mobTimeVal">{fmtDuration(p.remainingTime)}</strong>
         </div>
        )}
-       {p.enabled&&p.spool&&<div className="mobTimeItem spoolItem"><SpoolMeter p={p} onClick={onOpenControl?()=>onOpenControl(p,'job'):undefined}/></div>}
        {p.filamentUsed > 0 && (
         <div className="mobTimeItem filamentUsed" title={`Filament used: ${fmtFilament(p.filamentUsed)} (1.75 mm PLA, 1 kg ≈ 335 m)`}>
          <span className="mobTimeLabel"><Layers size={11}/> Filament used:</span>
