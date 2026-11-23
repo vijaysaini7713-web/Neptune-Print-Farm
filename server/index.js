@@ -809,8 +809,7 @@ async function scan(p){
     if (lj.status !== 'completed') {
      const ran = formatHoldDuration(Math.round(lj.print_duration || pend.duration || 0));
      if (lj.status === 'cancelled') {
-      const manual = Date.now() - (recentCancelCmd.get(p.id) || 0) < 5 * 60 * 1000;
-      record(p.id, 'cancelled', `${p.name}: Print CANCELLED${manual ? ' (stopped manually)' : ''} — ${pend.file}${ran ? ` (Ran: ${ran})` : ''}`);
+      record(p.id, 'cancelled', `${p.name}: Print CANCELLED (stopped manually) — ${pend.file}${ran ? ` (Ran: ${ran})` : ''}`);
      } else {
       record(p.id, 'error', `${p.name}: Print STOPPED (${String(lj.status).replace(/_/g, ' ')}) — ${pend.file}${ran ? ` (Ran: ${ran})` : ''}`);
      }
@@ -1084,6 +1083,7 @@ app.post(['/api/printers/:id/command', '/api/printers/:id/control'],auth,async(r
  }
 
  recentCommands.set(p.id, { action, gcode, time: Date.now() });
+ if (action === 'cancel') recentCancelCmd.set(p.id, Date.now());
 
  if (action === 'cancel' || action === 'emergency_stop') {
   delete runoutState[p.id];
@@ -1101,7 +1101,9 @@ app.post(['/api/printers/:id/command', '/api/printers/:id/control'],auth,async(r
    method:'POST',
    headers:{'content-type':'application/json'},
    body:payload?JSON.stringify(payload):undefined,
-   signal:AbortSignal.timeout(9000)
+   // Moonraker only answers after the macro finishes; Elegoo's CANCEL_PRINT/PAUSE
+   // can take 15-30 s (and G28 / bed mesh even longer).
+   signal:AbortSignal.timeout(action==='level'||action==='bed_mesh'||action==='gcode'?60000:30000)
   });
   const data=await r.json().catch(()=>({}));
   if(!r.ok){
@@ -1113,6 +1115,26 @@ app.post(['/api/printers/:id/command', '/api/printers/:id/control'],auth,async(r
   void poll();
   res.json({ok:true,result:data?.result||'ok'});
  }catch(err){
+  // A timeout usually means the printer is still running the command, not that it failed.
+  // Check the printer state before reporting an error.
+  const isTimeout=err?.name==='TimeoutError'||err?.name==='AbortError'||/timeout|aborted/i.test(String(err?.message));
+  let state=null;
+  try{
+   const q=await fetch('http://'+p.host+':'+p.port+'/printer/objects/query?print_stats=state',{signal:AbortSignal.timeout(5000)});
+   state=(await q.json())?.result?.status?.print_stats?.state||null;
+  }catch{}
+  if(isTimeout&&state){
+   const done=action==='cancel'?!['printing','paused'].includes(state)
+    :action==='pause'?state==='paused'
+    :action==='resume'?state==='printing'
+    :true; // G-code / homing / leveling keep running on the printer
+   if(done||action!=='cancel'){
+    const label=action==='cancel'?'Cancel Print':action==='pause'?'Pause':action==='resume'?'Resume':(action==='gcode'?(gcode||'G-code'):action);
+    record(p.id,'command',`${p.name}: Command [${label}] sent${done?'':' (still running on the printer)'}`);
+    void poll();
+    return res.json({ok:true,result:done?'ok':'sent - the printer is still working on it'});
+   }
+  }
   res.status(502).json({error:'Failed to communicate with printer '+p.host+': '+err.message});
  }
 });
