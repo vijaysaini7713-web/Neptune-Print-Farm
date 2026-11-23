@@ -425,3 +425,12 @@ button.spoolMeter:hover {border-color:color-mix(in srgb,var(--spool) 55%,var(--f
 @media (prefers-reduced-motion:reduce){.spoolRingFill{transition:none}}
 .layout .monitorList .spoolMeter {align-self:flex-start;justify-self:start;flex:0 0 auto}
 .layout .monitorList .mobSecondaryTimes .mobTimeItem.spoolItem {grid-column:1/-1;order:99}
+.layout .monitorList .fleetIdentityText .spoolMeter {margin-top:5px}
+.layout .monitorList .fleetIdentityText .spoolMeter {width:max-content;min-width:0;max-width:100%;padding:2px 8px 2px 3px;gap:5px;min-height:0}
+.layout .monitorList .fleetIdentityText .spoolMeter .spoolLabel {display:none}
+.layout .monitorList .fleetIdentityText .spoolMeter.unknown .spoolLabel {display:none}
+.layout .monitorList .fleetIdentityText .spoolMeter .spoolRing {width:18px;height:18px}
+.layout .monitorList .fleetIdentityText .spoolMeter {grid-column:2/-1;grid-row:3;margin-top:4px}
+@media(orientation:landscape) and (min-width:900px){
+ .layout .monitorList[data-view="list"] .fleetIdentityText .spoolMeter {grid-column:2;grid-row:4}
+}
