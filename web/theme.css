@@ -462,3 +462,38 @@ button.spoolMeter:hover {border-color:color-mix(in srgb,var(--spool) 55%,var(--f
 @media(orientation:landscape) and (min-width:900px){
  .layout .monitorList[data-view="list"] .fleetPillWrap {grid-column:1/-1}
 }
+
+/* Reprint: highlighted on finished cards, also in the collapsed mobile card */
+.fleetBtn.reprintBtn,.fleetClearBedBannerBtn.reprintBanner {
+ display:inline-flex;align-items:center;justify-content:center;gap:6px;
+ background:var(--farm-blue)!important;color:#fff!important;border:1px solid color-mix(in srgb,var(--farm-blue) 70%,#fff)!important;
+ font-weight:700;box-shadow:0 0 0 3px color-mix(in srgb,var(--farm-blue) 22%,transparent);
+ animation:reprintPulse 2.4s ease-in-out infinite
+}
+.fleetBtn.reprintBtn:hover,.fleetClearBedBannerBtn.reprintBanner:hover {filter:brightness(1.1)}
+.fleetBtn.reprintBtn:focus-visible,.reprintGo:focus-visible {outline:2px solid #fff;outline-offset:2px}
+@keyframes reprintPulse {50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--farm-blue) 8%,transparent)}}
+@media (prefers-reduced-motion:reduce){.fleetBtn.reprintBtn,.reprintBanner{animation:none}}
+.fleetClearBedBannerBtn.reprintBanner {margin-right:8px}
+.monitorSummary .summaryReprint {grid-column:1/-1;display:flex;justify-content:flex-start;position:relative;z-index:1}
+.monitorSummary .fleetBtn.reprintBtn.summary {min-height:36px;padding:0 16px;border-radius:10px;font-size:13px;width:100%}
+@media(max-width:620px){.monitorSummary .summaryReprint {grid-row:3;margin-top:4px}}
+
+.modalCard.reprintModal {width:min(420px,100%);padding:22px;display:flex;flex-direction:column;align-items:flex-start;gap:10px;border-radius:16px}
+.reprintModal h2 {margin:0;font-size:19px;color:var(--farm-ink)}
+.reprintModal p {margin:0;color:var(--farm-muted);font-size:13.5px;line-height:1.5;overflow-wrap:anywhere}
+.reprintModal p strong {color:var(--farm-ink)}
+.reprintIcon {width:44px;height:44px;border-radius:12px;display:grid;place-items:center;color:var(--farm-blue);background:color-mix(in srgb,var(--farm-blue) 15%,transparent)}
+.reprintMsg {width:100%;padding:8px 10px;border-radius:9px;font-size:12.5px;background:var(--farm-raised);color:var(--farm-ink)}
+.reprintMsg.error {color:var(--farm-rose);background:color-mix(in srgb,var(--farm-rose) 12%,transparent)}
+.reprintActions {display:flex;gap:8px;justify-content:flex-end;width:100%;margin-top:6px;flex-wrap:wrap}
+.reprintActions button {min-height:40px;padding:0 14px;border-radius:10px;display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.reprintGo {background:var(--farm-blue);color:#fff;border:0;cursor:pointer}
+.reprintGo:disabled {opacity:.7;cursor:progress}
+@media(max-width:420px){.reprintActions button {flex:1;justify-content:center}}
+/* Low spool (10% or less): red, with a soft blink like a low phone battery */
+.spoolMeter.tone-low {background:color-mix(in srgb,var(--farm-rose,#f43f5e) 14%,transparent)}
+.spoolMeter.tone-low .spoolValue {color:var(--farm-rose,#f43f5e)}
+.spoolMeter.tone-low .spoolRing {animation:spoolLowBlink 1.6s ease-in-out infinite}
+@keyframes spoolLowBlink {50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.spoolMeter.tone-low .spoolRing{animation:none}}

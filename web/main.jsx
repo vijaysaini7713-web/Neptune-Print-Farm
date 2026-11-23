@@ -1,7 +1,7 @@
 
 import React,{useEffect,useState} from 'react';
 import{createRoot}from'react-dom/client';
-import{Folder,FileText,Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Timer,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap,Key,Lock,Copy,Check,Cpu,HardDrive,Users,UserPlus,Eye,Shield,Mail,LayoutGrid,CircleCheckBig,TriangleAlert,Settings2,Video,VideoOff,Maximize2,Image as ImageIcon}from'lucide-react';
+import{Folder,FileText,Printer,Settings,Activity,Sparkles,LogOut,RefreshCw,AlertTriangle,CheckCircle2,Thermometer,Clock,Timer,Layers,Plus,Trash2,Bell,ShieldCheck,WifiOff,PackageCheck,CheckCheck,Search,Calendar,Filter,XCircle,TrendingUp,ExternalLink,Wifi,Globe,Radio,Server,Terminal,Play,Pause,Square,Flame,RotateCcw,RotateCw,Send,X,Home,ShieldAlert,Sliders,Sun,Moon,Move,ArrowUp,ArrowDown,ArrowLeft,ArrowRight,ChevronUp,ChevronDown,Wind,Gauge,Compass,Zap,Key,Lock,Copy,Check,Cpu,HardDrive,Users,UserPlus,Eye,Shield,Mail,LayoutGrid,CircleCheckBig,TriangleAlert,Settings2,Video,VideoOff,Maximize2,Image as ImageIcon}from'lucide-react';
 import './style.css';
 import './monitor.css';
 import './theme.css';
@@ -194,7 +194,7 @@ function Login({done,theme,toggleTheme}){
  </main>;
 }
 
-function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRestart,isAdmin=true}){
+function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onReprint,onFirmwareRestart,isAdmin=true}){
  const [showMore, setShowMore] = useState(false);
  const s=p.status||'connecting';
  const printerUrl=p.host?`http://${p.host}${p.port&&p.port!==80?':'+p.port:''}`:null;
@@ -237,6 +237,13 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
  const activeJob = isPrinting || isPaused || hasRunout || isDone;
  const tone = hasRunout || isPaused ? 'amber' : hasIssue ? 'red' : isPrinting ? 'green' : isDone ? 'purple' : 'neutral';
  const detailsId = 'printer-info-' + p.id;
+ const canReprint = isAdmin && isDone && p.enabled && Boolean(p.file) && Boolean(onReprint);
+ const reprintBtn = (cls='') => canReprint && (
+  <button type="button" className={'fleetBtn reprintBtn '+cls} onClick={e=>{e.stopPropagation();onReprint(p)}} title={`Print ${p.file} again on ${p.name}`}>
+   <RotateCw size={13}/>
+   <span>Reprint</span>
+  </button>
+ );
 
  return (
   <section className={'monitorRow tone-'+tone+(activeJob&&progressVal>0?' has-charge':'')+(isDone?' charge-complete':'')} style={{'--job-charge':progressVal+'%'}}>
@@ -252,6 +259,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
     <button className="infoButton" aria-label={(showMore?'Less info for ':'More info for ')+p.name} aria-expanded={showMore} aria-controls={detailsId} onClick={()=>setShowMore(v=>!v)}>
      {showMore?'Less info':'More info'}{showMore?<ChevronUp size={14}/>:<ChevronDown size={14}/>}
     </button>
+    {canReprint&&<div className="summaryReprint">{reprintBtn('summary')}</div>}
    </div>
    <div id={detailsId} className={'monitorDetails'+(showMore?' is-expanded':'')}>
    <article className={`fleetCard state-${effectiveStatus} ${hasRunout?'has-runout':''} ${hasIssue?'has-issue':''} ${isPrinting?'is-printing':''} ${isShutdown?'is-shutdown':''}`}>
@@ -566,6 +574,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
        <span>Firmware Restart</span>
       </button>
      )}
+     {reprintBtn()}
      {isAdmin&&isDone&&(
       <button 
        className="fleetBtn clearBedTop" 
@@ -696,6 +705,7 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
         <span>Restart</span>
        </button>
       )}
+      {reprintBtn()}
       {isAdmin&&isDone&&(
        <button 
         className="fleetBtn clearBedTop" 
@@ -910,6 +920,12 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
        )}
       </div>
      </div>
+     {canReprint&&(
+      <button type="button" className="fleetClearBedBannerBtn reprintBanner" onClick={()=>onReprint(p)}>
+       <RotateCw size={14}/>
+       <span>Reprint</span>
+      </button>
+     )}
      {isAdmin&&(
       <button 
        className="fleetClearBedBannerBtn"
@@ -961,6 +977,67 @@ function PrinterCard({p,isLocal,systemInfo,onOpenControl,onClearBed,onFirmwareRe
   </article>
    </div>
   </section>
+ );
+}
+
+// Reprint the file that just finished. Asks the operator to confirm the bed is
+// clean first, then clears the finished job and starts the same file again.
+function ReprintConfirmModal({p,onClose,onRefresh}){
+ const [busy,setBusy]=useState(false);
+ const [msg,setMsg]=useState(null);
+ const file=p.file||'';
+ const base=file.split('/').pop();
+ useEffect(()=>{
+  const onKey=e=>{if(e.key==='Escape'&&!busy)onClose()};
+  window.addEventListener('keydown',onKey);
+  return ()=>window.removeEventListener('keydown',onKey);
+ },[busy,onClose]);
+ async function startedNow(){
+  for(let i=0;i<8;i++){
+   await new Promise(r=>setTimeout(r,2500));
+   try{
+    const list=await api('/printers');
+    const cur=(Array.isArray(list)?list:list.printers||[]).find(x=>x.id===p.id);
+    const f=String(cur?.file||'');
+    if(cur&&['printing','paused','leveling','homing'].includes(cur.status)&&(!f||f.split('/').pop()===base))return true;
+   }catch{}
+  }
+  return false;
+ }
+ async function go(){
+  setBusy(true);setMsg(null);
+  try{
+   await api('/printers/'+p.id+'/clear-completed',{method:'POST'});
+   try{
+    await api('/printers/'+p.id+'/print-file',{method:'POST',body:JSON.stringify({filename:file})});
+   }catch(err){
+    if(!(err.status===0||err.status>=500))throw err;
+    setMsg({type:'info',text:'Checking whether the print started…'});
+    if(!await startedNow())throw err;
+   }
+   onRefresh&&onRefresh();
+   onClose();
+  }catch(err){
+   setMsg({type:'error',text:err.message||String(err)});
+   onRefresh&&onRefresh();
+  }finally{setBusy(false)}
+ }
+ return (
+  <div className="modalBackdrop" onClick={()=>!busy&&onClose()}>
+   <div className="modalCard reprintModal" role="alertdialog" aria-modal="true" aria-labelledby="reprint-title" onClick={e=>e.stopPropagation()}>
+    <div className="reprintIcon"><RotateCw size={22}/></div>
+    <h2 id="reprint-title">Is the bed clean?</h2>
+    <p>Reprint <strong title={file}>{base}</strong> on <strong>{p.name}</strong>. Remove the finished print and anything left on the build plate first, or the nozzle will crash into it.</p>
+    {msg&&<div className={'reprintMsg '+msg.type}>{msg.text}</div>}
+    <div className="reprintActions">
+     <button type="button" className="outline" onClick={onClose} disabled={busy}>Cancel</button>
+     <button type="button" className="reprintGo" onClick={go} disabled={busy} autoFocus>
+      {busy?<RefreshCw size={14} className="spin"/>:<RotateCw size={14}/>}
+      {busy?'Starting…':'Yes, bed is clean · Reprint'}
+     </button>
+    </div>
+   </div>
+  </div>
  );
 }
 
@@ -1808,8 +1885,9 @@ function CameraView({p}){
 // Filament left on the loaded spool (tracked by the farm server)
 function spoolTone(sp){
  if(!sp?.known)return 'unknown';
- if(sp.empty||sp.enoughForJob===false||sp.remainingG<=50)return 'low';
- if(sp.pct<=20)return 'warn';
+ // Like a phone battery: red at 10% or less, amber at 20% or less
+ if(sp.empty||sp.pct<=10)return 'low';
+ if(sp.pct<=20||sp.enoughForJob===false)return 'warn';
  return 'ok';
 }
 function SpoolRing({pct}){
@@ -3725,7 +3803,7 @@ const fleetViews = [
 ];
 
 function App(){
- const[authed,setAuthed]=useState(null),[currentUser,setCurrentUser]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[systemInfo,setSystemInfo]=useState(null),[controlPrinter,setControlPrinter]=useState(null),[controlTab,setControlTab]=useState('job'),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);
+ const[authed,setAuthed]=useState(null),[currentUser,setCurrentUser]=useState(null),[page,setPage]=useState('overview'),[printers,setPrinters]=useState([]),[config,setConfig]=useState([]),[events,setEvents]=useState([]),[completed,setCompleted]=useState({jobs:[],summary:[]}),[systemInfo,setSystemInfo]=useState(null),[controlPrinter,setControlPrinter]=useState(null),[controlTab,setControlTab]=useState('job'),[reprintPrinter,setReprintPrinter]=useState(null),[error,setError]=useState(''),[refreshed,setRefreshed]=useState(null);
  const[fleetFilter,setFleetFilter]=useState('all');
  const[fleetSearch,setFleetSearch]=useState('');
  const[fleetView,setFleetView]=useState(()=>{
@@ -4036,6 +4114,7 @@ function App(){
         systemInfo={systemInfo} 
         onOpenControl={(printer,tab)=>{setControlTab(tab||'job');setControlPrinter(printer)}}
         onClearBed={handleClearBed}
+        onReprint={setReprintPrinter}
         onFirmwareRestart={handleFirmwareRestart}
         isAdmin={isAdmin}
        />
@@ -4070,6 +4149,10 @@ function App(){
     <>
      <AlertsPage events={events}/>
     </>
+   )}
+
+   {reprintPrinter&&(
+    <ReprintConfirmModal p={reprintPrinter} onClose={()=>setReprintPrinter(null)} onRefresh={refresh}/>
    )}
 
    {controlPrinter&&(
