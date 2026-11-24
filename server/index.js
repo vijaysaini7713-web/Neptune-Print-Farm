@@ -93,7 +93,7 @@ let printers=read(configFile,read(exampleFile,[])),events=read(historyFile,[]),a
 const lastFilesFile=path.join(dataDir,'last_files.json');
 const lastFinishedFile=new Map(Object.entries(read(lastFilesFile,{})));
 function rememberLastFile(id){const f=jobStartTimes?.[id]?.file;if(!f)return;lastFinishedFile.set(id,f);try{save(lastFilesFile,Object.fromEntries(lastFinishedFile))}catch{}}
-const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map(),recentCommands=new Map(),pendingStops=new Map(),consoleSeen=new Map(),consoleAlertAt=new Map(),recentCancelCmd=new Map();
+const current=new Map(),last=new Map(),completedState=new Map(),progressSamples=new Map(),recentCommands=new Map(),pendingStops=new Map(),pausedAt=new Map(),consoleSeen=new Map(),consoleAlertAt=new Map(),recentCancelCmd=new Map();
 const offlineSince=new Map(),offlineAlertSent=new Map();
 const idleSince=new Map(),errorSince=new Map(),pauseSince=new Map();
 const etaSmoothed=new Map();
@@ -174,6 +174,7 @@ function formatHoldDuration(seconds) {
  return `${remS}s`;
 }
 
+const fmtSec=sec=>{const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),x=sec%60;return h?`${h}h ${m}m`:m?`${m}m ${x}s`:`${x}s`};
 function record(printerId,type,message){
  events.unshift({id:crypto.randomUUID(),printerId,type,message,time:new Date().toISOString()});
  events=events.slice(0,2000);save(historyFile,events);
@@ -185,7 +186,7 @@ function record(printerId,type,message){
   else if (type === 'completed') title = '🎉 Print Finished!';
   else if (type === 'runout') title = '⚠️ Filament Runout Detected!';
   else if (type === 'lowfilament') title = '🧵 Low Filament on Spool';
-  else if (type === 'resumed') title = '▶️ Filament Reloaded & Resumed';
+  else if (type === 'resumed') title = /after pause/i.test(message) ? '▶️ Print Resumed' : '▶️ Filament Reloaded & Resumed';
   else if (type === 'error') title = '🚨 Printer Error / Shutdown!';
   else if (type === 'paused') title = '⏸️ Print Paused';
   else if (type === 'cancelled') title = '🛑 Print Cancelled / Stopped';
@@ -904,7 +905,22 @@ async function scan(p){
 
   // 4. Status change tracking for Error, Paused, Cancelled
   if (prev?.connected && prev.status !== next.status) {
-   if (next.status === 'error' || (next.status === 'paused' && !isNowRunout)) {
+   if (next.status === 'paused' && !isNowRunout) {
+    // Say why and where it stopped: a PAUSE / M600 in the G-code, or a click on the dashboard
+    const rc = recentCommands.get(p.id);
+    const fromDashboard = rc && Date.now() - rc.time < 60000 && (rc.action === 'pause' || /^s*(PAUSE|M601|M600)/i.test(rc.gcode || ''));
+    const where = [
+     next.progress != null ? Math.round(next.progress) + '%' : '',
+     next.layer ? 'layer ' + next.layer + (next.totalLayers ? '/' + next.totalLayers : '') : '',
+     next.z ? 'Z ' + Number(next.z).toFixed(2) + ' mm' : ''
+    ].filter(Boolean).join(' · ');
+    pausedAt.set(p.id, Date.now());
+    record(p.id, 'paused', `${p.name}: Print PAUSED ${fromDashboard ? '(paused from dashboard)' : '(pause in G-code / on printer)'} — ${next.file || 'No filename'}${where ? ' · ' + where : ''}. Waiting for you to resume.`);
+   } else if (prev.status === 'paused' && next.status === 'printing' && pausedAt.has(p.id)) {
+    const held = Math.round((Date.now() - pausedAt.get(p.id)) / 1000);
+    pausedAt.delete(p.id);
+    record(p.id, 'resumed', `${p.name}: Print RESUMED after pause — ${next.file || ''}${held > 0 ? ' · Paused for ' + fmtSec(held) : ''}`);
+   } else if (next.status === 'error') {
     record(p.id, next.status, p.name + ': ' + next.status.toUpperCase() + ' — ' + (next.file || 'No filename') + (next.status === 'error' && next.shutdownReason ? ' · Reason: ' + String(next.shutdownReason).split(/\r?\n/)[0].slice(0, 160) : ''));
    } else if (next.status === 'cancelled') {
     record(p.id, 'cancelled', p.name + ': Print CANCELLED / STOPPED — ' + (next.file || prev?.file || 'Job stopped'));
