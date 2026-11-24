@@ -337,7 +337,7 @@ function loadSpool(id,{capacityG=null,remainingG=null,source='manual'}={}){
  const left=remainingG==null?cap:Math.max(0,Math.min(cap,Math.round(Number(remainingG))));
  spools[id]={capacityG:cap,usedMm:Math.round((cap-left)*MM_PER_GRAM),loadedAt:new Date().toISOString(),source,
   // keep the running job's position so only filament used from now on is counted
-  lastJobKey:prevSpool.lastJobKey||null,lastJobMm:prevSpool.lastJobMm||0,lowAlerted:false,emptyAlerted:false,empty:false};
+  lastJobKey:prevSpool.lastJobKey||null,lastJobFile:prevSpool.lastJobFile,lastJobMm:prevSpool.lastJobMm||0,lowAlerted:false,emptyAlerted:false,empty:false};
  save(spoolFile,spools);
  return spools[id];
 }
@@ -349,25 +349,30 @@ function markSpoolEmpty(id){
 }
 function trackSpool(p,next,latestJob){
  const sp=spools[p.id];
+ if(!sp)return;
  const active=['printing','paused','runout'].includes(next.status)&&next.file;
- let key=null,mm=0;
- if(latestJob&&(latestJob.status==='in_progress'?latestJob.filename===next.file:latestJob.job_id===sp?.lastJobKey)){
-  key=latestJob.job_id;
-  mm=latestJob.status==='in_progress'?Number(next.filamentUsed||0):Number(latestJob.filament_used||0);
- }else if(active){
-  key=`${next.file}|${jobStartTimes[p.id]?.startedAt||''}`;
-  mm=Number(next.filamentUsed||0);
+ // Follow the job by file name and the live filament counter from print_stats.
+ // (Earlier this keyed on the history job id, which disappears whenever the
+ // history request times out - every flip re-added the whole job.)
+ const file=next.file||'';
+ const mm=Number(next.filamentUsed||0);
+ if(file&&mm>=0){
+  if(sp.lastJobFile===undefined){
+   // first run after upgrading: start counting from the current position
+   sp.lastJobFile=file;sp.lastJobMm=mm;saveSpools();
+  }else if(!active&&file!==sp.lastJobFile){
+   // an idle printer still showing a finished job we didn't see run: never count it
+  }else if(file!==sp.lastJobFile||(active&&mm+2000<sp.lastJobMm)){
+   // a new job (different file, or the counter restarted = reprint)
+   const startedAt=Date.parse(jobStartTimes[p.id]?.startedAt||'')||(latestJob?.filename===file&&latestJob.start_time?latestJob.start_time*1000:Date.now());
+   const counted=startedAt>=Date.parse(sp.loadedAt)-60000?mm:0;
+   if(active||counted>0)sp.usedMm+=Math.max(0,Math.min(counted,400000));
+   sp.lastJobFile=file;sp.lastJobMm=mm;saveSpools();
+  }else if(mm>sp.lastJobMm){
+   sp.usedMm+=Math.min(mm-sp.lastJobMm,50000);sp.lastJobMm=mm;saveSpools();
+  }
  }
- if(!key||!sp)return;
- if(key!==sp.lastJobKey){
-  // A job we haven't counted yet; only count it if it started after the spool was loaded
-  const startedMs=latestJob?.job_id===key&&latestJob.start_time?latestJob.start_time*1000:Date.now();
-  const delta=startedMs>=Date.parse(sp.loadedAt)-60000?mm:0;
-  sp.usedMm+=Math.max(0,Math.min(delta,400000));
-  sp.lastJobKey=key;sp.lastJobMm=mm;saveSpools();
- }else if(mm>sp.lastJobMm){
-  sp.usedMm+=Math.min(mm-sp.lastJobMm,400000);sp.lastJobMm=mm;saveSpools();
- }
+ sp.lastJobKey=file||sp.lastJobKey;
  // Warn once per spool when it won't last
  const pub=publicSpool(p.id,next);
  if(active&&pub.known){
